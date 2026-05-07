@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { RecaptchaService } from '../../../core/services/recaptcha.service';
 
 interface Slide {
   icone: string;
@@ -35,6 +36,7 @@ interface ErroLogin {
 })
 export class LoginComponent implements OnInit, OnDestroy {
   private auth = inject(AuthService);
+  private recaptcha = inject(RecaptchaService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
@@ -135,7 +137,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
 
     this.carregando.set(true);
-    this.auth.login({ email, senha, tenantSlug: slug || undefined }).subscribe({
+    this.recaptcha.executar('login').then(token => {
+    this.auth.login({ email, senha, tenantSlug: slug || undefined, recaptchaToken: token || undefined }).subscribe({
       next: result => {
         this.carregando.set(false);
         // SuperAdmin não tem tenant: vai para gestão de empresas.
@@ -147,6 +150,20 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.carregando.set(false);
         this.erro.set(this.traduzirErro(err, slug));
       }
+    });
+    }).catch(() => {
+      // reCAPTCHA falhou ao carregar — segue sem (modo no-op no backend dev).
+      this.auth.login({ email, senha, tenantSlug: slug || undefined }).subscribe({
+        next: result => {
+          this.carregando.set(false);
+          const destino = result.perfil === 'SuperAdmin' ? '/admin/empresas' : '/admin/dashboard';
+          this.router.navigate([destino]);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.carregando.set(false);
+          this.erro.set(this.traduzirErro(err, slug));
+        }
+      });
     });
   }
 

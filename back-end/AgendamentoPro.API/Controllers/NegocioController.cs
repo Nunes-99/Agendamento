@@ -2,8 +2,10 @@ using AgendamentoPro.Application.InputModels.Agendamentos;
 using AgendamentoPro.Core.Entities.Agendamentos;
 using AgendamentoPro.Core.Entities.Clientes;
 using AgendamentoPro.Core.Entities.Servicos;
+using AgendamentoPro.Core.Enums;
 using AgendamentoPro.Core.Interfaces.Common;
 using AgendamentoPro.Core.Interfaces.Database.Common;
+using AgendamentoPro.Core.Interfaces.Services;
 using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -137,6 +139,7 @@ namespace AgendamentoPro.API.Controllers
             [FromServices] AgendamentoProDbContext ctx,
             [FromServices] ITenantContext tenant,
             [FromServices] IUnitOfWork uow,
+            [FromServices] IEnumerable<IGatewayPagamento> gateways,
             string slug, int pacoteId, [FromBody] ClientePublicoInputModel cliente)
         {
             var tid = RequireTenantId(tenant);
@@ -144,7 +147,6 @@ namespace AgendamentoPro.API.Controllers
                 && p.R_TenId == tid && p.PctAtivo);
             if (pacote == null) return NotFound();
 
-            // Reuse cliente se já existir (telefone), senão cria
             Cliente cli = null;
             if (!string.IsNullOrEmpty(cliente.Telefone))
                 cli = await ctx.Clientes.FirstOrDefaultAsync(c => c.R_TenId == tid && c.CliTelefone == cliente.Telefone);
@@ -159,11 +161,59 @@ namespace AgendamentoPro.API.Controllers
             ctx.SaldosPacote.Add(saldo);
             await uow.SaveChangesAsync();
 
-            // TODO: integração com gateway de pagamento. Por enquanto, retorna saldo criado
-            // já válido — em produção seria criado em status "pendente" e ativado pelo webhook.
-            return Ok(new { saldoId = saldo.SaldId, quantidadeRestante = saldo.SaldQuantidadeRestante,
-                expiraEm = saldo.SaldExpiraEm,
-                aviso = "Integração com pagamento pendente — saldo criado já ativo (refactor: aguardar webhook MP)." });
+            // Cria cobrança no gateway PIX. Saldo fica pendente até webhook aprovar.
+            var gateway = gateways.FirstOrDefault();
+            if (gateway == null)
+                return StatusCode(500, new { message = "Gateway de pagamento não configurado." });
+
+            var cobranca = await gateway.CriarCobrancaAsync(tid, agendamentoId: 0,
+                pacote.PctPreco, FormaPagamento.Pix,
+                $"Pacote: {pacote.PctNome}", expiracaoMinutos: 30);
+
+            saldo.DefinirGatewayId(cobranca.GatewayId);
+            ctx.SaldosPacote.Update(saldo);
+            await uow.SaveChangesAsync();
+
+            return Ok(new
+            {
+                saldoPacoteId = saldo.SaldId,
+                qrCode = cobranca.QrCode,
+                linkPagamento = cobranca.LinkPagamento,
+                valor = pacote.PctPreco,
+                expiracao = cobranca.Expiracao
+            });
+        }
+
+        [HttpGet("api/t/{slug}/saldos-pacote/{saldoId:int}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConsultarSaldoPacote(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant,
+            string slug, int saldoId)
+        {
+            var tid = RequireTenantId(tenant);
+            var saldo = await ctx.SaldosPacote.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SaldId == saldoId && s.R_TenId == tid);
+            if (saldo == null) return NotFound();
+            return Ok(new
+            {
+                saldoPacoteId = saldo.SaldId,
+                status = saldo.SaldStatus.ToString().ToLowerInvariant(),
+                restante = saldo.SaldQuantidadeRestante
+            });
+        }
+
+        [HttpGet("api/t/{slug}/pacotes")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ListarPacotesPublico(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant, string slug)
+        {
+            var tid = RequireTenantId(tenant);
+            var lista = await ctx.PacotesPrePagos.AsNoTracking()
+                .Where(p => p.R_TenId == tid && !p.Excluido && p.PctAtivo)
+                .ToListAsync();
+            return Ok(lista);
         }
 
         // ============== Fidelidade ==============

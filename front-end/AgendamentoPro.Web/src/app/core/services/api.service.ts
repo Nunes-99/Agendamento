@@ -246,4 +246,41 @@ export class ApiService {
     return this.http.get<any>(
       `${this.base}/t/${slug}/cupons/${encodeURIComponent(codigo)}/validar?valorBase=${valorBase}`);
   }
+
+  // ----- Recorrência -----
+  criarRecorrencia(input: any) {
+    return this.http.post<any>(`${this.base}/admin/recorrencias`, input);
+  }
+  listarRecorrencias() {
+    return this.http.get<any[]>(`${this.base}/admin/recorrencias`);
+  }
+
+  // ----- Pacotes pré-pagos -----
+  listarPacotes(slug?: string) {
+    const url = slug ? `${this.base}/t/${slug}/pacotes` : `${this.base}/admin/pacotes`;
+    return this.http.get<any[]>(url);
+  }
+  criarPacote(input: any) {
+    return this.http.post<any>(`${this.base}/admin/pacotes`, input);
+  }
+  comprarPacote(slug: string, pacoteId: number, cliente: any) {
+    return this.http.post<any>(`${this.base}/t/${slug}/pacotes/${pacoteId}/comprar`, cliente);
+  }
+  consultarStatusSaldoPacote(slug: string, saldoPacoteId: number) {
+    return this.http.get<{ saldoPacoteId: number; status: string; restante: number }>(
+      `${this.base}/t/${slug}/saldos-pacote/${saldoPacoteId}`);
+  }
+  listarSaldosPacoteCliente(clienteId: number) {
+    return this.http.get<any[]>(`${this.base}/admin/saldos-pacote/cliente/${clienteId}`);
+  }
+
+  // ----- Fidelidade -----
+  saldoPontos(clienteId: number) {
+    return this.http.get<{ clienteId: number; saldo: number }>(
+      `${this.base}/admin/fidelidade/clientes/${clienteId}`);
+  }
+  trocarPontosPorCupom(clienteId: number, pontos: number) {
+    return this.http.post<{ codigo: string; valor: number; validoAte: string }>(
+      `${this.base}/admin/fidelidade/trocar-por-cupom`, { clienteId, pontos });
+  }
 }

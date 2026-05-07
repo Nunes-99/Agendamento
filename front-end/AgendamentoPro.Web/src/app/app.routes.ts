@@ -11,6 +11,8 @@ export const routes: Routes = [
       { path: 'combos', loadComponent: () => import('./features/public/combos/combos-publico.component').then(m => m.CombosPublicoComponent) },
       { path: 'agendar-combo/:comboId', loadComponent: () => import('./features/public/combos/agendar-combo.component').then(m => m.AgendarComboComponent) },
       { path: 'agendar/:servicoId', loadComponent: () => import('./features/public/agendar/agendar.component').then(m => m.AgendarComponent) },
+      { path: 'pacotes', loadComponent: () => import('./features/public/pacotes/comprar-pacote.component').then(m => m.ComprarPacoteComponent) },
+      { path: 'lista-espera-publica', loadComponent: () => import('./features/public/lista-espera/lista-espera-publica.component').then(m => m.ListaEsperaPublicaComponent) },
       { path: 'pagamento/:agendamentoId', loadComponent: () => import('./features/public/pagamento/pagamento.component').then(m => m.PagamentoComponent) },
       { path: 'confirmacao/:agendamentoId', loadComponent: () => import('./features/public/confirmacao/confirmacao.component').then(m => m.ConfirmacaoComponent) }
     ]
@@ -66,6 +68,9 @@ export const routes: Routes = [
       { path: 'avaliacoes', loadComponent: () => import('./features/admin/avaliacoes/avaliacoes.component').then(m => m.AvaliacoesComponent) },
       { path: 'agendamentos/:id/fotos', loadComponent: () => import('./features/admin/fotos/fotos-agendamento.component').then(m => m.FotosAgendamentoComponent) },
       { path: 'cupons', loadComponent: () => import('./features/admin/cupons/cupons.component').then(m => m.CuponsComponent) },
+      { path: 'recorrencias', loadComponent: () => import('./features/admin/recorrencias/recorrencias.component').then(m => m.RecorrenciasComponent) },
+      { path: 'pacotes', loadComponent: () => import('./features/admin/pacotes/pacotes-admin.component').then(m => m.PacotesAdminComponent) },
+      { path: 'fidelidade', loadComponent: () => import('./features/admin/fidelidade/fidelidade.component').then(m => m.FidelidadeComponent) },
       { path: 'bloqueios', loadComponent: () => import('./features/admin/bloqueios/bloqueios.component').then(m => m.BloqueiosComponent) },
       { path: 'lista-espera', loadComponent: () => import('./features/admin/lista-espera/lista-espera.component').then(m => m.ListaEsperaComponent) },
       { path: 'auditoria', loadComponent: () => import('./features/admin/auditoria/auditoria.component').then(m => m.AuditoriaComponent) },

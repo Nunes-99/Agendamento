@@ -15,19 +15,22 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
         private readonly IAgendamentoRepository _agendamentos;
         private readonly IWebhookEventoRepository _webhooks;
         private readonly ISaldoPacoteRepository _saldosPacote;
+        private readonly INotificacaoRealtime _realtime;
         private readonly IUnitOfWork _uow;
         private readonly ILogger<ProcessarWebhookPagamentoUseCase> _logger;
 
         public ProcessarWebhookPagamentoUseCase(IEnumerable<IGatewayPagamento> gateways,
             IPagamentoRepository pagamentos, IAgendamentoRepository agendamentos,
             IWebhookEventoRepository webhooks, ISaldoPacoteRepository saldosPacote,
-            IUnitOfWork uow, ILogger<ProcessarWebhookPagamentoUseCase> logger)
+            INotificacaoRealtime realtime, IUnitOfWork uow,
+            ILogger<ProcessarWebhookPagamentoUseCase> logger)
         {
             _gateways = gateways;
             _pagamentos = pagamentos;
             _agendamentos = agendamentos;
             _webhooks = webhooks;
             _saldosPacote = saldosPacote;
+            _realtime = realtime;
             _uow = uow;
             _logger = logger;
         }
@@ -163,6 +166,16 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
             }
 
             await _uow.SaveChangesAsync();
+
+            if (alterou && evento.Status == StatusPagamento.Aprovado)
+            {
+                _ = _realtime.NotificarTenantAsync(pagamento.R_TenId, "pagamento-aprovado", new
+                {
+                    pagamentoId = pagamento.PagId,
+                    agendamentoId = pagamento.R_AgeId,
+                    valor = pagamento.PagValor
+                });
+            }
         }
     }
 }

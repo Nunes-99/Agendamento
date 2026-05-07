@@ -11,6 +11,8 @@ import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeModeService } from '../../core/services/theme-mode.service';
+import { RealtimeService } from '../../core/services/realtime.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-admin-shell',
@@ -51,6 +53,9 @@ import { ThemeModeService } from '../../core/services/theme-mode.service';
             <a mat-list-item routerLink="/admin/clientes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>people</mat-icon> Clientes</a>
             <a mat-list-item routerLink="/admin/combos" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>local_offer</mat-icon> Combos</a>
             <a mat-list-item routerLink="/admin/cupons" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>confirmation_number</mat-icon> Cupons</a>
+            <a mat-list-item routerLink="/admin/recorrencias" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>event_repeat</mat-icon> Recorrências</a>
+            <a mat-list-item routerLink="/admin/pacotes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>inventory_2</mat-icon> Pacotes</a>
+            <a mat-list-item routerLink="/admin/fidelidade" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>loyalty</mat-icon> Fidelidade</a>
             <a mat-list-item routerLink="/admin/avaliacoes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>star</mat-icon> Avaliações</a>
             <a mat-list-item routerLink="/admin/bloqueios" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>block</mat-icon> Bloqueios</a>
             <a mat-list-item routerLink="/admin/lista-espera" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>hourglass_top</mat-icon> Lista de espera</a>
@@ -74,10 +79,10 @@ import { ThemeModeService } from '../../core/services/theme-mode.service';
           <span class="spacer"></span>
           <button mat-icon-button (click)="theme.alternar()"
             [title]="theme.mode() === 'dark' ? 'Modo claro' : 'Modo escuro'"
-            attr.aria-label="Alternar tema">
+            aria-label="Alternar tema">
             <mat-icon>{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
           </button>
-          <button mat-icon-button (click)="sair()" title="Sair" attr.aria-label="Sair">
+          <button mat-icon-button (click)="sair()" title="Sair" aria-label="Sair">
             <mat-icon>logout</mat-icon>
           </button>
         </mat-toolbar>
@@ -153,6 +158,8 @@ import { ThemeModeService } from '../../core/services/theme-mode.service';
 export class AdminShellComponent implements OnInit {
   auth = inject(AuthService);
   theme = inject(ThemeModeService);
+  realtime = inject(RealtimeService);
+  private snack = inject(MatSnackBar);
   private router = inject(Router);
   private breakpoint = inject(BreakpointObserver);
   private destroyRef = inject(DestroyRef);
@@ -174,6 +181,16 @@ export class AdminShellComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(e => this.corrigirRota((e as NavigationEnd).urlAfterRedirects));
+
+    // Conecta SignalR para notificações realtime do tenant.
+    if (!this.ehSuperAdmin()) {
+      this.realtime.conectar();
+      this.realtime.on('novo-agendamento', (p: any) =>
+        this.snack.open(`Novo agendamento: ${p.clienteNome} - ${p.servicoNome}`, 'Ver', { duration: 6000 })
+          .onAction().subscribe(() => this.router.navigate(['/admin/agendamentos', p.agendamentoId])));
+      this.realtime.on('pagamento-aprovado', (p: any) =>
+        this.snack.open(`Pagamento aprovado: agendamento #${p.agendamentoId}`, 'OK', { duration: 4000 }));
+    }
   }
 
   private corrigirRota(url: string) {

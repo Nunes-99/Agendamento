@@ -6,12 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { QRCodeModule } from 'angularx-qrcode';
 import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-dois-fatores',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, QRCodeModule],
   template: `
     <header class="topo">
       <h1><mat-icon>shield</mat-icon> Autenticação em 2 fatores (TOTP)</h1>
@@ -29,7 +30,7 @@ import { ApiService } from '../../../core/services/api.service';
     <section class="card" *ngIf="setupAtivo()">
       <h2>1️⃣ Escaneie o QR Code</h2>
       <div class="qr-area">
-        <img [src]="qrImageUrl()" alt="QR Code 2FA" *ngIf="qrImageUrl()" />
+        <qrcode *ngIf="otpauthUrl()" [qrdata]="otpauthUrl()" [width]="200" errorCorrectionLevel="M"></qrcode>
         <div class="manual">
           <p><strong>Não consegue escanear?</strong> Adicione manualmente:</p>
           <code>{{ secret() }}</code>
@@ -93,7 +94,7 @@ export class DoisFatoresComponent {
   setupAtivo = signal(false);
   ativo = signal(false);
   secret = signal('');
-  qrImageUrl = signal('');
+  otpauthUrl = signal('');
   codigo = '';
 
   iniciar() {
@@ -102,9 +103,7 @@ export class DoisFatoresComponent {
       next: r => {
         this.carregando.set(false);
         this.secret.set(r.secret);
-        // Renderiza QR via API pública (sem dependência adicional). Para produção,
-        // usar lib local (qrcode/angularx-qrcode) pra não vazar URL ao serviço externo.
-        this.qrImageUrl.set(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(r.otpauthUrl)}`);
+        this.otpauthUrl.set(r.otpauthUrl);
         this.setupAtivo.set(true);
         this.ativo.set(r.ativo);
       },

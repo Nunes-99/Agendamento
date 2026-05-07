@@ -25,13 +25,15 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         private readonly ISaldoPacoteRepository _saldosPacote;
         private readonly IEnumerable<IGatewayPagamento> _gateways;
         private readonly IDisponibilidadeService _disponibilidade;
+        private readonly INotificacaoRealtime _realtime;
         private readonly IUnitOfWork _uow;
 
         public CriarAgendamentoUseCase(
             IAgendamentoRepository agendamentos, IServicoRepository servicos, IRecursoRepository recursos,
             IClienteRepository clientes, ITenantRepository tenants, IPagamentoRepository pagamentos,
             ICupomRepository cupons, ISaldoPacoteRepository saldosPacote,
-            IEnumerable<IGatewayPagamento> gateways, IDisponibilidadeService disponibilidade, IUnitOfWork uow)
+            IEnumerable<IGatewayPagamento> gateways, IDisponibilidadeService disponibilidade,
+            INotificacaoRealtime realtime, IUnitOfWork uow)
         {
             _agendamentos = agendamentos;
             _servicos = servicos;
@@ -43,6 +45,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             _saldosPacote = saldosPacote;
             _gateways = gateways;
             _disponibilidade = disponibilidade;
+            _realtime = realtime;
             _uow = uow;
         }
 
@@ -168,6 +171,17 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 }
 
                 await _uow.CommitAsync();
+
+                // Notifica admins do tenant em tempo real
+                _ = _realtime.NotificarTenantAsync(tenantId, "novo-agendamento", new
+                {
+                    agendamentoId = agendamento.AgeId,
+                    clienteNome = cliente.CliNome,
+                    servicoNome = servico.SerNome,
+                    data = agendamento.AgeData,
+                    horaInicio = agendamento.AgeHoraInicio,
+                    statusPagamento = agendamento.AgePagamentoStatus.ToString()
+                });
 
                 return new CriarAgendamentoResultViewModel
                 {

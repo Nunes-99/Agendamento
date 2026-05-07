@@ -7,6 +7,8 @@ export interface LoginInput {
   email: string;
   senha: string;
   tenantSlug?: string;
+  codigoTotp?: string;
+  recaptchaToken?: string;
 }
 
 export interface LoginResult {

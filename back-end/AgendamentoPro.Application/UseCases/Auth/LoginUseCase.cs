@@ -22,13 +22,14 @@ namespace AgendamentoPro.Application.UseCases.Auth
         private readonly IPasswordHasher _hasher;
         private readonly ITokenService _tokenService;
         private readonly ITotpService _totp;
+        private readonly IRecaptchaValidator _recaptcha;
         private readonly IUnitOfWork _uow;
         private readonly IConfiguration _config;
         private readonly ILogger<LoginUseCase> _logger;
 
         public LoginUseCase(IUsuarioRepository usuarios, ITenantRepository tenants,
             IRefreshTokenRepository refreshTokens, IPasswordHasher hasher,
-            ITokenService tokenService, ITotpService totp,
+            ITokenService tokenService, ITotpService totp, IRecaptchaValidator recaptcha,
             IUnitOfWork uow, IConfiguration config, ILogger<LoginUseCase> logger)
         {
             _usuarios = usuarios;
@@ -37,6 +38,7 @@ namespace AgendamentoPro.Application.UseCases.Auth
             _hasher = hasher;
             _tokenService = tokenService;
             _totp = totp;
+            _recaptcha = recaptcha;
             _uow = uow;
             _config = config;
             _logger = logger;
@@ -46,6 +48,13 @@ namespace AgendamentoPro.Application.UseCases.Auth
         {
             if (input == null || string.IsNullOrWhiteSpace(input.Email) || string.IsNullOrWhiteSpace(input.Senha))
                 return null;
+
+            // reCAPTCHA v3: só exige token quando configurado (modo no-op em dev).
+            if (_recaptcha.Ativo && !await _recaptcha.ValidarAsync(input.RecaptchaToken, "login"))
+            {
+                _logger.LogWarning("Login bloqueado pelo reCAPTCHA: {Email}", input.Email);
+                return null;
+            }
 
             var usuario = await _usuarios.GetByEmailAsync(input.Email.Trim().ToLowerInvariant());
             if (usuario == null || !usuario.UsuAtivo) return null;
