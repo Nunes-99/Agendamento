@@ -1,0 +1,308 @@
+:host { display: block; }
+
+.btn-cta {
+  height: 2.5rem;
+  border-radius: 0.5rem !important;
+  background: var(--cor-primaria) !important;
+  color: #fff !important;
+  font-weight: 500;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 20rem;
+}
+
+/* ============== KPIs ============== */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpi {
+  background: var(--cor-fundo-card);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  padding: 1.25rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  box-shadow: var(--sombra-card);
+  transition: box-shadow 0.2s, transform 0.2s;
+
+  &:hover {
+    box-shadow: var(--sombra-elevada);
+    transform: translateY(-0.0625rem);
+  }
+}
+
+.kpi-icone {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &.primario { background: var(--cor-primaria-soft); mat-icon { color: var(--cor-primaria); } }
+  &.sucesso { background: var(--cor-sucesso-soft); mat-icon { color: var(--cor-sucesso); } }
+  &.aviso { background: var(--cor-aviso-soft); mat-icon { color: var(--cor-aviso); } }
+  &.info { background: var(--cor-info-soft); mat-icon { color: var(--cor-info); } }
+}
+
+.kpi-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.kpi-label {
+  display: block;
+  color: var(--cor-texto-suave);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-valor {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--cor-texto);
+  line-height: 1.1;
+}
+
+.kpi-sub {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--cor-texto-suave);
+}
+
+/* ============== Cards ============== */
+.grade-2 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 60rem) {
+  .grade-2 { grid-template-columns: 1fr; }
+}
+
+.card-grafico,
+.card-tabela {
+  background: var(--cor-fundo-card);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  box-shadow: var(--sombra-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--cor-borda-suave);
+    gap: 0.5rem;
+
+    h3 {
+      margin: 0 0 0.125rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+
+    .grafico-total {
+      font-size: 1.375rem;
+      font-weight: 700;
+      color: var(--cor-primaria);
+      letter-spacing: -0.02em;
+    }
+  }
+}
+
+.card-tabela.full { margin-bottom: 1.5rem; }
+
+.badge-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  background: var(--cor-sucesso-soft);
+  color: var(--cor-sucesso);
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 0.875rem;
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}
+
+/* ============== Gráfico ============== */
+.grafico-svg {
+  padding: 0.5rem 0 0;
+  height: 12rem;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+}
+
+/* ============== Ranking de serviços ============== */
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    border-bottom: 1px solid var(--cor-borda-suave);
+
+    &:last-child { border-bottom: 0; }
+
+    .pos {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 0.375rem;
+      background: var(--cor-primaria-soft);
+      color: var(--cor-primaria);
+      font-weight: 700;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .info { flex: 1; min-width: 0; }
+    .info strong {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--cor-texto);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .info small {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--cor-texto-suave);
+    }
+
+    .receita {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--cor-texto);
+    }
+  }
+}
+
+/* ============== Próximos ============== */
+.proximos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--cor-borda-suave);
+
+    &:last-child { border-bottom: 0; }
+  }
+
+  .hora {
+    width: 4rem;
+    flex-shrink: 0;
+    text-align: center;
+    padding: 0.375rem 0;
+    background: var(--cor-fundo-suave);
+    border-radius: 0.5rem;
+
+    strong {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--cor-texto);
+    }
+  }
+
+  .info { flex: 1; min-width: 0; }
+  .info strong {
+    display: block;
+    font-size: 0.9375rem;
+    margin-bottom: 0.0625rem;
+  }
+  .info small {
+    display: block;
+    color: var(--cor-texto-suave);
+    font-size: 0.8125rem;
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--cor-fundo-suave);
+    color: var(--cor-texto-suave);
+
+    mat-icon {
+      font-size: 0.875rem;
+      width: 0.875rem;
+      height: 0.875rem;
+    }
+
+    &.confirmado { background: var(--cor-sucesso-soft); color: var(--cor-sucesso); }
+    &.pendente { background: var(--cor-aviso-soft); color: var(--cor-aviso); }
+    &.andamento { background: var(--cor-info-soft); color: var(--cor-info); }
+  }
+}
+
+/* ============== Sem dados ============== */
+.sem-dados {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--cor-texto-suave);
+
+  mat-icon {
+    font-size: 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--cor-borda);
+    margin-bottom: 0.5rem;
+  }
+
+  p { margin: 0; font-size: 0.875rem; }
+
+  &.pequeno {
+    padding: 1.5rem 1rem;
+  }
+}

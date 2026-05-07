@@ -1,0 +1,58 @@
+.loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero {
+  min-height: 22rem;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--cor-secundaria);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-overlay {
+  background: rgba(0, 0, 0, 0.55);
+  width: 100%;
+  min-height: 22rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #fff;
+}
+.logo {
+  max-height: 5rem;
+  margin-bottom: 1rem;
+}
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+}
+p { margin: 0 0 1.5rem; max-width: 40rem; opacity: 0.9; }
+.info {
+  display: grid;
+  gap: 1rem;
+  padding: 2rem 1rem;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+@media (min-width: 48rem) { .info { grid-template-columns: repeat(3, 1fr); } }
+.card {
+  background: #fff;
+  border-radius: var(--raio-medio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  mat-icon { color: var(--cor-primaria); }
+  strong { display: block; margin-bottom: 0.25rem; }
+  p { margin: 0; color: var(--cor-texto-suave); }
+}

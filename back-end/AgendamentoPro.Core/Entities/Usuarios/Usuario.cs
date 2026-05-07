@@ -1,0 +1,65 @@
+using AgendamentoPro.Core.Entities.Common;
+using AgendamentoPro.Core.Entities.Tenants;
+using AgendamentoPro.Core.Exceptions;
+
+namespace AgendamentoPro.Core.Entities.Usuarios
+{
+    /// <summary>
+    /// Usuário do sistema (admin, atendente, super-admin).
+    /// SuperAdmin tem R_TenId nulo (acesso global ao SaaS).
+    /// </summary>
+    public class Usuario : SoftDeletableEntity
+    {
+        public int UsuId { get; private set; }
+        public int? R_TenId { get; private set; }
+        public string UsuNome { get; private set; }
+        public string UsuEmail { get; private set; }
+        public string UsuSenha { get; private set; }
+        public string UsuPerfil { get; private set; }
+        public string UsuTelefone { get; private set; }
+        public bool UsuAtivo { get; private set; }
+        public DateTime? UsuUltimoLogin { get; private set; }
+        public DateTime UsuCriadoEm { get; private set; }
+
+        public Tenant Tenant { get; private set; }
+
+        protected Usuario() { }
+
+        public Usuario(int? rTenId, string nome, string email, string senhaHash, string perfil, string telefone)
+        {
+            R_TenId = rTenId;
+            UsuNome = nome;
+            UsuEmail = (email ?? string.Empty).ToLowerInvariant().Trim();
+            UsuSenha = senhaHash;
+            UsuPerfil = perfil;
+            UsuTelefone = telefone;
+            UsuAtivo = true;
+            UsuCriadoEm = DateTime.UtcNow;
+            Validate();
+        }
+
+        public void Atualizar(string nome, string email, string telefone, string perfil)
+        {
+            UsuNome = nome;
+            UsuEmail = (email ?? string.Empty).ToLowerInvariant().Trim();
+            UsuTelefone = telefone;
+            UsuPerfil = perfil;
+            Validate();
+        }
+
+        public void AlterarSenha(string novoHash) => UsuSenha = novoHash;
+        public void RegistrarLogin() => UsuUltimoLogin = DateTime.UtcNow;
+        public void Ativar() => UsuAtivo = true;
+        public void Inativar() => UsuAtivo = false;
+
+        private void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(UsuNome))
+                throw new UsuarioException("Nome é obrigatório.");
+            if (string.IsNullOrWhiteSpace(UsuEmail))
+                throw new UsuarioException("Email é obrigatório.");
+            if (string.IsNullOrWhiteSpace(UsuPerfil))
+                throw new UsuarioException("Perfil é obrigatório.");
+        }
+    }
+}

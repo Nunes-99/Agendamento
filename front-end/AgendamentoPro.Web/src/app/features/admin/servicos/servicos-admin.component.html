@@ -1,0 +1,99 @@
+<header class="page-header">
+  <div>
+    <h1><mat-icon>list</mat-icon> Serviços</h1>
+    <p class="subtitulo">Catálogo de serviços oferecidos aos clientes</p>
+  </div>
+  <button mat-flat-button color="primary" (click)="novo()" class="btn-novo">
+    <mat-icon>add</mat-icon> Novo serviço
+  </button>
+</header>
+
+<!-- Resumo -->
+<section class="resumo">
+  <div class="card-resumo">
+    <span>{{ resumo().total }}</span>
+    <small>Total de serviços</small>
+  </div>
+  <div class="card-resumo ativos">
+    <span>{{ resumo().ativos }}</span>
+    <small>Ativos</small>
+  </div>
+  <div class="card-resumo">
+    <span>R$ {{ resumo().precoMedio | number:'1.2-2' }}</span>
+    <small>Preço médio</small>
+  </div>
+  <div class="card-resumo">
+    <span>{{ resumo().duracaoMedia | number:'1.0-0' }}min</span>
+    <small>Duração média</small>
+  </div>
+</section>
+
+<!-- Filtros -->
+<section class="filtros">
+  <mat-form-field appearance="outline" class="busca">
+    <mat-label>Buscar serviço</mat-label>
+    <input matInput [ngModel]="busca()" (ngModelChange)="busca.set($event)" placeholder="Nome, descrição..." />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  <div class="chips">
+    <button class="chip" [class.ativo]="filtroCategoria() === ''" (click)="filtroCategoria.set('')">
+      Todas
+    </button>
+    <button class="chip" *ngFor="let c of categorias()"
+      [class.ativo]="filtroCategoria() === c"
+      (click)="filtroCategoria.set(c)">
+      {{ c }}
+    </button>
+  </div>
+</section>
+
+<!-- Grid de serviços -->
+<section class="grade-servicos" *ngIf="filtrados().length; else vazio">
+  <article class="card-servico" *ngFor="let s of filtrados()" [class.inativo]="!s.ativo">
+    <div class="card-header">
+      <div class="icone">
+        <mat-icon>{{ iconePorCategoria(s.categoria) }}</mat-icon>
+      </div>
+      <button mat-icon-button class="acao-toggle" (click)="toggleAtivo(s)"
+        [matTooltip]="s.ativo ? 'Desativar' : 'Ativar'">
+        <mat-icon>{{ s.ativo ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="card-corpo">
+      <div class="cat" *ngIf="s.categoria">{{ s.categoria }}</div>
+      <h3>{{ s.nome }}</h3>
+      <p *ngIf="s.descricao">{{ s.descricao }}</p>
+
+      <div class="meta">
+        <span class="duracao">
+          <mat-icon>schedule</mat-icon>
+          {{ s.duracaoMinutos }} min
+        </span>
+        <strong class="preco">R$ {{ s.preco | number:'1.2-2' }}</strong>
+      </div>
+    </div>
+
+    <div class="card-acoes">
+      <button mat-stroked-button (click)="editar(s)">
+        <mat-icon>edit</mat-icon> Editar
+      </button>
+      <button mat-icon-button (click)="excluir(s)" class="excluir" matTooltip="Excluir">
+        <mat-icon>delete_outline</mat-icon>
+      </button>
+    </div>
+  </article>
+</section>
+
+<ng-template #vazio>
+  <div class="vazio">
+    <mat-icon>local_offer</mat-icon>
+    <h3>Nenhum serviço encontrado</h3>
+    <p *ngIf="busca() || filtroCategoria()">Tente outro termo de busca ou remova o filtro.</p>
+    <p *ngIf="!busca() && !filtroCategoria()">Comece criando o primeiro serviço do seu catálogo.</p>
+    <button mat-flat-button color="primary" (click)="novo()" *ngIf="!busca() && !filtroCategoria()">
+      <mat-icon>add</mat-icon> Criar serviço
+    </button>
+  </div>
+</ng-template>

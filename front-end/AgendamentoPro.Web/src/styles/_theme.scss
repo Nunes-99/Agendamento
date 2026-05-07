@@ -1,0 +1,52 @@
+/*
+ * Theming dinâmico via CSS custom properties.
+ * Paleta enterprise: slate (neutros) + indigo (primário) + verdes/âmbar para status.
+ */
+:root {
+  /* primárias */
+  --cor-primaria: #4f46e5;
+  --cor-primaria-hover: #4338ca;
+  --cor-primaria-soft: #eef2ff;
+  --cor-secundaria: #0f172a;
+  --cor-acento: #8b5cf6;
+
+  /* fundo + texto */
+  --cor-fundo: #f8fafc;
+  --cor-fundo-card: #ffffff;
+  --cor-fundo-suave: #f1f5f9;
+  --cor-texto: #0f172a;
+  --cor-texto-medio: #475569;
+  --cor-texto-suave: #64748b;
+  --cor-borda: #e2e8f0;
+  --cor-borda-suave: #f1f5f9;
+
+  /* status */
+  --cor-sucesso: #16a34a;
+  --cor-sucesso-soft: #dcfce7;
+  --cor-erro: #dc2626;
+  --cor-erro-soft: #fee2e2;
+  --cor-aviso: #d97706;
+  --cor-aviso-soft: #fef3c7;
+  --cor-info: #0891b2;
+  --cor-info-soft: #cffafe;
+
+  /* tipografia */
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* raios e sombras (estilo enterprise: hairlines + sombras suaves) */
+  --raio-pequeno: 0.375rem;
+  --raio-medio: 0.5rem;
+  --raio-grande: 0.75rem;
+
+  --sombra-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --sombra-elevada: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --sombra-flutuante: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+
+  /* espaçamentos */
+  --espaco-xs: 0.25rem;
+  --espaco-sm: 0.5rem;
+  --espaco-md: 1rem;
+  --espaco-lg: 1.5rem;
+  --espaco-xl: 2.5rem;
+}

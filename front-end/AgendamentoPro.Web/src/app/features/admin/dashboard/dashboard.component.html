@@ -1,0 +1,149 @@
+<header class="page-header">
+  <div>
+    <h1><mat-icon>dashboard</mat-icon> Visão geral</h1>
+    <p class="subtitulo">Acompanhe o desempenho do seu estabelecimento em tempo real</p>
+  </div>
+  <a mat-flat-button color="primary" routerLink="/admin/agenda" class="btn-cta">
+    <mat-icon>calendar_today</mat-icon> Ver agenda do dia
+  </a>
+</header>
+
+<div class="loading" *ngIf="carregando(); else conteudo">
+  <mat-spinner diameter="40"></mat-spinner>
+</div>
+
+<ng-template #conteudo>
+  <ng-container *ngIf="data() as d">
+    <!-- KPIs -->
+    <section class="kpis">
+      <article class="kpi">
+        <div class="kpi-icone primario">
+          <mat-icon>today</mat-icon>
+        </div>
+        <div class="kpi-corpo">
+          <span class="kpi-label">Agendamentos hoje</span>
+          <strong class="kpi-valor">{{ d.agendamentosHoje }}</strong>
+          <span class="kpi-sub">esta semana: {{ d.agendamentosSemana }}</span>
+        </div>
+      </article>
+
+      <article class="kpi">
+        <div class="kpi-icone sucesso">
+          <mat-icon>payments</mat-icon>
+        </div>
+        <div class="kpi-corpo">
+          <span class="kpi-label">Receita do mês</span>
+          <strong class="kpi-valor">R$ {{ d.receitaMes | number:'1.2-2' }}</strong>
+          <span class="kpi-sub">hoje: R$ {{ d.receitaHoje | number:'1.2-2' }}</span>
+        </div>
+      </article>
+
+      <article class="kpi">
+        <div class="kpi-icone aviso">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div class="kpi-corpo">
+          <span class="kpi-label">Aguardando pagamento</span>
+          <strong class="kpi-valor">{{ d.pendentesPagamento }}</strong>
+          <span class="kpi-sub">no mês corrente</span>
+        </div>
+      </article>
+
+      <article class="kpi">
+        <div class="kpi-icone info">
+          <mat-icon>insights</mat-icon>
+        </div>
+        <div class="kpi-corpo">
+          <span class="kpi-label">Total no mês</span>
+          <strong class="kpi-valor">{{ d.agendamentosMes }}</strong>
+          <span class="kpi-sub">agendamentos</span>
+        </div>
+      </article>
+    </section>
+
+    <!-- Gráfico de receita + Top serviços -->
+    <section class="grade-2">
+      <article class="card-grafico">
+        <header>
+          <div>
+            <h3>Receita dos últimos 30 dias</h3>
+            <span class="grafico-total">R$ {{ receitaTotal30Dias() | number:'1.2-2' }}</span>
+          </div>
+          <span class="badge-info">
+            <mat-icon>trending_up</mat-icon>
+            {{ receitaSerie().length }} dias com vendas
+          </span>
+        </header>
+        <div class="grafico-svg" *ngIf="receitaSerie().length > 0; else semDados">
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="grad-receita" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#4f46e5" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path [attr.d]="graficoPath()" fill="url(#grad-receita)" />
+            <path [attr.d]="graficoLinha()" fill="none" stroke="#4f46e5" stroke-width="0.5"
+                  stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+          </svg>
+        </div>
+        <ng-template #semDados>
+          <div class="sem-dados">
+            <mat-icon>show_chart</mat-icon>
+            <p>Sem receita registrada ainda. Conclua agendamentos para ver o gráfico.</p>
+          </div>
+        </ng-template>
+      </article>
+
+      <article class="card-tabela">
+        <header>
+          <h3>Top serviços do mês</h3>
+        </header>
+        <ul class="ranking" *ngIf="d.topServicos.length; else semTop">
+          <li *ngFor="let s of d.topServicos; let i = index">
+            <span class="pos">{{ i + 1 }}</span>
+            <div class="info">
+              <strong>{{ s.nome }}</strong>
+              <small>{{ s.quantidade }} agendamento{{ s.quantidade !== 1 ? 's' : '' }}</small>
+            </div>
+            <span class="receita">R$ {{ s.receitaTotal | number:'1.0-0' }}</span>
+          </li>
+        </ul>
+        <ng-template #semTop>
+          <div class="sem-dados pequeno">
+            <p>Sem dados ainda este mês.</p>
+          </div>
+        </ng-template>
+      </article>
+    </section>
+
+    <!-- Próximos agendamentos -->
+    <section class="card-tabela full">
+      <header>
+        <h3>Próximos agendamentos de hoje</h3>
+        <a mat-button routerLink="/admin/agenda">Ver agenda completa <mat-icon>arrow_forward</mat-icon></a>
+      </header>
+      <ul class="proximos" *ngIf="d.proximosAgendamentos.length; else semProximos">
+        <li *ngFor="let a of d.proximosAgendamentos">
+          <div class="hora">
+            <strong>{{ a.hora.substring(0,5) }}</strong>
+          </div>
+          <div class="info">
+            <strong>{{ a.cliente }}</strong>
+            <small>{{ a.servico }}</small>
+          </div>
+          <span class="status" [class]="classeStatus(a.status)">
+            <mat-icon>{{ iconeStatus(a.status) }}</mat-icon>
+            {{ a.status }}
+          </span>
+        </li>
+      </ul>
+      <ng-template #semProximos>
+        <div class="sem-dados">
+          <mat-icon>event_available</mat-icon>
+          <p>Nenhum agendamento confirmado para hoje.</p>
+        </div>
+      </ng-template>
+    </section>
+  </ng-container>
+</ng-template>

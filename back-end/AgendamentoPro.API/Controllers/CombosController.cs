@@ -1,0 +1,82 @@
+using AgendamentoPro.Application.InputModels.Servicos;
+using AgendamentoPro.Application.Interfaces.Servicos;
+using AgendamentoPro.Core.Interfaces.Common;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AgendamentoPro.API.Controllers
+{
+    [ApiController]
+    [Produces("application/json")]
+    public class CombosController : BaseTenantController
+    {
+        // ----- Endpoints públicos (catalog) -----
+
+        [HttpGet("api/t/{slug}/combos")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ListarPublico(
+            [FromServices] IComboUseCase useCase,
+            [FromServices] ITenantContext ctx, string slug)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await useCase.ListarAsync(tid, somenteAtivos: true));
+        }
+
+        // ----- Endpoints administrativos -----
+
+        [HttpGet("api/admin/combos")]
+        [Authorize(Policy = "Atendente")]
+        public async Task<IActionResult> Listar(
+            [FromServices] IComboUseCase useCase,
+            [FromServices] ITenantContext ctx,
+            [FromQuery] bool somenteAtivos = false)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await useCase.ListarAsync(tid, somenteAtivos));
+        }
+
+        [HttpGet("api/admin/combos/{id:int}")]
+        [Authorize(Policy = "Atendente")]
+        public async Task<IActionResult> Obter(
+            [FromServices] IComboUseCase useCase,
+            [FromServices] ITenantContext ctx, int id)
+        {
+            var tid = RequireTenantId(ctx);
+            var v = await useCase.ObterAsync(tid, id);
+            return v == null ? NotFound() : Ok(v);
+        }
+
+        [HttpPost("api/admin/combos")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> Criar(
+            [FromServices] IComboUseCase useCase,
+            [FromServices] ITenantContext ctx,
+            [FromBody] ComboInputModel input)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await useCase.CriarAsync(tid, input));
+        }
+
+        [HttpPut("api/admin/combos/{id:int}")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> Atualizar(
+            [FromServices] IComboUseCase useCase,
+            [FromServices] ITenantContext ctx, int id,
+            [FromBody] ComboInputModel input)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await useCase.AtualizarAsync(tid, id, input));
+        }
+
+        [HttpDelete("api/admin/combos/{id:int}")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> Remover(
+            [FromServices] IComboUseCase useCase,
+            [FromServices] ITenantContext ctx, int id)
+        {
+            var tid = RequireTenantId(ctx);
+            await useCase.RemoverAsync(tid, id);
+            return NoContent();
+        }
+    }
+}

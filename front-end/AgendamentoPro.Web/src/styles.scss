@@ -1,0 +1,74 @@
+/* Estilo global da aplicação - todos valores em REM (mobile-first) */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--app-font, 'Inter'), 'Roboto', sans-serif;
+  background-color: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+* { box-sizing: border-box; }
+
+a { color: var(--cor-primaria); text-decoration: none; }
+a:hover { color: var(--cor-primaria-hover); }
+
+h1, h2, h3, h4 { letter-spacing: -0.02em; color: var(--cor-texto); }
+h1 { font-weight: 700; }
+h2, h3 { font-weight: 600; }
+
+.container {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+@media (min-width: 48rem) { .container { padding: 2rem; } }
+
+/* Header padronizado das páginas internas */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+.page-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.page-header h1 mat-icon {
+  color: var(--cor-primaria);
+  font-size: 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.page-header .subtitulo {
+  margin: 0;
+  color: var(--cor-texto-suave);
+  font-size: 0.875rem;
+}
+
+/* Cards utilitários */
+.card-app {
+  background: var(--cor-fundo-card);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-grande);
+  padding: 1.25rem;
+  box-shadow: var(--sombra-card);
+}
+
+/* Snackbar de erro */
+.snack-erro .mdc-snackbar__surface {
+  background: var(--cor-erro) !important;
+  color: #fff !important;
+}
+
+::ng-deep .mat-mdc-card { border-radius: var(--raio-grande) !important; box-shadow: var(--sombra-card) !important; }

@@ -1,0 +1,138 @@
+<div class="login-page">
+  <!-- Lado esquerdo: formulário -->
+  <aside class="painel-form">
+    <div class="form-wrapper">
+      <header class="marca">
+        <img src="logo.svg" alt="AgendamentoPro" class="logo" />
+        <h1>
+          <span class="brand-1">Agendamento</span><span class="brand-2">Pro</span>
+        </h1>
+        <p class="sub">Painel administrativo</p>
+      </header>
+
+      <!-- Erro inline (persistente até o usuário fechar ou tentar de novo) -->
+      <div class="alerta-erro" *ngIf="erro() as e" role="alert">
+        <mat-icon class="icone-alerta">error_outline</mat-icon>
+        <div class="conteudo-erro">
+          <strong>{{ e.titulo }}</strong>
+          <p>{{ e.detalhe }}</p>
+          <p class="dica" *ngIf="e.dica">
+            <mat-icon>lightbulb</mat-icon>
+            {{ e.dica }}
+          </p>
+        </div>
+        <button type="button" class="fechar" (click)="fecharErro()" aria-label="Fechar erro">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form class="form" (ngSubmit)="entrar()" autocomplete="on">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Empresa (slug)</mat-label>
+          <input matInput name="tenantSlug" [(ngModel)]="tenantSlug" autocomplete="organization" placeholder="ex: acme" />
+          <mat-icon matSuffix>business</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>E-mail</mat-label>
+          <input matInput name="email" type="email" [(ngModel)]="email" required autocomplete="email" />
+          <mat-icon matSuffix>mail</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Senha</mat-label>
+          <input matInput name="senha" type="password" [(ngModel)]="senha" required autocomplete="current-password" />
+          <mat-icon matSuffix>lock</mat-icon>
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" type="submit" class="btn-entrar" [disabled]="carregando()">
+          <ng-container *ngIf="!carregando(); else loading">
+            <mat-icon>login</mat-icon>
+            <span>Entrar</span>
+          </ng-container>
+          <ng-template #loading>
+            <span>Entrando...</span>
+          </ng-template>
+        </button>
+
+        <div class="dica">
+          <mat-icon>info</mat-icon>
+          <span>SuperAdmin? Deixe o campo "Empresa" vazio.</span>
+        </div>
+      </form>
+
+      <ul class="vantagens">
+        <li *ngFor="let v of vantagens">
+          <mat-icon>{{ v.icone }}</mat-icon>
+          <span>{{ v.texto }}</span>
+        </li>
+      </ul>
+
+      <footer class="rodape">
+        <p>Versão 1.0.0 · &copy; 2025-2026 AgendamentoPro</p>
+      </footer>
+    </div>
+  </aside>
+
+  <!-- Lado direito: slideshow de marketing -->
+  <section class="painel-slideshow">
+    <div class="slides">
+      <div class="slide"
+        *ngFor="let s of slides; let i = index"
+        [class.ativo]="i === slideAtual()"
+        [style.background]="s.gradient">
+
+        <!-- decoração de fundo -->
+        <div class="bg-pattern"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+
+        <div class="slide-conteudo">
+          <span class="badge">
+            <mat-icon>auto_awesome</mat-icon>
+            {{ s.destaque }}
+          </span>
+          <div class="icone-destaque">
+            <mat-icon>{{ s.icone }}</mat-icon>
+          </div>
+          <h2>{{ s.titulo }}</h2>
+          <p>{{ s.descricao }}</p>
+
+          <div class="stats">
+            <div class="stat">
+              <strong>+30%</strong>
+              <small>mais agendamentos</small>
+            </div>
+            <div class="stat">
+              <strong>-80%</strong>
+              <small>de faltas sem aviso</small>
+            </div>
+            <div class="stat">
+              <strong>5min</strong>
+              <small>para configurar</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- indicadores -->
+    <div class="dots">
+      <button *ngFor="let s of slides; let i = index"
+        class="dot"
+        [class.ativo]="i === slideAtual()"
+        (click)="irPara(i)"
+        [attr.aria-label]="'Ir para slide ' + (i+1)"></button>
+    </div>
+
+    <!-- navegação -->
+    <div class="nav">
+      <button (click)="anterior()" aria-label="Slide anterior">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button (click)="proximo()" aria-label="Próximo slide">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,152 @@
+<header class="page-header">
+  <div>
+    <h1><mat-icon>calendar_today</mat-icon> Agenda</h1>
+    <p class="subtitulo">Gerencie os atendimentos do período</p>
+  </div>
+  <button mat-flat-button color="primary" class="btn-novo" (click)="novo()">
+    <mat-icon>add</mat-icon> Novo agendamento
+  </button>
+</header>
+
+<!-- Barra de filtro por período -->
+<section class="data-nav">
+  <div class="presets">
+    <button class="preset" [class.ativo]="preset() === 'hoje'" (click)="aplicarPreset('hoje')">
+      <mat-icon>today</mat-icon> Hoje
+    </button>
+    <button class="preset" [class.ativo]="preset() === 'semana'" (click)="aplicarPreset('semana')">
+      <mat-icon>date_range</mat-icon> Esta semana
+    </button>
+    <button class="preset" [class.ativo]="preset() === 'mes'" (click)="aplicarPreset('mes')">
+      <mat-icon>calendar_view_month</mat-icon> Este mês
+    </button>
+  </div>
+  <div class="intervalo">
+    <mat-form-field appearance="outline" class="campo-data">
+      <mat-label>Início</mat-label>
+      <input matInput type="date" [ngModel]="inicio()"
+        (ngModelChange)="inicio.set($event); onDataChange()" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="campo-data">
+      <mat-label>Fim</mat-label>
+      <input matInput type="date" [ngModel]="fim()"
+        (ngModelChange)="fim.set($event); onDataChange()" />
+    </mat-form-field>
+  </div>
+</section>
+
+<!-- Resumo do período -->
+<section class="resumo">
+  <div class="card-resumo total">
+    <span>{{ resumo().total }}</span>
+    <small>Total</small>
+  </div>
+  <div class="card-resumo pendente" [class.ativo]="filtroStatus() === 'ativos'">
+    <span>{{ resumo().pendentes }}</span>
+    <small>Pendentes</small>
+  </div>
+  <div class="card-resumo confirmado">
+    <span>{{ resumo().confirmados }}</span>
+    <small>Confirmados</small>
+  </div>
+  <div class="card-resumo andamento">
+    <span>{{ resumo().emAndamento }}</span>
+    <small>Em andamento</small>
+  </div>
+  <div class="card-resumo concluido">
+    <span>{{ resumo().concluidos }}</span>
+    <small>Concluídos</small>
+  </div>
+  <div class="card-resumo receita">
+    <span>R$ {{ resumo().receita | number:'1.0-0' }}</span>
+    <small>Receita prevista</small>
+  </div>
+</section>
+
+<!-- Filtros -->
+<div class="filtros">
+  <button class="chip" [class.ativo]="filtroStatus() === 'ativos'" (click)="filtroStatus.set('ativos')">
+    <mat-icon>play_circle</mat-icon> Ativos
+  </button>
+  <button class="chip" [class.ativo]="filtroStatus() === 'concluidos'" (click)="filtroStatus.set('concluidos')">
+    <mat-icon>task_alt</mat-icon> Concluídos
+  </button>
+  <button class="chip" [class.ativo]="filtroStatus() === 'cancelados'" (click)="filtroStatus.set('cancelados')">
+    <mat-icon>cancel</mat-icon> Cancelados / Não compareceu
+  </button>
+  <button class="chip" [class.ativo]="filtroStatus() === 'todos'" (click)="filtroStatus.set('todos')">
+    <mat-icon>list</mat-icon> Todos
+  </button>
+</div>
+
+<!-- Loading -->
+<div class="loading" *ngIf="carregando()">
+  <mat-spinner diameter="40"></mat-spinner>
+</div>
+
+<!-- Timeline de agendamentos -->
+<section class="timeline" *ngIf="!carregando()">
+  <article class="card-agendamento" *ngFor="let a of filtrados()" [class]="'st-' + classeStatus(a.status)">
+    <div class="hora-bloco">
+      <strong>{{ a.horaInicio.substring(0,5) }}</strong>
+      <small>{{ a.horaFim.substring(0,5) }}</small>
+      <small class="data-cell" *ngIf="inicio() !== fim()">{{ a.data | date:'dd/MM' }}</small>
+    </div>
+
+    <div class="cliente-bloco">
+      <div class="avatar">{{ iniciaisCliente(a.clienteNome) }}</div>
+      <div>
+        <strong>{{ a.clienteNome }}</strong>
+        <span *ngIf="a.clienteTelefone">
+          <mat-icon>phone</mat-icon> {{ a.clienteTelefone }}
+        </span>
+      </div>
+    </div>
+
+    <div class="servico-bloco">
+      <strong>{{ a.servicoNome }}</strong>
+      <span><mat-icon>place</mat-icon> {{ a.recursoNome }}</span>
+    </div>
+
+    <div class="valor-bloco">
+      <strong>R$ {{ a.valorTotal | number:'1.2-2' }}</strong>
+      <small *ngIf="a.valorEntrada">Sinal: R$ {{ a.valorEntrada | number:'1.2-2' }}</small>
+    </div>
+
+    <div class="status-bloco">
+      <span class="status-pill" [class]="classeStatus(a.status)">
+        <mat-icon>{{ iconeStatus(a.status) }}</mat-icon>
+        {{ rotuloStatus(a.status) }}
+      </span>
+    </div>
+
+    <div class="acoes-bloco">
+      <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Ações">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="editar(a)" *ngIf="a.status !== StatusAgendamento.Concluido && a.status !== StatusAgendamento.Cancelado">
+          <mat-icon>edit_calendar</mat-icon> Editar
+        </button>
+        <button mat-menu-item (click)="iniciar(a)" *ngIf="a.status === StatusAgendamento.Confirmado">
+          <mat-icon>play_arrow</mat-icon> Iniciar atendimento
+        </button>
+        <button mat-menu-item (click)="concluir(a)" *ngIf="a.status === StatusAgendamento.EmAndamento || a.status === StatusAgendamento.Confirmado">
+          <mat-icon>check</mat-icon> Concluir
+        </button>
+        <button mat-menu-item (click)="noShow(a)" *ngIf="a.status === StatusAgendamento.Confirmado || a.status === StatusAgendamento.PendentePagamento">
+          <mat-icon>person_off</mat-icon> Marcar não compareceu
+        </button>
+        <button mat-menu-item (click)="cancelar(a)" *ngIf="a.status !== StatusAgendamento.Concluido && a.status !== StatusAgendamento.Cancelado">
+          <mat-icon>cancel</mat-icon> Cancelar
+        </button>
+      </mat-menu>
+    </div>
+  </article>
+
+  <div class="vazio" *ngIf="filtrados().length === 0">
+    <mat-icon>event_available</mat-icon>
+    <h3>Nenhum agendamento {{ filtroStatus() === 'todos' ? '' : 'neste filtro' }}</h3>
+    <p>Selecione outro período ou filtro para ver os atendimentos.</p>
+  </div>
+</section>
