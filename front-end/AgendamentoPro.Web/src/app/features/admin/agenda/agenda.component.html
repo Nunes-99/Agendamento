@@ -131,6 +131,9 @@
         <button mat-menu-item (click)="editar(a)" *ngIf="a.status !== StatusAgendamento.Concluido && a.status !== StatusAgendamento.Cancelado">
           <mat-icon>edit_calendar</mat-icon> Editar
         </button>
+        <button mat-menu-item (click)="confirmarPagamentoDinheiro(a)" *ngIf="a.status === StatusAgendamento.PendentePagamento">
+          <mat-icon>payments</mat-icon> Recebi em dinheiro
+        </button>
         <button mat-menu-item (click)="iniciar(a)" *ngIf="a.status === StatusAgendamento.Confirmado">
           <mat-icon>play_arrow</mat-icon> Iniciar atendimento
         </button>

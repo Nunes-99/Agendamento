@@ -1,4 +1,5 @@
 using AgendamentoPro.Core.Interfaces.Services;
+using Hangfire;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp.Processing;
@@ -24,10 +25,13 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
 
         private readonly string _basePath;
         private readonly ILogger<LocalFotoStorage> _logger;
+        private readonly IBackgroundJobClient _backgroundJobs;
 
-        public LocalFotoStorage(IConfiguration config, ILogger<LocalFotoStorage> logger)
+        public LocalFotoStorage(IConfiguration config, ILogger<LocalFotoStorage> logger,
+            IBackgroundJobClient backgroundJobs = null)
         {
             _logger = logger;
+            _backgroundJobs = backgroundJobs;
             _basePath = Environment.GetEnvironmentVariable("UPLOADS_PATH")
                 ?? config["Uploads:Path"]
                 ?? Path.Combine(AppContext.BaseDirectory, "uploads");
@@ -74,16 +78,21 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
                 throw;
             }
 
-            // Resize automático: imagens > 1920px no eixo maior são reduzidas para 1920
-            // mantendo aspect ratio. Reduz banda de download em 70-90% sem perda visual.
-            try { await RedimensionarSeNecessarioAsync(caminho); }
-            catch { /* falha silenciosa: original já está no disco */ }
+            // Resize via Hangfire: agenda em background pra não bloquear o request.
+            // Original sobe primeiro, redimensionamento ocorre em segundos.
+            // Em testes/dev sem Hangfire, o redimensionamento roda inline.
+            if (_backgroundJobs != null)
+                _backgroundJobs.Enqueue(() => RedimensionarSeNecessarioAsync(caminho));
+            else
+                try { await RedimensionarSeNecessarioAsync(caminho); }
+                catch { /* falha silenciosa: original já está no disco */ }
 
             // URL relativa servida via /uploads via UseStaticFiles
             return $"/uploads/{tenantId}/{agendamentoId}/{nome}";
         }
 
-        private static async Task RedimensionarSeNecessarioAsync(string caminho)
+        // Hangfire serializa o método estático + caminho. Sem dependências de instância.
+        public static async Task RedimensionarSeNecessarioAsync(string caminho)
         {
             const int LadoMaximo = 1920;
             using var img = await SixLabors.ImageSharp.Image.LoadAsync(caminho);

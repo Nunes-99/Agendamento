@@ -65,6 +65,7 @@ export class ApiService {
   iniciarAgendamento(id: number) { return this.http.post(`${this.base}/admin/agendamentos/${id}/iniciar`, {}); }
   concluirAgendamento(id: number) { return this.http.post(`${this.base}/admin/agendamentos/${id}/concluir`, {}); }
   noShowAgendamento(id: number) { return this.http.post(`${this.base}/admin/agendamentos/${id}/no-show`, {}); }
+  confirmarPagamentoDinheiro(id: number) { return this.http.post(`${this.base}/admin/agendamentos/${id}/confirmar-pagamento`, {}); }
 
   servicosAdmin(): Observable<Servico[]> { return this.http.get<Servico[]>(`${this.base}/admin/servicos`); }
   cadastrarServico(input: Partial<Servico>) { return this.http.post<Servico>(`${this.base}/admin/servicos`, input); }

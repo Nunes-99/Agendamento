@@ -166,6 +166,14 @@ export class AgendaComponent implements OnInit {
     });
   }
 
+  confirmarPagamentoDinheiro(a: Agendamento) {
+    if (!confirm(`Confirmar recebimento em dinheiro de R$ ${a.valorEntrada || a.valorTotal || 0}?`)) return;
+    this.api.confirmarPagamentoDinheiro(a.id).subscribe({
+      next: () => { this.snack.open('Pagamento confirmado', 'OK', { duration: 2000 }); this.carregar(); },
+      error: e => this.snack.open(e.error?.message || 'Falha', 'OK', { duration: 4000, panelClass: 'snack-erro' })
+    });
+  }
+
   cancelar(a: Agendamento) {
     // Se faz parte de combo, avisa que TODOS os agendamentos do grupo serão cancelados
     if (a.grupoComboId) {

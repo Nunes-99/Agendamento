@@ -176,7 +176,7 @@ export class CriarEmpresaDialogComponent {
         <div class="empresa-header" [style.background]="e.personalizacao.corPrimaria ?
             'linear-gradient(135deg, ' + e.personalizacao.corPrimaria + ', ' + (e.personalizacao.corSecundaria || e.personalizacao.corPrimaria) + ')'
             : 'linear-gradient(135deg, #6366f1, #8b5cf6)'">
-          <img *ngIf="e.personalizacao.logoUrl" [src]="e.personalizacao.logoUrl" alt="logo" />
+          <img *ngIf="e.personalizacao.logoUrl" [src]="e.personalizacao.logoUrl" alt="logo" loading="lazy" decoding="async" />
           <span *ngIf="!e.personalizacao.logoUrl" class="iniciais">{{ iniciais(e.nome) }}</span>
         </div>
         <div class="empresa-corpo">
