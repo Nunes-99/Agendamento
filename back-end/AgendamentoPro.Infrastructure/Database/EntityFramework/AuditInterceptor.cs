@@ -22,9 +22,12 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
     /// </summary>
     public class AuditInterceptor : SaveChangesInterceptor
     {
+        // Campos com dados sensíveis (senhas/tokens/secrets). NÃO inclui PagPayloadGateway
+        // nem WhEvPayload — esses são JSONs dos gateways úteis pra debug e não contêm
+        // credenciais (apenas valores e IDs de transação que já estão noutros campos).
         private static readonly HashSet<string> CamposSensiveis = new(StringComparer.OrdinalIgnoreCase)
         {
-            "UsuSenha", "RpsToken", "RefToken", "PagPayloadGateway", "WhEvPayload"
+            "UsuSenha", "RpsToken", "RefToken", "UsuTotpSecret"
         };
 
         private readonly IHttpContextAccessor _http;
@@ -127,10 +130,13 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
             }
             try
             {
-                return JsonSerializer.Serialize(dict, new JsonSerializerOptions
+                var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions
                 {
                     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
                 });
+                // Limita a 8KB pra alinhar com MaxLength da coluna; entidades enormes
+                // ficam truncadas com sufixo claro.
+                return json.Length > 8000 ? json[..7980] + "...[trunc]" : json;
             }
             catch
             {

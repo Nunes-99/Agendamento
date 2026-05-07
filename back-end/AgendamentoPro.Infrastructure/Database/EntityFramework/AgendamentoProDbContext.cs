@@ -379,7 +379,8 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.Property(x => x.LogTabela).HasMaxLength(100).IsRequired();
                 e.Property(x => x.LogChave).HasMaxLength(100);
                 e.Property(x => x.LogAcao).HasMaxLength(20).IsRequired();
-                // Payloads JSON podem ser grandes — sem MaxLength explícito
+                e.Property(x => x.LogValoresAntes).HasMaxLength(8000);
+                e.Property(x => x.LogValoresDepois).HasMaxLength(8000);
                 e.HasIndex(x => new { x.R_TenId, x.LogQuandoUtc });
                 e.HasIndex(x => new { x.LogTabela, x.LogChave });
             });

@@ -281,6 +281,21 @@ try
 
     builder.Services.WireUp(builder.Configuration);
 
+    // SignalR para notificações realtime ao admin (novo agendamento, pagamento aprovado etc)
+    builder.Services.AddSignalR();
+    builder.Services.AddScoped<AgendamentoPro.Core.Interfaces.Services.INotificacaoRealtime,
+        AgendamentoPro.API.Services.Realtime.SignalRNotificacaoRealtime>();
+
+    // OutputCache: cacheia respostas de endpoints públicos GET (catálogo, avaliações)
+    // por 60s. Reduz hit no banco em landing pages com tráfego.
+    builder.Services.AddOutputCache(options =>
+    {
+        options.AddPolicy("PublicoCurto", b => b.Expire(TimeSpan.FromSeconds(60))
+            .SetVaryByRouteValue("slug").Tag("publico"));
+        options.AddPolicy("PublicoLongo", b => b.Expire(TimeSpan.FromMinutes(5))
+            .SetVaryByRouteValue("slug").Tag("publico"));
+    });
+
     // Hangfire: storage in-memory (sem dependência externa). Para produção real
     // com persistência de jobs, troque por UseSqlServerStorage / UsePostgreSqlStorage.
     builder.Services.AddHangfire(cfg => cfg
@@ -340,6 +355,7 @@ try
 
     app.UseCors("AppFrontend");
     app.UseRateLimiter();
+    app.UseOutputCache();
 
     app.UseErrorHandlingMiddleware();
     app.UseAuthentication();
@@ -347,6 +363,7 @@ try
     app.UseLogEnrichment();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapHub<AgendamentoPro.API.Hubs.NotificacoesHub>("/hubs/notificacoes");
 
     // Hangfire dashboard - /hangfire (autenticado, role SuperAdmin/Administrador)
     app.UseHangfireDashboard("/hangfire", new DashboardOptions

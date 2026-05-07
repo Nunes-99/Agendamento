@@ -144,37 +144,53 @@ namespace AgendamentoPro.API.Controllers
             if (string.IsNullOrWhiteSpace(input?.CsvConteudo))
                 return BadRequest(new { message = "CSV vazio. Cabeçalho esperado: nome,telefone,email,cpf" });
 
-            var linhas = input.CsvConteudo.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            if (linhas.Length < 2) return BadRequest(new { message = "Sem linhas de dados." });
-
-            var header = linhas[0].Split(',').Select(h => h.Trim().ToLowerInvariant()).ToArray();
-            int idxNome = Array.IndexOf(header, "nome");
-            int idxTel = Array.IndexOf(header, "telefone");
-            int idxEmail = Array.IndexOf(header, "email");
-            int idxCpf = Array.IndexOf(header, "cpf");
-
-            if (idxNome < 0) return BadRequest(new { message = "Coluna 'nome' obrigatória." });
-
+            // Usa CsvHelper: trata aspas, escapes, encoding UTF-8 com BOM, etc.
             var inseridos = 0; var ignorados = 0; var erros = new List<string>();
-            for (int i = 1; i < linhas.Length; i++)
+            try
             {
-                var cols = linhas[i].Split(',');
-                if (cols.Length <= idxNome) { ignorados++; continue; }
-                var nome = cols[idxNome].Trim();
-                if (string.IsNullOrEmpty(nome)) { ignorados++; continue; }
-                var tel = idxTel >= 0 && idxTel < cols.Length ? cols[idxTel].Trim() : null;
-                var email = idxEmail >= 0 && idxEmail < cols.Length ? cols[idxEmail].Trim() : null;
-                var cpf = idxCpf >= 0 && idxCpf < cols.Length ? cols[idxCpf].Trim() : null;
-                try
+                using var reader = new StringReader(input.CsvConteudo);
+                using var csv = new CsvHelper.CsvReader(reader,
+                    new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture)
+                    {
+                        Delimiter = ",",
+                        TrimOptions = CsvHelper.Configuration.TrimOptions.Trim,
+                        HeaderValidated = null,
+                        MissingFieldFound = null,
+                        BadDataFound = null
+                    });
+                await csv.ReadAsync();
+                csv.ReadHeader();
+
+                int linha = 1;
+                while (await csv.ReadAsync())
                 {
-                    var c = new Core.Entities.Clientes.Cliente(tid, nome, email, tel, tel, cpf);
-                    ctx.Clientes.Add(c);
-                    inseridos++;
+                    linha++;
+                    string nome = TryGet(csv, "nome");
+                    if (string.IsNullOrEmpty(nome)) { ignorados++; continue; }
+                    var tel = TryGet(csv, "telefone");
+                    var email = TryGet(csv, "email");
+                    var cpf = TryGet(csv, "cpf");
+                    try
+                    {
+                        var c = new Core.Entities.Clientes.Cliente(tid, nome, email, tel, tel, cpf);
+                        ctx.Clientes.Add(c);
+                        inseridos++;
+                    }
+                    catch (Exception ex) { erros.Add($"Linha {linha}: {ex.Message}"); }
                 }
-                catch (Exception ex) { erros.Add($"Linha {i + 1}: {ex.Message}"); }
+                await ctx.SaveChangesAsync();
             }
-            await ctx.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "CSV inválido: " + ex.Message });
+            }
             return Ok(new { inseridos, ignorados, erros });
+        }
+
+        private static string TryGet(CsvHelper.CsvReader csv, string nome)
+        {
+            try { return csv.GetField<string>(nome)?.Trim(); }
+            catch { return null; }
         }
 
         private static async Task<KpiSnapshot> ColetarKpis(AgendamentoProDbContext ctx, int tid,
