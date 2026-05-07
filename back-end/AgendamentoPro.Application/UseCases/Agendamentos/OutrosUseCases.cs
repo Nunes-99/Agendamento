@@ -212,15 +212,39 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
 
     public class AlterarStatusAgendamentoUseCase : IAlterarStatusAgendamentoUseCase
     {
+        // Cada agendamento concluído gera N pontos. Configurável por tenant via
+        // `Configuracao` futura; por ora valor fixo (10 pontos por agendamento).
+        // 100 pts = R$ 10 de cupom (regra em NegocioController.TrocarPorCupom).
+        private const int PontosPorAgendamento = 10;
+
         private readonly IAgendamentoRepository _agendamentos;
         private readonly IAvaliacaoUseCase _avaliacoes;
+        private readonly IPontosFidelidadeRepository _pontos;
         private readonly IUnitOfWork _uow;
 
-        public AlterarStatusAgendamentoUseCase(IAgendamentoRepository a, IAvaliacaoUseCase av, IUnitOfWork u)
+        public AlterarStatusAgendamentoUseCase(IAgendamentoRepository a, IAvaliacaoUseCase av,
+            IPontosFidelidadeRepository pontos, IUnitOfWork u)
         {
             _agendamentos = a;
             _avaliacoes = av;
+            _pontos = pontos;
             _uow = u;
+        }
+
+        private async Task CreditarPontosFidelidadeAsync(Agendamento ag)
+        {
+            var pts = await _pontos.GetAsync(ag.R_TenId, ag.R_CliId);
+            if (pts == null)
+            {
+                pts = new Core.Entities.Clientes.PontosFidelidade(ag.R_TenId, ag.R_CliId);
+                pts.Creditar(PontosPorAgendamento);
+                await _pontos.CreateAsync(pts);
+            }
+            else
+            {
+                pts.Creditar(PontosPorAgendamento);
+                await _pontos.UpdateAsync(pts);
+            }
         }
 
         private async Task<Agendamento> CarregarAsync(int tenantId, int id) =>
@@ -249,6 +273,12 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             var ag = await CarregarAsync(tenantId, id);
             ag.Concluir();
             await _agendamentos.UpdateAsync(ag);
+
+            // Credita pontos de fidelidade ao concluir (idempotente: se Concluir
+            // for chamado 2x, não chega aqui na 2ª — Agendamento.Concluir lança
+            // se já estava Concluido).
+            await CreditarPontosFidelidadeAsync(ag);
+
             await _uow.SaveChangesAsync();
 
             // Abre avaliação ao concluir - cliente recebe link público.

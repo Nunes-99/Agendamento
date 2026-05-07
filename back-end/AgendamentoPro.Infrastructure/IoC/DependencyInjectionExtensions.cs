@@ -115,6 +115,8 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IComboRepository, ComboRepository>();
             services.AddScoped<ICupomRepository, CupomRepository>();
             services.AddScoped<IListaEsperaRepository, ListaEsperaRepository>();
+            services.AddScoped<IPontosFidelidadeRepository, PontosFidelidadeRepository>();
+            services.AddScoped<ISaldoPacoteRepository, SaldoPacoteRepository>();
             services.AddScoped<IHorarioFuncionamentoRepository, HorarioFuncionamentoRepository>();
 
             // Serviços de domínio

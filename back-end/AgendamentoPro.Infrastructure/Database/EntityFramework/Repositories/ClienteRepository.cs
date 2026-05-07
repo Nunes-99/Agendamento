@@ -61,5 +61,24 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
             var c = await GetByIdAsync(id, tenantId);
             if (c != null) { c.Excluir(); _ctx.Clientes.Update(c); }
         }
+
+        public async Task<IEnumerable<int>> GetIdsInativosAsync(int tenantId, DateTime corte)
+        {
+            // Single query: clientes do tenant que NÃO têm nenhum agendamento ativo
+            // (não cancelado) com AgeData >= corte. Inclui clientes que nunca agendaram
+            // e foram criados antes do corte.
+            // O StartsWith filtra clientes já anonimizados (nome "Cliente removido #N").
+            return await _ctx.Clientes.AsNoTracking()
+                .Where(c => c.R_TenId == tenantId
+                    && !c.Excluido
+                    && !c.CliNome.StartsWith("Cliente removido")
+                    && c.CliCriadoEm < corte
+                    && !_ctx.Agendamentos.Any(a =>
+                        a.R_CliId == c.CliId
+                        && a.AgeData >= corte
+                        && a.AgeStatus != Core.Enums.StatusAgendamento.Cancelado))
+                .Select(c => c.CliId)
+                .ToListAsync();
+        }
     }
 }

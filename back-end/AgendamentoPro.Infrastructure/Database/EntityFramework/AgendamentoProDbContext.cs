@@ -287,9 +287,12 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
             {
                 e.ToTable("SaldoPacote");
                 e.HasKey(x => x.SaldId);
+                e.Property(x => x.SaldStatus).HasConversion<int>();
+                e.Property(x => x.SaldGatewayPagamentoId).HasMaxLength(200);
                 e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
                 e.HasOne(x => x.Pacote).WithMany().HasForeignKey(x => x.R_PctId);
                 e.HasIndex(x => new { x.R_TenId, x.R_CliId });
+                e.HasIndex(x => x.SaldGatewayPagamentoId);
             });
 
             mb.Entity<PontosFidelidade>(e =>

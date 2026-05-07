@@ -47,9 +47,11 @@ namespace AgendamentoPro.Core.Entities.Servicos
         }
     }
 
+    public enum StatusSaldoPacote { Pendente = 0, Ativo = 1, Cancelado = 2 }
+
     /// <summary>
-    /// Saldo de pacote pré-pago de um cliente. Diminui a cada agendamento
-    /// concluído do serviço relacionado.
+    /// Saldo de pacote pré-pago de um cliente. Cliente compra → saldo fica Pendente
+    /// até o webhook do gateway aprovar o pagamento → Ativo. Só Ativo permite débito.
     /// </summary>
     public class SaldoPacote : ITenantScoped
     {
@@ -60,6 +62,9 @@ namespace AgendamentoPro.Core.Entities.Servicos
         public int SaldQuantidadeRestante { get; private set; }
         public DateTime SaldExpiraEm { get; private set; }
         public DateTime SaldCriadoEm { get; private set; }
+        public StatusSaldoPacote SaldStatus { get; private set; }
+        public string SaldGatewayPagamentoId { get; private set; }
+        public DateTime? SaldPagoEm { get; private set; }
 
         public Tenant Tenant { get; private set; }
         public PacotePrePago Pacote { get; private set; }
@@ -74,9 +79,26 @@ namespace AgendamentoPro.Core.Entities.Servicos
             SaldQuantidadeRestante = pacote.PctQuantidade;
             SaldExpiraEm = DateTime.UtcNow.AddDays(pacote.PctValidadeDias);
             SaldCriadoEm = DateTime.UtcNow;
+            SaldStatus = StatusSaldoPacote.Pendente; // só vira Ativo após webhook aprovar
         }
 
-        public bool PodeUsar() => SaldQuantidadeRestante > 0 && DateTime.UtcNow < SaldExpiraEm;
+        public void DefinirGatewayId(string gatewayId) => SaldGatewayPagamentoId = gatewayId;
+
+        /// <summary>Idempotente — chamada repetida do webhook não duplica.</summary>
+        public bool Ativar()
+        {
+            if (SaldStatus != StatusSaldoPacote.Pendente) return false;
+            SaldStatus = StatusSaldoPacote.Ativo;
+            SaldPagoEm = DateTime.UtcNow;
+            return true;
+        }
+
+        public void Cancelar() => SaldStatus = StatusSaldoPacote.Cancelado;
+
+        public bool PodeUsar() =>
+            SaldStatus == StatusSaldoPacote.Ativo
+            && SaldQuantidadeRestante > 0
+            && DateTime.UtcNow < SaldExpiraEm;
 
         public bool Debitar()
         {

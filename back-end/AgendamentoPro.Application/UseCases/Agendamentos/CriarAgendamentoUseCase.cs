@@ -22,6 +22,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         private readonly ITenantRepository _tenants;
         private readonly IPagamentoRepository _pagamentos;
         private readonly ICupomRepository _cupons;
+        private readonly ISaldoPacoteRepository _saldosPacote;
         private readonly IEnumerable<IGatewayPagamento> _gateways;
         private readonly IDisponibilidadeService _disponibilidade;
         private readonly IUnitOfWork _uow;
@@ -29,7 +30,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         public CriarAgendamentoUseCase(
             IAgendamentoRepository agendamentos, IServicoRepository servicos, IRecursoRepository recursos,
             IClienteRepository clientes, ITenantRepository tenants, IPagamentoRepository pagamentos,
-            ICupomRepository cupons,
+            ICupomRepository cupons, ISaldoPacoteRepository saldosPacote,
             IEnumerable<IGatewayPagamento> gateways, IDisponibilidadeService disponibilidade, IUnitOfWork uow)
         {
             _agendamentos = agendamentos;
@@ -39,6 +40,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             _tenants = tenants;
             _pagamentos = pagamentos;
             _cupons = cupons;
+            _saldosPacote = saldosPacote;
             _gateways = gateways;
             _disponibilidade = disponibilidade;
             _uow = uow;
@@ -122,7 +124,11 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                     throw new AgendamentoException("Horário indisponível: conflita com outro atendimento ou com o intervalo entre atendimentos.");
                 }
 
-                // Aplica cupom (se houver) ANTES da criação — afeta valor total e entrada
+                // ① Verifica saldo de pacote pré-pago do cliente para este serviço.
+                //    Se houver, debita 1 e PULA cobrança — agendamento já fica confirmado.
+                var saldoPacote = await _saldosPacote.GetSaldoValidoAsync(tenantId, cliente.CliId, servico.SerId);
+
+                // ② Aplica cupom (se houver) ANTES da criação — afeta valor total e entrada
                 var (valorComDesconto, _) = await AplicarCupomAsync(tenantId, input.CupomCodigo, servico.SerPreco);
 
                 var agendamento = new Agendamento(tenantId, cliente.CliId, servico.SerId, recursoId,
@@ -132,7 +138,14 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 await _agendamentos.CreateAsync(agendamento);
 
                 Pagamento pagamento = null;
-                if (input.FormaPagamento != FormaPagamento.Dinheiro)
+                if (saldoPacote != null && saldoPacote.Debitar())
+                {
+                    // Cliente tem pacote pré-pago válido — sem cobrança nova.
+                    await _saldosPacote.UpdateAsync(saldoPacote);
+                    agendamento.ConfirmarPagamento();
+                    await _agendamentos.UpdateAsync(agendamento);
+                }
+                else if (input.FormaPagamento != FormaPagamento.Dinheiro)
                 {
                     var gateway = _gateways.FirstOrDefault()
                         ?? throw new DomainException("Nenhum gateway de pagamento configurado.");

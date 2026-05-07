@@ -11,5 +11,13 @@ namespace AgendamentoPro.Core.Interfaces.Database.Repositories
         Task<int> CreateAsync(Cliente cliente);
         Task UpdateAsync(Cliente cliente);
         Task DeleteAsync(int id, int tenantId);
+
+        /// <summary>
+        /// Retorna IDs de clientes do tenant cujo último agendamento (não cancelado)
+        /// é mais antigo que o limite OU que nunca tiveram agendamento E foram criados
+        /// antes do limite. Usado pela LGPD para anonimização em massa.
+        /// Single query agregada — evita N+1.
+        /// </summary>
+        Task<IEnumerable<int>> GetIdsInativosAsync(int tenantId, DateTime corte);
     }
 }

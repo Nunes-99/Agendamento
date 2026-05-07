@@ -14,18 +14,20 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
         private readonly IPagamentoRepository _pagamentos;
         private readonly IAgendamentoRepository _agendamentos;
         private readonly IWebhookEventoRepository _webhooks;
+        private readonly ISaldoPacoteRepository _saldosPacote;
         private readonly IUnitOfWork _uow;
         private readonly ILogger<ProcessarWebhookPagamentoUseCase> _logger;
 
         public ProcessarWebhookPagamentoUseCase(IEnumerable<IGatewayPagamento> gateways,
             IPagamentoRepository pagamentos, IAgendamentoRepository agendamentos,
-            IWebhookEventoRepository webhooks, IUnitOfWork uow,
-            ILogger<ProcessarWebhookPagamentoUseCase> logger)
+            IWebhookEventoRepository webhooks, ISaldoPacoteRepository saldosPacote,
+            IUnitOfWork uow, ILogger<ProcessarWebhookPagamentoUseCase> logger)
         {
             _gateways = gateways;
             _pagamentos = pagamentos;
             _agendamentos = agendamentos;
             _webhooks = webhooks;
+            _saldosPacote = saldosPacote;
             _uow = uow;
             _logger = logger;
         }
@@ -75,7 +77,27 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
             var pagamento = await _pagamentos.GetByGatewayIdAsync(evento.GatewayId);
             if (pagamento == null)
             {
-                _logger.LogWarning("Webhook {Gateway}: pagamento {GatewayId} não encontrado no banco.",
+                // Não achou Pagamento? Pode ser pagamento de SaldoPacote (compra de pacote
+                // pré-pago). Procura saldo pendente vinculado a esse gatewayId.
+                var saldo = await _saldosPacote.GetByGatewayIdAsync(evento.GatewayId);
+                if (saldo != null && evento.Status == StatusPagamento.Aprovado)
+                {
+                    if (saldo.Ativar())
+                    {
+                        await _saldosPacote.UpdateAsync(saldo);
+                        if (registro != null)
+                        {
+                            registro.MarcarProcessado();
+                            await _webhooks.UpdateAsync(registro);
+                        }
+                        await _uow.SaveChangesAsync();
+                        _logger.LogInformation("Webhook {Gateway}: SaldoPacote {SaldId} ativado.",
+                            gateway.Nome, saldo.SaldId);
+                    }
+                    return;
+                }
+
+                _logger.LogWarning("Webhook {Gateway}: pagamento {GatewayId} não encontrado (nem como agendamento nem como pacote).",
                     gateway.Nome, evento.GatewayId);
                 return;
             }

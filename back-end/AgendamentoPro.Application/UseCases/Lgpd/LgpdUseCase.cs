@@ -90,23 +90,16 @@ namespace AgendamentoPro.Application.UseCases.Lgpd
 
         public async Task<int> AnonimizarInativosAsync(int tenantId, int inativoHaMeses)
         {
-            // Critério: cliente sem agendamento nos últimos N meses E sem agendamento
-            // futuro. Implementação simples — pega todos os clientes do tenant, checa.
-            // Para volumes grandes, vale otimizar com query agregada.
-            var (clientes, _) = await _clientes.GetPagedAsync(tenantId, 1, int.MaxValue, null);
-            var limite = DateTime.UtcNow.AddMonths(-inativoHaMeses);
-            var anonimizados = 0;
-
-            foreach (var c in clientes)
+            // Single query agregada: já vem só os IDs dos elegíveis. O loop apenas
+            // anonimiza cada um. Anteriormente isto era N+1 (uma query por cliente
+            // pra checar agendamentos), o que estourava em tenant com 1000+ clientes.
+            var corte = DateTime.UtcNow.AddMonths(-inativoHaMeses);
+            var ids = (await _clientes.GetIdsInativosAsync(tenantId, corte)).ToList();
+            foreach (var id in ids)
             {
-                if (c.CliNome.StartsWith("Cliente removido")) continue; // já anonimizado
-                var ags = await _agendamentos.GetPorClienteAsync(tenantId, c.CliId);
-                if (ags.All(a => a.AgeData < limite || a.AgeStatus == Core.Enums.StatusAgendamento.Cancelado))
-                {
-                    await AnonimizarClienteAsync(tenantId, c.CliId);
-                    anonimizados++;
-                }
+                await AnonimizarClienteAsync(tenantId, id);
             }
+            var anonimizados = ids.Count;
             return anonimizados;
         }
     }
