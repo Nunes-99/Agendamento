@@ -1,0 +1,144 @@
+using AgendamentoPro.Application.InputModels.Agendamentos;
+using AgendamentoPro.Core.Entities.Clientes;
+using AgendamentoPro.Core.Entities.Servicos;
+using AgendamentoPro.Core.Enums;
+using AgendamentoPro.Core.Interfaces.Common;
+using AgendamentoPro.Core.Interfaces.Database.Common;
+using AgendamentoPro.Core.Interfaces.Services;
+using AgendamentoPro.Infrastructure.Database.EntityFramework;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace AgendamentoPro.API.Controllers
+{
+    /// <summary>
+    /// Pacotes pré-pagos: cliente compra N atendimentos do mesmo serviço com desconto.
+    /// Pago upfront via PIX. Saldo fica Pendente até o webhook do gateway aprovar → Ativo.
+    /// </summary>
+    [ApiController]
+    [Produces("application/json")]
+    public class PacotesController : BaseTenantController
+    {
+        public class CriarPacoteInput
+        {
+            public int ServicoId { get; set; }
+            public string Nome { get; set; }
+            public int Quantidade { get; set; }
+            public decimal Preco { get; set; }
+            public int ValidadeDias { get; set; }
+        }
+
+        [HttpGet("api/v1/admin/pacotes")]
+        [Authorize(Policy = "Atendente")]
+        public async Task<IActionResult> ListarAdmin(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant)
+        {
+            var tid = RequireTenantId(tenant);
+            var lista = await ctx.PacotesPrePagos.AsNoTracking()
+                .Include(p => p.Servico)
+                .Where(p => p.R_TenId == tid && !p.Excluido && p.PctAtivo)
+                .ToListAsync();
+            return Ok(lista);
+        }
+
+        [HttpPost("api/v1/admin/pacotes")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> Criar(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant,
+            [FromServices] IUnitOfWork uow,
+            [FromBody] CriarPacoteInput input)
+        {
+            var tid = RequireTenantId(tenant);
+            var pacote = new PacotePrePago(tid, input.ServicoId, input.Nome,
+                input.Quantidade, input.Preco, input.ValidadeDias);
+            ctx.PacotesPrePagos.Add(pacote);
+            await uow.SaveChangesAsync();
+            return Ok(pacote);
+        }
+
+        [HttpGet("api/v1/t/{slug}/pacotes")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ListarPublico(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant, string slug)
+        {
+            var tid = RequireTenantId(tenant);
+            var lista = await ctx.PacotesPrePagos.AsNoTracking()
+                .Where(p => p.R_TenId == tid && !p.Excluido && p.PctAtivo)
+                .ToListAsync();
+            return Ok(lista);
+        }
+
+        [HttpPost("api/v1/t/{slug}/pacotes/{pacoteId:int}/comprar")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Comprar(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant,
+            [FromServices] IUnitOfWork uow,
+            [FromServices] IEnumerable<IGatewayPagamento> gateways,
+            string slug, int pacoteId, [FromBody] ClientePublicoInputModel cliente)
+        {
+            var tid = RequireTenantId(tenant);
+            var pacote = await ctx.PacotesPrePagos.FirstOrDefaultAsync(p => p.PctId == pacoteId
+                && p.R_TenId == tid && p.PctAtivo);
+            if (pacote == null) return NotFound();
+
+            Cliente cli = null;
+            if (!string.IsNullOrEmpty(cliente.Telefone))
+                cli = await ctx.Clientes.FirstOrDefaultAsync(c => c.R_TenId == tid && c.CliTelefone == cliente.Telefone);
+            if (cli == null)
+            {
+                cli = new Cliente(tid, cliente.Nome, cliente.Email, cliente.Telefone, cliente.WhatsApp, cliente.Cpf);
+                ctx.Clientes.Add(cli);
+                await uow.SaveChangesAsync();
+            }
+
+            var saldo = new SaldoPacote(tid, cli.CliId, pacote);
+            ctx.SaldosPacote.Add(saldo);
+            await uow.SaveChangesAsync();
+
+            var gateway = gateways.FirstOrDefault();
+            if (gateway == null)
+                return StatusCode(500, new { message = "Gateway de pagamento não configurado." });
+
+            var cobranca = await gateway.CriarCobrancaAsync(tid, agendamentoId: 0,
+                pacote.PctPreco, FormaPagamento.Pix,
+                $"Pacote: {pacote.PctNome}", expiracaoMinutos: 30);
+
+            saldo.DefinirGatewayId(cobranca.GatewayId);
+            ctx.SaldosPacote.Update(saldo);
+            await uow.SaveChangesAsync();
+
+            return Ok(new
+            {
+                saldoPacoteId = saldo.SaldId,
+                qrCode = cobranca.QrCode,
+                linkPagamento = cobranca.LinkPagamento,
+                valor = pacote.PctPreco,
+                expiracao = cobranca.Expiracao
+            });
+        }
+
+        [HttpGet("api/v1/t/{slug}/saldos-pacote/{saldoId:int}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConsultarSaldo(
+            [FromServices] AgendamentoProDbContext ctx,
+            [FromServices] ITenantContext tenant,
+            string slug, int saldoId)
+        {
+            var tid = RequireTenantId(tenant);
+            var saldo = await ctx.SaldosPacote.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SaldId == saldoId && s.R_TenId == tid);
+            if (saldo == null) return NotFound();
+            return Ok(new
+            {
+                saldoPacoteId = saldo.SaldId,
+                status = saldo.SaldStatus.ToString().ToLowerInvariant(),
+                restante = saldo.SaldQuantidadeRestante
+            });
+        }
+    }
+}

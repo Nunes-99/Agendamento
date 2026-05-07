@@ -9,7 +9,7 @@ namespace AgendamentoPro.API.Controllers
 {
     [ApiController]
     [Produces("application/json")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("otp")]
     public class OtpController : BaseTenantController
     {
         /// <summary>Solicita um código OTP via WhatsApp para o telefone informado.</summary>

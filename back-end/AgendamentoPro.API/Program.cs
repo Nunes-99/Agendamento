@@ -238,6 +238,19 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                 }));
 
+        // OTP por WhatsApp: 3 envios + 5 validações por minuto por (tenant, IP).
+        // Mais estrito que "auth" porque cada envio dispara WhatsApp (custo + spam).
+        options.AddPolicy("otp", httpCtx =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: ResolverPartitionKey(httpCtx),
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    Window = TimeSpan.FromMinutes(1),
+                    PermitLimit = 8,
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                }));
+
         // 60 webhooks por minuto por IP - tolera retries do gateway sem deixar abusar.
         // Webhooks não têm tenant no path, então usa só IP.
         options.AddPolicy("webhook", httpCtx =>
@@ -366,6 +379,7 @@ try
     app.UseRateLimiter();
     app.UseOutputCache();
 
+    app.UseCorrelationId();
     app.UseErrorHandlingMiddleware();
     app.UseAuthentication();
     app.UseTenantResolution();
