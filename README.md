@@ -36,7 +36,11 @@ A resolução do tenant em cada request acontece em três níveis (em ordem):
 
 1. Claim `tenantId` do JWT (uso administrativo)
 2. Header `X-Tenant-Slug` (definido pelo frontend)
-3. Path `/api/t/{slug}/...` (endpoints públicos)
+3. Path `/api/v1/t/{slug}/...` (endpoints públicos)
+
+## API Versioning
+
+Todas as rotas estão sob `/api/v1/`. Health checks ficam fora da versão (`/api/health/live`, `/api/health/ready`) por convenção. Webhooks externos: `/api/v1/webhooks/pagamento/{gateway}`.
 
 ## Frontend
 
@@ -51,10 +55,27 @@ A resolução do tenant em cada request acontece em três níveis (em ordem):
   - `/t/:slug/pagamento/:id` → QR Code PIX / link / status em tempo real
   - `/t/:slug/confirmacao/:id` → tela de sucesso
   - `/avaliar/:token` → cliente final responde avaliação (sem login)
+  - `/t/:slug/entrar` e `/t/:slug/minha-conta` → login OTP por WhatsApp + área do cliente final (histórico, pacotes, fidelidade, perfil)
+  - `/t/:slug/pacotes` → compra de pacote pré-pago (PIX)
+  - `/t/:slug/lista-espera-publica` → entrar na fila quando data está cheia
   - `/admin/login` → login do administrador
   - `/admin/{dashboard,agenda,servicos,recursos,clientes,combos,relatorios,configuracoes,avaliacoes}`
+  - `/admin/{recorrencias,pacotes,fidelidade,bloqueios,lista-espera,kpis,caixa,seguranca}`
   - `/admin/agendamentos/:id/fotos` → upload e galeria de fotos antes/depois
   - `/esqueci-senha` e `/redefinir-senha?token=...` → fluxo público de reset
+
+### Realtime
+
+`SignalR` em `/hubs/notificacoes` notifica o admin do tenant em tempo real para os eventos:
+- `novo-agendamento`
+- `pagamento-aprovado`
+- `agendamento-cancelado`
+
+O `RealtimeService` no Angular reconecta automaticamente; o `AdminShell` exibe sino com badge das últimas 20 notificações.
+
+### PWA
+
+App é instalável (Android/iOS) com service worker (`@angular/service-worker`). Cache offline de assets e endpoints públicos por tenant (1h freshness). Habilitado só no build de produção.
 
 ## Como executar
 
@@ -77,7 +98,20 @@ dotnet restore
 dotnet run --project AgendamentoPro.API
 ```
 
-A API sobe em `http://localhost:5050` com Swagger habilitado em `/swagger`.
+A API sobe em `http://localhost:5050` com Swagger habilitado em `/swagger`. Endpoints versionados em `/api/v1/`.
+
+### Autenticação cliente final (OTP via WhatsApp)
+
+`POST /api/v1/t/{slug}/otp/solicitar { telefone }` → envia código de 6 dígitos via template WhatsApp (em dev, sem WhatsApp configurado, retorna `codigoDev` no response).
+`POST /api/v1/t/{slug}/otp/validar { telefone, codigo }` → retorna JWT cliente (validade 7 dias, role=Cliente, claim `clienteId`).
+
+Limites: 1 envio por minuto, 5 envios por hora por telefone, 3 tentativas por código, validade 10 minutos.
+
+### Observabilidade
+
+- Erros não tratados retornam **ProblemDetails** (RFC 7807) com `traceId`.
+- Header `X-Correlation-Id` é gerado se não fornecido e ecoado no response — útil para correlacionar logs/respostas.
+- `/api/health/live` (liveness) e `/api/health/ready` (readiness: DB + integrações).
 
 **Banco**: SQLite por default (`agendamento.db`). Schema é criado/atualizado automaticamente via EF Migrations.
 

@@ -331,12 +331,16 @@ try
         opts.ServerName = $"agendamentopro-{Environment.MachineName}";
     });
 
-    // Health checks: liveness (processo respondendo) + readiness (banco respondendo).
+    // Health checks: liveness (processo respondendo) + readiness (banco respondendo)
+    // + integrações externas (informativo, sempre healthy quando "no-op").
     builder.Services.AddHealthChecks()
         .AddDbContextCheck<AgendamentoProDbContext>(
             name: "database",
             failureStatus: HealthStatus.Unhealthy,
-            tags: new[] { "ready" });
+            tags: new[] { "ready" })
+        .AddCheck<AgendamentoPro.API.Health.IntegracoesHealthCheck>(
+            name: "integracoes",
+            tags: new[] { "ready", "integracoes" });
 
     // Atrás de proxy reverso (nginx/Traefik), respeitar X-Forwarded-* para
     // que ASP.NET Core veja scheme/IP corretos. Limpa redes/proxies conhecidos

@@ -125,6 +125,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         private readonly IAgendamentoRepository _agendamentos;
         private readonly IListaEsperaRepository _esperaRepo;
         private readonly Core.Interfaces.Services.INotificadorWhatsApp _whatsapp;
+        private readonly Core.Interfaces.Services.INotificacaoRealtime _realtime;
         private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
         private readonly Microsoft.Extensions.Logging.ILogger<CancelarAgendamentoUseCase> _logger;
         private readonly IUnitOfWork _uow;
@@ -132,6 +133,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         public CancelarAgendamentoUseCase(IAgendamentoRepository a,
             IListaEsperaRepository esperaRepo,
             Core.Interfaces.Services.INotificadorWhatsApp whatsapp,
+            Core.Interfaces.Services.INotificacaoRealtime realtime,
             Microsoft.Extensions.Configuration.IConfiguration config,
             Microsoft.Extensions.Logging.ILogger<CancelarAgendamentoUseCase> logger,
             IUnitOfWork u)
@@ -139,6 +141,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             _agendamentos = a;
             _esperaRepo = esperaRepo;
             _whatsapp = whatsapp;
+            _realtime = realtime;
             _config = config;
             _logger = logger;
             _uow = u;
@@ -205,6 +208,15 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
 
             // Vagou um slot — notifica o primeiro da fila se houver alguém esperando
             await NotificarPrimeiroNaEsperaAsync(ag);
+
+            // Realtime ao admin
+            _ = _realtime.NotificarTenantAsync(tenantId, "agendamento-cancelado", new
+            {
+                agendamentoId = ag.AgeId,
+                data = ag.AgeData,
+                horaInicio = ag.AgeHoraInicio,
+                motivo
+            });
 
             return AgendamentoMapper.Map(ag);
         }

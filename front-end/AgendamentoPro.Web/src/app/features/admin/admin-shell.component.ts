@@ -7,6 +7,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatMenuModule } from '@angular/material/menu';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
@@ -18,7 +20,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   selector: 'app-admin-shell',
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet,
-    MatSidenavModule, MatToolbarModule, MatIconModule, MatButtonModule, MatListModule],
+    MatSidenavModule, MatToolbarModule, MatIconModule, MatButtonModule, MatListModule,
+    MatBadgeModule, MatMenuModule],
   template: `
     <mat-sidenav-container class="shell">
       <mat-sidenav #drawer
@@ -77,6 +80,32 @@ import { MatSnackBar } from '@angular/material/snack-bar';
             <mat-icon>menu</mat-icon>
           </button>
           <span class="spacer"></span>
+
+          <button mat-icon-button [matMenuTriggerFor]="notifMenu"
+            [matBadge]="naoLidas() || null" matBadgeColor="warn"
+            aria-label="Notificações" *ngIf="!ehSuperAdmin()">
+            <mat-icon>{{ realtime.conectado() ? 'notifications' : 'notifications_off' }}</mat-icon>
+          </button>
+          <mat-menu #notifMenu="matMenu" class="notif-menu">
+            <div class="notif-cabecalho" *ngIf="notificacoes().length; else notifVazio">
+              <strong>Notificações</strong>
+              <button mat-button (click)="limparNotif($event)">Limpar</button>
+            </div>
+            <ng-template #notifVazio>
+              <div class="notif-vazio">
+                <mat-icon>notifications_off</mat-icon>
+                <p>Sem notificações novas.</p>
+              </div>
+            </ng-template>
+            <button mat-menu-item *ngFor="let n of notificacoes()" (click)="abrirNotif(n)">
+              <mat-icon>{{ iconeNotif(n.evento) }}</mat-icon>
+              <div class="notif-item">
+                <strong>{{ tituloNotif(n) }}</strong>
+                <small>{{ n.data | date:'HH:mm' }}</small>
+              </div>
+            </button>
+          </mat-menu>
+
           <button mat-icon-button (click)="theme.alternar()"
             [title]="theme.mode() === 'dark' ? 'Modo claro' : 'Modo escuro'"
             aria-label="Alternar tema">
@@ -94,6 +123,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   `,
   styles: [`
     .shell { height: 100vh; }
+    .notif-cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; border-bottom: 1px solid #eee; }
+    .notif-vazio { text-align: center; padding: 1.5rem; color: #888; }
+    .notif-vazio mat-icon { font-size: 2rem; width: 2rem; height: 2rem; }
+    .notif-item { display: flex; flex-direction: column; line-height: 1.2; }
+    .notif-item small { color: #888; font-size: 0.75rem; }
+    ::ng-deep .notif-menu .mat-mdc-menu-panel { min-width: 18rem; max-width: 24rem; }
     .sidenav {
       width: 16rem;
       background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%);
@@ -165,6 +200,8 @@ export class AdminShellComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   isMobile = signal(false);
+  notificacoes = signal<Array<{ evento: string; payload: any; data: Date }>>([]);
+  naoLidas = signal(0);
 
   constructor() {
     this.breakpoint.observe([Breakpoints.Handset, Breakpoints.Small])
@@ -185,12 +222,52 @@ export class AdminShellComponent implements OnInit {
     // Conecta SignalR para notificações realtime do tenant.
     if (!this.ehSuperAdmin()) {
       this.realtime.conectar();
-      this.realtime.on('novo-agendamento', (p: any) =>
+      this.realtime.on('novo-agendamento', (p: any) => {
+        this.adicionarNotif('novo-agendamento', p);
         this.snack.open(`Novo agendamento: ${p.clienteNome} - ${p.servicoNome}`, 'Ver', { duration: 6000 })
-          .onAction().subscribe(() => this.router.navigate(['/admin/agendamentos', p.agendamentoId])));
-      this.realtime.on('pagamento-aprovado', (p: any) =>
-        this.snack.open(`Pagamento aprovado: agendamento #${p.agendamentoId}`, 'OK', { duration: 4000 }));
+          .onAction().subscribe(() => this.router.navigate(['/admin/agendamentos', p.agendamentoId]));
+      });
+      this.realtime.on('pagamento-aprovado', (p: any) => {
+        this.adicionarNotif('pagamento-aprovado', p);
+        this.snack.open(`Pagamento aprovado: agendamento #${p.agendamentoId}`, 'OK', { duration: 4000 });
+      });
+      this.realtime.on('agendamento-cancelado', (p: any) => {
+        this.adicionarNotif('agendamento-cancelado', p);
+        this.snack.open(`Agendamento #${p.agendamentoId} cancelado.`, 'OK', { duration: 4000 });
+      });
     }
+  }
+
+  private adicionarNotif(evento: string, payload: any) {
+    this.notificacoes.update(l => [{ evento, payload, data: new Date() }, ...l].slice(0, 20));
+    this.naoLidas.update(n => Math.min(n + 1, 99));
+  }
+
+  iconeNotif(e: string): string {
+    return ({
+      'novo-agendamento': 'event_available',
+      'pagamento-aprovado': 'paid',
+      'agendamento-cancelado': 'event_busy'
+    } as any)[e] || 'info';
+  }
+
+  tituloNotif(n: { evento: string; payload: any }): string {
+    if (n.evento === 'novo-agendamento') return `Novo agendamento — ${n.payload.clienteNome}`;
+    if (n.evento === 'pagamento-aprovado') return `Pagamento aprovado #${n.payload.agendamentoId}`;
+    if (n.evento === 'agendamento-cancelado') return `Cancelado #${n.payload.agendamentoId}`;
+    return n.evento;
+  }
+
+  abrirNotif(n: { evento: string; payload: any }) {
+    const id = n.payload?.agendamentoId;
+    if (id) this.router.navigate(['/admin/agendamentos', id]);
+    this.naoLidas.set(0);
+  }
+
+  limparNotif(e: Event) {
+    e.stopPropagation();
+    this.notificacoes.set([]);
+    this.naoLidas.set(0);
   }
 
   private corrigirRota(url: string) {
