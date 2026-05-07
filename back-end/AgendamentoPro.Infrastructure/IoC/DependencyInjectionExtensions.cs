@@ -2,6 +2,7 @@ using AgendamentoPro.Application.Interfaces.Agendamentos;
 using AgendamentoPro.Application.Interfaces.Auth;
 using AgendamentoPro.Application.Interfaces.Clientes;
 using AgendamentoPro.Application.Interfaces.Dashboard;
+using AgendamentoPro.Application.Interfaces.Lgpd;
 using AgendamentoPro.Application.Interfaces.Pagamentos;
 using AgendamentoPro.Application.Interfaces.Recursos;
 using AgendamentoPro.Application.Interfaces.Relatorios;
@@ -11,6 +12,7 @@ using AgendamentoPro.Application.UseCases.Agendamentos;
 using AgendamentoPro.Application.UseCases.Auth;
 using AgendamentoPro.Application.UseCases.Clientes;
 using AgendamentoPro.Application.UseCases.Dashboard;
+using AgendamentoPro.Application.UseCases.Lgpd;
 using AgendamentoPro.Application.UseCases.Pagamentos;
 using AgendamentoPro.Application.UseCases.Recursos;
 using AgendamentoPro.Application.UseCases.Relatorios;
@@ -115,6 +117,7 @@ namespace AgendamentoPro.Infrastructure.IoC
 
             // Serviços de domínio
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
+            services.AddSingleton<ITotpService, TotpService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IDisponibilidadeService, DisponibilidadeService>();
             services.AddScoped<ITenantSeeder, DemoDataSeeder>();
@@ -177,6 +180,7 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IAgendarComboUseCase, AgendarComboUseCase>();
             services.AddScoped<IDashboardUseCase, DashboardUseCase>();
             services.AddScoped<IRelatoriosUseCase, RelatoriosUseCase>();
+            services.AddScoped<ILgpdUseCase, LgpdUseCase>();
 
             return services;
         }

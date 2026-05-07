@@ -41,6 +41,12 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
         /// </summary>
         public Guid? AgeGrupoComboId { get; private set; }
 
+        /// <summary>
+        /// Token público que permite ao cliente final ver e gerenciar o agendamento
+        /// (cancelar/reagendar) sem precisar de login. Gerado na criação.
+        /// </summary>
+        public Guid AgeAcessoToken { get; private set; }
+
         public Tenant Tenant { get; private set; }
         public Cliente Cliente { get; private set; }
         public Servico Servico { get; private set; }
@@ -73,6 +79,7 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
             AgePagamentoStatus = StatusPagamento.Pendente;
             AgeCriadoEm = DateTime.UtcNow;
             AgeGrupoComboId = grupoComboId;
+            AgeAcessoToken = Guid.NewGuid();
             Validate();
         }
 

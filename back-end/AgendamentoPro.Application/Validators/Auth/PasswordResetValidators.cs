@@ -24,7 +24,10 @@ namespace AgendamentoPro.Application.Validators.Auth
             RuleFor(x => x.NovaSenha)
                 .NotEmpty()
                 .MinimumLength(8).WithMessage("Senha deve ter no mínimo 8 caracteres.")
-                .MaximumLength(200);
+                .MaximumLength(200)
+                .Matches(@"[A-Z]").WithMessage("Senha deve conter ao menos uma letra maiúscula.")
+                .Matches(@"[a-z]").WithMessage("Senha deve conter ao menos uma letra minúscula.")
+                .Matches(@"\d").WithMessage("Senha deve conter ao menos um dígito.");
         }
     }
 }

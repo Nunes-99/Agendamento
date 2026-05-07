@@ -11,5 +11,9 @@ namespace AgendamentoPro.Application.ViewModels.Auth
         public string AccessToken { get; set; }
         public string RefreshToken { get; set; }
         public DateTime Expiracao { get; set; }
+        /// <summary>Quando true, o login parou na etapa de senha e precisa de TOTP.</summary>
+        public bool RequerTotp { get; set; }
+        /// <summary>Mensagem amigável - usado quando login é negado (bloqueado, etc).</summary>
+        public string Mensagem { get; set; }
     }
 }

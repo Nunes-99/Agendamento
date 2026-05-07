@@ -25,6 +25,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
                 .Include(a => a.Cliente)
                 .Include(a => a.Servico)
                 .Include(a => a.Recurso)
+                .AsSplitQuery()
                 .Where(a => a.R_TenId == tenantId && a.AgeData >= inicio.Date && a.AgeData <= fim.Date);
             if (recursoId.HasValue) q = q.Where(a => a.R_RecId == recursoId.Value);
             // ORDER BY por TimeSpan não é suportado pelo SQLite — ordena em memória.
@@ -47,6 +48,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
                 .Include(a => a.Cliente)
                 .Include(a => a.Servico)
                 .Include(a => a.Recurso)
+                .AsSplitQuery()
                 .Where(a => a.R_TenId == tenantId);
             if (data.HasValue) q = q.Where(a => a.AgeData == data.Value.Date);
             if (status.HasValue) q = q.Where(a => a.AgeStatus == status.Value);
@@ -95,6 +97,14 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
             => await _ctx.Agendamentos
                 .Where(a => a.AgeGrupoComboId == grupoComboId)
                 .ToListAsync();
+
+        public Task<Agendamento> GetByAcessoTokenAsync(Guid acessoToken)
+            => _ctx.Agendamentos
+                .Include(a => a.Cliente)
+                .Include(a => a.Servico)
+                .Include(a => a.Recurso)
+                .Include(a => a.Tenant)
+                .FirstOrDefaultAsync(a => a.AgeAcessoToken == acessoToken);
 
         public async Task<IEnumerable<Agendamento>> GetExpiradosPagamentoAsync()
         {

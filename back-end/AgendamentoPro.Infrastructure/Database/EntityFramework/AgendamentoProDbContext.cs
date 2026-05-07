@@ -33,6 +33,8 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<Avaliacao> Avaliacoes { get; set; }
         public DbSet<Combo> Combos { get; set; }
         public DbSet<ComboServico> ComboServicos { get; set; }
+        public DbSet<ListaEspera> ListaEspera { get; set; }
+        public DbSet<Cupom> Cupons { get; set; }
         public DbSet<HorarioFuncionamento> HorariosFuncionamento { get; set; }
         public DbSet<BloqueioAgenda> BloqueiosAgenda { get; set; }
         public DbSet<Notificacao> Notificacoes { get; set; }
@@ -190,6 +192,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                     .HasFilter(null);
                 e.HasIndex(x => new { x.R_TenId, x.AgeData });
                 e.HasIndex(x => x.AgeGrupoComboId);
+                e.HasIndex(x => x.AgeAcessoToken).IsUnique();
             });
 
             mb.Entity<Pagamento>(e =>
@@ -253,6 +256,30 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.HasOne(x => x.Combo).WithMany(c => c.Servicos).HasForeignKey(x => x.R_ComId);
                 e.HasOne(x => x.Servico).WithMany().HasForeignKey(x => x.R_SerId);
                 e.HasIndex(x => new { x.R_ComId, x.R_SerId }).IsUnique();
+            });
+
+            mb.Entity<Cupom>(e =>
+            {
+                e.ToTable("Cupom");
+                e.HasKey(x => x.CupId);
+                e.Property(x => x.CupCodigo).HasMaxLength(50).IsRequired();
+                e.Property(x => x.CupTipo).HasConversion<int>();
+                e.Property(x => x.CupValor).HasPrecision(10, 2);
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasIndex(x => new { x.R_TenId, x.CupCodigo }).IsUnique();
+            });
+
+            mb.Entity<ListaEspera>(e =>
+            {
+                e.ToTable("ListaEspera");
+                e.HasKey(x => x.LesId);
+                e.Property(x => x.LesClienteNome).HasMaxLength(200).IsRequired();
+                e.Property(x => x.LesClienteTelefone).HasMaxLength(30);
+                e.Property(x => x.LesClienteEmail).HasMaxLength(255);
+                e.Property(x => x.LesObservacao).HasMaxLength(500);
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasOne(x => x.Servico).WithMany().HasForeignKey(x => x.R_SerId);
+                e.HasIndex(x => new { x.R_TenId, x.LesDataDesejada, x.LesNotificado });
             });
 
             mb.Entity<Avaliacao>(e =>

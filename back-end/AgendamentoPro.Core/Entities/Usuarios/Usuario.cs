@@ -20,6 +20,10 @@ namespace AgendamentoPro.Core.Entities.Usuarios
         public bool UsuAtivo { get; private set; }
         public DateTime? UsuUltimoLogin { get; private set; }
         public DateTime UsuCriadoEm { get; private set; }
+        public int UsuTentativasFalhas { get; private set; }
+        public DateTime? UsuBloqueadoAte { get; private set; }
+        public string UsuTotpSecret { get; private set; }
+        public bool UsuTotpAtivo { get; private set; }
 
         public Tenant Tenant { get; private set; }
 
@@ -47,8 +51,36 @@ namespace AgendamentoPro.Core.Entities.Usuarios
             Validate();
         }
 
-        public void AlterarSenha(string novoHash) => UsuSenha = novoHash;
-        public void RegistrarLogin() => UsuUltimoLogin = DateTime.UtcNow;
+        public void AlterarSenha(string novoHash)
+        {
+            UsuSenha = novoHash;
+            UsuTentativasFalhas = 0;
+            UsuBloqueadoAte = null;
+        }
+        public void RegistrarLogin()
+        {
+            UsuUltimoLogin = DateTime.UtcNow;
+            UsuTentativasFalhas = 0;
+            UsuBloqueadoAte = null;
+        }
+        public void RegistrarFalhaLogin(int tentativasMax, TimeSpan duracaoBloqueio)
+        {
+            UsuTentativasFalhas++;
+            if (UsuTentativasFalhas >= tentativasMax)
+                UsuBloqueadoAte = DateTime.UtcNow.Add(duracaoBloqueio);
+        }
+        public bool EstaBloqueado(DateTime agoraUtc) =>
+            UsuBloqueadoAte.HasValue && agoraUtc < UsuBloqueadoAte.Value;
+        public void DefinirTotpSecret(string base32Secret)
+        {
+            UsuTotpSecret = base32Secret;
+            UsuTotpAtivo = !string.IsNullOrEmpty(base32Secret);
+        }
+        public void DesativarTotp()
+        {
+            UsuTotpSecret = null;
+            UsuTotpAtivo = false;
+        }
         public void Ativar() => UsuAtivo = true;
         public void Inativar() => UsuAtivo = false;
 

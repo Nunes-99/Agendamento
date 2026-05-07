@@ -5,6 +5,9 @@ using AgendamentoPro.Core.Entities.Agendamentos;
 using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
+using AgendamentoPro.Core.Interfaces.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace AgendamentoPro.Application.UseCases.Agendamentos
 {
@@ -12,13 +15,20 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
     {
         private readonly IAvaliacaoRepository _avaliacoes;
         private readonly IAgendamentoRepository _agendamentos;
+        private readonly INotificadorWhatsApp _whatsapp;
+        private readonly IConfiguration _config;
+        private readonly ILogger<AvaliacaoUseCase> _logger;
         private readonly IUnitOfWork _uow;
 
         public AvaliacaoUseCase(IAvaliacaoRepository avaliacoes,
-            IAgendamentoRepository agendamentos, IUnitOfWork uow)
+            IAgendamentoRepository agendamentos, INotificadorWhatsApp whatsapp,
+            IConfiguration config, ILogger<AvaliacaoUseCase> logger, IUnitOfWork uow)
         {
             _avaliacoes = avaliacoes;
             _agendamentos = agendamentos;
+            _whatsapp = whatsapp;
+            _config = config;
+            _logger = logger;
             _uow = uow;
         }
 
@@ -33,7 +43,35 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             var aval = new Avaliacao(tenantId, agendamentoId, ag.R_CliId);
             await _avaliacoes.CreateAsync(aval);
             await _uow.SaveChangesAsync();
+
+            // Envia link automaticamente via WhatsApp se template estiver disponível.
+            // Best-effort: falhas não impedem a criação da avaliação.
+            await EnviarLinkWhatsAppAsync(ag, aval.AvaToken);
+
             return aval.AvaToken;
+        }
+
+        private async Task EnviarLinkWhatsAppAsync(Agendamento ag, Guid token)
+        {
+            try
+            {
+                if (!_whatsapp.Ativo) return;
+                var numero = ag.Cliente?.CliWhatsApp ?? ag.Cliente?.CliTelefone;
+                if (string.IsNullOrWhiteSpace(numero)) return;
+
+                var frontUrl = (Environment.GetEnvironmentVariable("APP_FRONTEND_URL")
+                    ?? _config["App:FrontendUrl"] ?? "").TrimEnd('/');
+                if (string.IsNullOrEmpty(frontUrl)) return;
+                var link = $"{frontUrl}/avaliar/{token}";
+
+                await _whatsapp.EnviarTemplateAsync(numero, "link_avaliacao", "pt_BR",
+                    ag.Cliente?.CliNome ?? "Cliente", link);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao enviar link de avaliação para agendamento {Id}. Operador pode entregar manualmente.",
+                    ag.AgeId);
+            }
         }
 
         public async Task<AvaliacaoViewModel> BuscarPorTokenAsync(Guid token)
