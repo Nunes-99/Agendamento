@@ -62,7 +62,7 @@ namespace AgendamentoPro.API.Controllers
             var novoEmail = input.Email == null ? c.CliEmail : input.Email.Trim();
             c.Atualizar(novoNome, novoEmail, c.CliTelefone, c.CliWhatsApp, c.CliCpf, c.CliObservacao);
             await ctx.SaveChangesAsync();
-            return Ok(new { c.CliId, c.CliNome, c.CliEmail });
+            return Ok(new { id = c.CliId, nome = c.CliNome, email = c.CliEmail });
         }
 
         /// <summary>Lista agendamentos futuros e passados do cliente autenticado.</summary>

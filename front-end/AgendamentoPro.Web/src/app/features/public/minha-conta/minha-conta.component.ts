@@ -1,18 +1,22 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../../core/services/api.service';
 import { ClienteAuthService } from '../../../core/services/cliente-auth.service';
 
 @Component({
   selector: 'app-minha-conta',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule, MatTabsModule,
-    MatProgressSpinnerModule, CurrencyPipe, DatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, MatButtonModule, MatIconModule, MatTabsModule,
+    MatProgressSpinnerModule, MatFormFieldModule, MatInputModule, CurrencyPipe, DatePipe],
   template: `
     <div class="container">
       <header class="topo">
@@ -34,11 +38,18 @@ import { ClienteAuthService } from '../../../core/services/cliente-auth.service'
                 </header>
                 <small>{{ a.data | date:'dd/MM/yyyy' }} · {{ horaFmt(a.horaInicio) }}–{{ horaFmt(a.horaFim) }}</small>
                 <span class="valor">{{ a.valorTotal | currency:'BRL' }}</span>
-                <a *ngIf="a.tokenSelfService && podeGerenciar(a)"
-                   [routerLink]="['/meu-agendamento', a.tokenSelfService]"
-                   mat-stroked-button class="acao">
-                   <mat-icon>edit_calendar</mat-icon> Reagendar / Cancelar
-                </a>
+                <div class="acoes" *ngIf="podeGerenciar(a)">
+                  <a *ngIf="a.tokenSelfService"
+                     [routerLink]="['/meu-agendamento', a.tokenSelfService]"
+                     mat-stroked-button class="acao">
+                     <mat-icon>edit_calendar</mat-icon> Reagendar
+                  </a>
+                  <button mat-stroked-button color="warn" class="acao"
+                     [disabled]="cancelandoId() === a.id"
+                     (click)="cancelar(a)">
+                    <mat-icon>cancel</mat-icon> Cancelar
+                  </button>
+                </div>
               </article>
             </div>
             <ng-template #vazioAg>
@@ -88,6 +99,26 @@ import { ClienteAuthService } from '../../../core/services/cliente-auth.service'
             </div>
           </ng-template>
         </mat-tab>
+
+        <mat-tab label="Perfil">
+          <ng-template matTabContent>
+            <div class="card form-perfil">
+              <h2>Meus dados</h2>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>Nome</mat-label>
+                <input matInput [(ngModel)]="perfil.nome" maxlength="200" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>E-mail (opcional)</mat-label>
+                <input matInput type="email" [(ngModel)]="perfil.email" maxlength="255" />
+              </mat-form-field>
+              <button mat-flat-button color="primary"
+                [disabled]="!perfilDirty() || salvandoPerfil()" (click)="salvarPerfil()">
+                <mat-icon>save</mat-icon> Salvar
+              </button>
+            </div>
+          </ng-template>
+        </mat-tab>
       </mat-tab-group>
     </div>
   `,
@@ -107,7 +138,10 @@ import { ClienteAuthService } from '../../../core/services/cliente-auth.service'
     .saldo strong { font-size: 2rem; color: #2e7d32; }
     .saldo span { color: #666; }
     .valor { font-weight: 600; color: #2e7d32; }
-    .acao { margin-top: 0.5rem; }
+    .acoes { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .acao { flex: 1; }
+    .form-perfil { display: flex; flex-direction: column; gap: 0.5rem; max-width: 28rem; margin: 1rem auto; }
+    .form-perfil button { align-self: flex-start; }
     .vazio { text-align: center; padding: 3rem 1rem; color: #888; }
     .vazio mat-icon { font-size: 3rem; width: 3rem; height: 3rem; }
     .centro { text-align: center; padding: 2rem; }
@@ -123,12 +157,17 @@ export class MinhaContaComponent implements OnInit {
   private auth = inject(ClienteAuthService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private snack = inject(MatSnackBar);
 
   slug = '';
   nome = signal('Cliente');
   agendamentos = signal<any[]>([]);
   pacotes = signal<any[]>([]);
   saldoPontos = signal(0);
+  cancelandoId = signal<number | null>(null);
+  perfil = { nome: '', email: '' };
+  perfilOriginal = { nome: '', email: '' };
+  salvandoPerfil = signal(false);
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
@@ -140,6 +179,53 @@ export class MinhaContaComponent implements OnInit {
     this.api.meusAgendamentos(this.slug).subscribe(l => this.agendamentos.set(l));
     this.api.meusPacotes(this.slug).subscribe(l => this.pacotes.set(l));
     this.api.minhaFidelidade(this.slug).subscribe(r => this.saldoPontos.set(r.saldo));
+    this.api.minhaConta(this.slug).subscribe(c => {
+      this.perfil = { nome: c.nome || '', email: c.email || '' };
+      this.perfilOriginal = { ...this.perfil };
+    });
+  }
+
+  perfilDirty(): boolean {
+    return this.perfil.nome !== this.perfilOriginal.nome
+      || this.perfil.email !== this.perfilOriginal.email;
+  }
+
+  salvarPerfil() {
+    if (!this.perfilDirty()) return;
+    this.salvandoPerfil.set(true);
+    this.api.atualizarMinhaConta(this.slug, this.perfil).subscribe({
+      next: r => {
+        this.salvandoPerfil.set(false);
+        this.perfilOriginal = { ...this.perfil };
+        this.nome.set(r.nome || this.perfil.nome);
+        this.snack.open('Perfil atualizado.', 'OK', { duration: 2000 });
+      },
+      error: () => {
+        this.salvandoPerfil.set(false);
+        this.snack.open('Falha ao salvar.', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  cancelar(a: any) {
+    if (!a.tokenSelfService) {
+      this.snack.open('Sem token de acesso pra cancelar.', 'OK', { duration: 3000 });
+      return;
+    }
+    const motivo = prompt('Motivo (opcional):') ?? '';
+    if (motivo === null) return;
+    this.cancelandoId.set(a.id);
+    this.api.cancelarMeuAgendamento(a.tokenSelfService, motivo || 'Cancelado pelo cliente.').subscribe({
+      next: () => {
+        this.cancelandoId.set(null);
+        this.snack.open('Agendamento cancelado.', 'OK', { duration: 2500 });
+        this.api.meusAgendamentos(this.slug).subscribe(l => this.agendamentos.set(l));
+      },
+      error: e => {
+        this.cancelandoId.set(null);
+        this.snack.open(e.error?.message || 'Falha ao cancelar.', 'OK', { duration: 4000 });
+      }
+    });
   }
 
   rotuloStatus(s: number): string {
