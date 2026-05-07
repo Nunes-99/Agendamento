@@ -1,5 +1,6 @@
 using AgendamentoPro.Core.Entities.Agendamentos;
 using AgendamentoPro.Core.Entities.Clientes;
+using AgendamentoPro.Core.Entities.Common;
 using AgendamentoPro.Core.Entities.Horarios;
 using AgendamentoPro.Core.Entities.Notificacoes;
 using AgendamentoPro.Core.Entities.Pagamentos;
@@ -35,10 +36,26 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<HorarioFuncionamento> HorariosFuncionamento { get; set; }
         public DbSet<BloqueioAgenda> BloqueiosAgenda { get; set; }
         public DbSet<Notificacao> Notificacoes { get; set; }
+        public DbSet<LogAuditoria> LogsAuditoria { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
             base.OnModelCreating(mb);
+
+            // Soft Delete global: para toda entidade que herda de SoftDeletableEntity,
+            // adiciona automaticamente um QueryFilter que esconde linhas com Excluido=true.
+            // Para "ressuscitar" uma query: use .IgnoreQueryFilters().
+            foreach (var entityType in mb.Model.GetEntityTypes())
+            {
+                if (typeof(AgendamentoPro.Core.Interfaces.Common.ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+                {
+                    var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+                    var prop = System.Linq.Expressions.Expression.Property(parameter, nameof(AgendamentoPro.Core.Interfaces.Common.ISoftDeletable.Excluido));
+                    var filter = System.Linq.Expressions.Expression.Lambda(
+                        System.Linq.Expressions.Expression.Not(prop), parameter);
+                    mb.Entity(entityType.ClrType).HasQueryFilter(filter);
+                }
+            }
 
             mb.Entity<Tenant>(e =>
             {
@@ -280,6 +297,21 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.Property(x => x.NotStatus).HasMaxLength(20);
                 e.Property(x => x.NotErro).HasMaxLength(1000);
                 e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+            });
+
+            mb.Entity<LogAuditoria>(e =>
+            {
+                e.ToTable("LogAuditoria");
+                e.HasKey(x => x.LogId);
+                e.Property(x => x.LogUsuarioEmail).HasMaxLength(255);
+                e.Property(x => x.LogIp).HasMaxLength(64);
+                e.Property(x => x.LogCorrelationId).HasMaxLength(64);
+                e.Property(x => x.LogTabela).HasMaxLength(100).IsRequired();
+                e.Property(x => x.LogChave).HasMaxLength(100);
+                e.Property(x => x.LogAcao).HasMaxLength(20).IsRequired();
+                // Payloads JSON podem ser grandes — sem MaxLength explícito
+                e.HasIndex(x => new { x.R_TenId, x.LogQuandoUtc });
+                e.HasIndex(x => new { x.LogTabela, x.LogChave });
             });
         }
 

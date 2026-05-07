@@ -24,6 +24,7 @@ using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories;
 using AgendamentoPro.Infrastructure.Database.UnitOfWork;
 using AgendamentoPro.Infrastructure.Services.Auth;
+using AgendamentoPro.Infrastructure.Services.Cache;
 using AgendamentoPro.Infrastructure.Services.Email;
 using AgendamentoPro.Infrastructure.Services.Pagamento;
 using AgendamentoPro.Infrastructure.Services.Storage;
@@ -41,15 +42,17 @@ namespace AgendamentoPro.Infrastructure.IoC
     {
         public static IServiceCollection WireUp(this IServiceCollection services, IConfiguration config)
         {
-            // DbContext
+            // DbContext + AuditInterceptor (registra LogAuditoria por SaveChanges)
+            services.AddSingleton<AuditInterceptor>();
             var provider = config["Database:Provider"] ?? "Sqlite";
             var conn = config.GetConnectionString("Default") ?? "Data Source=agendamento.db";
-            services.AddDbContext<AgendamentoProDbContext>(opt =>
+            services.AddDbContext<AgendamentoProDbContext>((sp, opt) =>
             {
                 if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
                     opt.UseSqlServer(conn);
                 else
                     opt.UseSqlite(conn);
+                opt.AddInterceptors(sp.GetRequiredService<AuditInterceptor>());
             });
 
             // UoW
@@ -82,6 +85,10 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<ITenantSeeder, DemoDataSeeder>();
             services.AddSingleton<IFotoStorage, LocalFotoStorage>();
             services.AddSingleton<IEmailSender, SmtpEmailSender>();
+
+            // Cache em memória com isolamento por tenant (evita bleed-through)
+            services.AddMemoryCache();
+            services.AddScoped<ITenantCache, TenantAwareMemoryCache>();
 
             // Integrações externas com HttpClient nomeado (resiliência via Polly opcional)
             services.AddHttpClient<IGatewayPagamento, MercadoPagoGateway>(c =>

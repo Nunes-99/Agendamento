@@ -5,28 +5,37 @@ using AgendamentoPro.Infrastructure.Middlewares;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 
-// Template inclui as propriedades injetadas pelo LogEnrichmentMiddleware (CorrelationId, TenantId, UserId).
+// Template inclui propriedades injetadas pelo LogEnrichmentMiddleware (CorrelationId, TenantId, UserId)
+// + Environment/MachineName (úteis em deploy multi-instância).
 const string logTemplate =
-    "[{Timestamp:HH:mm:ss} {Level:u3}] cid={CorrelationId} tenant={TenantId}/{TenantSlug} user={UserId} {Message:lj}{NewLine}{Exception}";
+    "[{Timestamp:HH:mm:ss} {Level:u3}] env={Environment} host={MachineName} cid={CorrelationId} tenant={TenantId}/{TenantSlug} user={UserId} {Message:lj}{NewLine}{Exception}";
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
     .Enrich.FromLogContext()
+    .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development")
+    .Enrich.WithMachineName()
     .WriteTo.Console(outputTemplate: logTemplate)
     .WriteTo.File("logs/log-.txt",
         outputTemplate: logTemplate,
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 30)
+        retainedFileCountLimit: 30,
+        fileSizeLimitBytes: 50 * 1024 * 1024,
+        rollOnFileSizeLimit: true)
     .CreateLogger();
 
 try
@@ -111,7 +120,57 @@ try
             ValidIssuer = jwt["Issuer"],
             ValidAudience = jwt["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
-            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+            ClockSkew = TimeSpan.FromSeconds(30) // tolerância pra dessincronia de relógio
+        };
+
+        // Cross-tenant guard: rejeita token cujo claim tenantId NÃO bate com o tenant
+        // resolvido pelo path (/api/t/{slug}/...) ou header X-Tenant-Slug.
+        // SuperAdmin (sem tenantId) é exceção — pode acessar qualquer tenant.
+        opt.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                var claims = ctx.Principal!;
+                var tenantClaimStr = claims.FindFirst("tenantId")?.Value;
+                var role = claims.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+                if (role == "SuperAdmin" || string.IsNullOrEmpty(tenantClaimStr))
+                    return; // sem amarração de tenant
+                if (!int.TryParse(tenantClaimStr, out var tokenTenantId))
+                {
+                    ctx.Fail("Token com tenantId inválido.");
+                    return;
+                }
+
+                // Resolve tenant da request (path /api/t/{slug}/... ou header)
+                int? requestTenantId = null;
+                var tenants = ctx.HttpContext.RequestServices
+                    .GetService(typeof(AgendamentoPro.Core.Interfaces.Database.Repositories.ITenantRepository))
+                    as AgendamentoPro.Core.Interfaces.Database.Repositories.ITenantRepository;
+                var path = ctx.HttpContext.Request.Path.Value ?? "";
+                var parts = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+                string slugDoRequest = null;
+                if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase)
+                    && parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+                {
+                    slugDoRequest = parts[2];
+                }
+                else if (ctx.HttpContext.Request.Headers.TryGetValue("X-Tenant-Slug", out var slugHeader))
+                {
+                    slugDoRequest = slugHeader.ToString();
+                }
+
+                if (!string.IsNullOrEmpty(slugDoRequest) && tenants != null)
+                {
+                    var t = await tenants.GetBySlugAsync(slugDoRequest);
+                    if (t != null) requestTenantId = t.TenId;
+                }
+
+                if (requestTenantId.HasValue && requestTenantId.Value != tokenTenantId)
+                {
+                    ctx.Fail("Token não autoriza acesso a este tenant.");
+                }
+            }
         };
     });
 
@@ -127,7 +186,24 @@ try
         ?? new[] { "http://localhost:4200", "http://localhost:5173" };
 
     // Rate limiting: protege endpoints de autenticação contra brute force
-    // e webhooks contra flood. Identificação por IP do cliente.
+    // e webhooks contra flood. Particionado por tenant+IP — abuso em um tenant
+    // não consome cota dos outros, e atacante alternando IP ainda fica preso
+    // ao limite por tenant.
+    static string ResolverPartitionKey(HttpContext httpCtx)
+    {
+        var ip = httpCtx.Connection.RemoteIpAddress?.ToString() ?? "anon";
+        // Tenant resolvido pelo path /api/t/{slug}/... ou header X-Tenant-Slug
+        var path = httpCtx.Request.Path.Value ?? "";
+        string slug = "_";
+        var parts = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase)
+            && parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+            slug = parts[2];
+        else if (httpCtx.Request.Headers.TryGetValue("X-Tenant-Slug", out var h))
+            slug = h.ToString();
+        return $"{slug}|{ip}";
+    }
+
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -138,10 +214,10 @@ try
                 new { message = "Muitas requisições. Tente novamente em alguns segundos." }, token);
         };
 
-        // 5 tentativas por minuto por IP - login/refresh
+        // 5 tentativas por minuto por (tenant, IP) - login/refresh/forgot/reset
         options.AddPolicy("auth", httpCtx =>
             RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: httpCtx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+                partitionKey: ResolverPartitionKey(httpCtx),
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
                     Window = TimeSpan.FromMinutes(1),
@@ -150,7 +226,8 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                 }));
 
-        // 60 webhooks por minuto por IP - tolera retries do gateway sem deixar abusar
+        // 60 webhooks por minuto por IP - tolera retries do gateway sem deixar abusar.
+        // Webhooks não têm tenant no path, então usa só IP.
         options.AddPolicy("webhook", httpCtx =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: httpCtx.Connection.RemoteIpAddress?.ToString() ?? "anon",
@@ -162,10 +239,10 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                 }));
 
-        // Default geral: 120 req/min por IP - cinto-e-suspensório
+        // Default geral: 120 req/min por (tenant, IP)
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpCtx =>
             RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: httpCtx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+                partitionKey: ResolverPartitionKey(httpCtx),
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
                     Window = TimeSpan.FromMinutes(1),
@@ -208,7 +285,20 @@ try
             failureStatus: HealthStatus.Unhealthy,
             tags: new[] { "ready" });
 
+    // Atrás de proxy reverso (nginx/Traefik), respeitar X-Forwarded-* para
+    // que ASP.NET Core veja scheme/IP corretos. Limpa redes/proxies conhecidos
+    // para aceitar do compose/docker/orquestrador qualquer (necessário com Docker).
+    builder.Services.Configure<ForwardedHeadersOptions>(opts =>
+    {
+        opts.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+        opts.KnownNetworks.Clear();
+        opts.KnownProxies.Clear();
+    });
+
     var app = builder.Build();
+
+    // ForwardedHeaders DEVE vir antes de qualquer middleware que use scheme/IP
+    app.UseForwardedHeaders();
 
     app.InitializeDatabase();
 
