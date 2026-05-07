@@ -48,6 +48,8 @@ import { AuthService } from '../../core/services/auth.service';
             <a mat-list-item routerLink="/admin/servicos" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>list</mat-icon> Serviços</a>
             <a mat-list-item routerLink="/admin/recursos" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>build</mat-icon> Recursos</a>
             <a mat-list-item routerLink="/admin/clientes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>people</mat-icon> Clientes</a>
+            <a mat-list-item routerLink="/admin/combos" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>local_offer</mat-icon> Combos</a>
+            <a mat-list-item routerLink="/admin/avaliacoes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>star</mat-icon> Avaliações</a>
             <a mat-list-item routerLink="/admin/relatorios" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>insert_chart</mat-icon> Relatórios</a>
             <a mat-list-item routerLink="/admin/configuracoes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>settings</mat-icon> Configurações</a>
           </ng-container>

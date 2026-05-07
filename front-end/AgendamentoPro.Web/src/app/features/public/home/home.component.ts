@@ -6,7 +6,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { ApiService } from '../../../core/services/api.service';
 import { Tenant } from '../../../core/models/tenant.model';
+import { ResumoAvaliacoes } from '../../../core/models/avaliacao.model';
 import { TenantNaoEncontradoComponent } from '../tenant-nao-encontrado.component';
 
 type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
@@ -60,19 +62,63 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
             </div>
           </div>
         </section>
+
+        <section class="avaliacoes" *ngIf="resumo()?.total">
+          <h2><mat-icon>star</mat-icon> O que dizem nossos clientes</h2>
+          <div class="resumo">
+            <strong class="media">{{ resumo()?.media | number:'1.1-1' }}</strong>
+            <div class="estrelas">
+              <mat-icon *ngFor="let n of [1,2,3,4,5]"
+                [class.ativa]="n <= (resumo()?.media || 0)">
+                {{ n <= (resumo()?.media || 0) ? 'star' : 'star_border' }}
+              </mat-icon>
+            </div>
+            <span class="total">{{ resumo()?.total }} avaliações</span>
+          </div>
+          <div class="recentes">
+            <article *ngFor="let r of resumo()?.recentes" class="aval">
+              <div class="cabecalho">
+                <strong>{{ r.clienteNome }}</strong>
+                <div class="estrelas pequenas">
+                  <mat-icon *ngFor="let n of [1,2,3,4,5]" [class.ativa]="n <= r.nota">
+                    {{ n <= r.nota ? 'star' : 'star_border' }}
+                  </mat-icon>
+                </div>
+              </div>
+              <p *ngIf="r.comentario">"{{ r.comentario }}"</p>
+            </article>
+          </div>
+        </section>
       </ng-container>
     </ng-container>
   `,
-  styleUrls: ['./home.component.scss']
+  styleUrls: ['./home.component.scss'],
+  styles: [`
+    .avaliacoes { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
+    .avaliacoes h2 { display: flex; align-items: center; gap: 0.5rem; }
+    .resumo { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .resumo .media { font-size: 2.5rem; }
+    .estrelas { display: flex; gap: 0.1rem; }
+    .estrelas mat-icon { color: #ccc; }
+    .estrelas mat-icon.ativa { color: #fbc02d; }
+    .estrelas.pequenas mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
+    .resumo .total { color: #666; }
+    .recentes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
+    .aval { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .aval .cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .aval p { margin: 0; font-style: italic; color: #444; }
+  `]
 })
 export class HomeComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private tenantSvc = inject(TenantService);
   private theme = inject(ThemeService);
+  private api = inject(ApiService);
 
   slug = '';
   tenant = signal<Tenant | null>(null);
   estado = signal<EstadoCarga>('carregando');
+  resumo = signal<ResumoAvaliacoes | null>(null);
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
@@ -87,6 +133,11 @@ export class HomeComponent implements OnInit {
         this.tenant.set(t);
         this.theme.aplicarPersonalizacao(t.personalizacao);
         this.estado.set('ok');
+        // Carrega avaliações públicas em paralelo (silenciosamente — falha não bloqueia a home)
+        this.api.resumoAvaliacoes(this.slug).subscribe({
+          next: r => this.resumo.set(r),
+          error: () => { /* sem avaliações ou erro: simplesmente não exibe a seção */ }
+        });
       },
       error: () => this.estado.set('naoEncontrado')
     });

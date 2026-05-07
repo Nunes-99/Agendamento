@@ -51,9 +51,10 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
             var nome = $"{Guid.NewGuid():N}{ext}";
             var caminho = Path.Combine(dir, nome);
 
-            await using (var fs = new FileStream(caminho, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                bufferSize: 81920, useAsync: true))
+            try
             {
+                await using var fs = new FileStream(caminho, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                    bufferSize: 81920, useAsync: true);
                 long total = 0;
                 var buffer = new byte[81920];
                 int lidos;
@@ -61,13 +62,15 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
                 {
                     total += lidos;
                     if (total > TamanhoMaxBytes)
-                    {
-                        // remove parcial
-                        try { File.Delete(caminho); } catch { /* best-effort */ }
                         throw new InvalidOperationException("Arquivo excede o tamanho máximo permitido (10 MB).");
-                    }
                     await fs.WriteAsync(buffer.AsMemory(0, lidos), ct);
                 }
+            }
+            catch
+            {
+                // Garante que o stream foi fechado pelo `await using` antes de tentar remover o arquivo parcial
+                try { if (File.Exists(caminho)) File.Delete(caminho); } catch { /* best-effort */ }
+                throw;
             }
 
             // URL relativa servida via /uploads via UseStaticFiles

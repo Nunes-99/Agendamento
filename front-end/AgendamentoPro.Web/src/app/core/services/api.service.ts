@@ -4,6 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Servico } from '../models/servico.model';
 import { Agendamento, CriarAgendamentoInput, CriarAgendamentoResult, SlotDisponivel } from '../models/agendamento.model';
+import { Avaliacao, ResumoAvaliacoes, ResponderAvaliacaoInput } from '../models/avaliacao.model';
+import { Combo, ComboInput } from '../models/combo.model';
+import { FotoAgendamento, TipoFoto } from '../models/foto.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -86,4 +89,53 @@ export class ApiService {
   atualizarTenant(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}`, input); }
   atualizarPersonalizacao(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}/personalizacao`, input); }
   atualizarRegras(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}/regras`, input); }
+
+  // ----- Avaliações -----
+  buscarAvaliacaoPorToken(token: string): Observable<Avaliacao> {
+    return this.http.get<Avaliacao>(`${this.base}/avaliacoes/${token}`);
+  }
+  responderAvaliacao(token: string, input: ResponderAvaliacaoInput): Observable<Avaliacao> {
+    return this.http.post<Avaliacao>(`${this.base}/avaliacoes/${token}`, input);
+  }
+  resumoAvaliacoes(slug: string, top = 5): Observable<ResumoAvaliacoes> {
+    return this.http.get<ResumoAvaliacoes>(`${this.base}/t/${slug}/avaliacoes`,
+      { params: new HttpParams().set('top', top) });
+  }
+  listarAvaliacoes(page: number, pageSize: number, somenteRespondidas = false): Observable<any> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize)
+      .set('somenteRespondidas', somenteRespondidas);
+    return this.http.get(`${this.base}/admin/avaliacoes`, { params });
+  }
+  alterarVisibilidadeAvaliacao(id: number, publica: boolean) {
+    return this.http.post(`${this.base}/admin/avaliacoes/${id}/visibilidade?publica=${publica}`, {});
+  }
+
+  // ----- Combos -----
+  combosPublicos(slug: string): Observable<Combo[]> {
+    return this.http.get<Combo[]>(`${this.base}/t/${slug}/combos`);
+  }
+  combosAdmin(somenteAtivos = false): Observable<Combo[]> {
+    return this.http.get<Combo[]>(`${this.base}/admin/combos`,
+      { params: new HttpParams().set('somenteAtivos', somenteAtivos) });
+  }
+  obterCombo(id: number): Observable<Combo> {
+    return this.http.get<Combo>(`${this.base}/admin/combos/${id}`);
+  }
+  cadastrarCombo(input: ComboInput) { return this.http.post<Combo>(`${this.base}/admin/combos`, input); }
+  atualizarCombo(id: number, input: ComboInput) { return this.http.put<Combo>(`${this.base}/admin/combos/${id}`, input); }
+  excluirCombo(id: number) { return this.http.delete<void>(`${this.base}/admin/combos/${id}`); }
+
+  // ----- Fotos antes/depois -----
+  uploadFoto(agendamentoId: number, tipo: TipoFoto, arquivo: File): Observable<FotoAgendamento> {
+    const form = new FormData();
+    form.append('tipo', tipo.toString());
+    form.append('arquivo', arquivo);
+    return this.http.post<FotoAgendamento>(`${this.base}/admin/agendamentos/${agendamentoId}/fotos`, form);
+  }
+  listarFotos(agendamentoId: number): Observable<FotoAgendamento[]> {
+    return this.http.get<FotoAgendamento[]>(`${this.base}/admin/agendamentos/${agendamentoId}/fotos`);
+  }
+  removerFoto(fotoId: number) {
+    return this.http.delete<void>(`${this.base}/admin/agendamentos/fotos/${fotoId}`);
+  }
 }
