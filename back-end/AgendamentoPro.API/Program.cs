@@ -2,7 +2,10 @@ using AgendamentoPro.API.Filters;
 using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using AgendamentoPro.Infrastructure.IoC;
 using AgendamentoPro.Infrastructure.Middlewares;
+using AgendamentoPro.Infrastructure.Services.WhatsApp;
 using FluentValidation;
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -278,6 +281,19 @@ try
 
     builder.Services.WireUp(builder.Configuration);
 
+    // Hangfire: storage in-memory (sem dependência externa). Para produção real
+    // com persistência de jobs, troque por UseSqlServerStorage / UsePostgreSqlStorage.
+    builder.Services.AddHangfire(cfg => cfg
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseMemoryStorage());
+    builder.Services.AddHangfireServer(opts =>
+    {
+        opts.WorkerCount = 2;
+        opts.ServerName = $"agendamentopro-{Environment.MachineName}";
+    });
+
     // Health checks: liveness (processo respondendo) + readiness (banco respondendo).
     builder.Services.AddHealthChecks()
         .AddDbContextCheck<AgendamentoProDbContext>(
@@ -331,6 +347,21 @@ try
     app.UseLogEnrichment();
     app.UseAuthorization();
     app.MapControllers();
+
+    // Hangfire dashboard - /hangfire (autenticado, role SuperAdmin/Administrador)
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireDashboardAuth() },
+        DashboardTitle = "AgendamentoPro Jobs",
+        DisplayStorageConnectionString = false
+    });
+
+    // Recurring job: lembretes a cada 5 min (substitui LembreteBackgroundService)
+    RecurringJob.AddOrUpdate<LembreteJob>(
+        "lembretes-24h-2h",
+        job => job.ExecutarAsync(CancellationToken.None),
+        "*/5 * * * *",
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
     // /api/health/live - liveness (sempre OK se o processo respondeu)
     app.MapHealthChecks("/api/health/live", new HealthCheckOptions

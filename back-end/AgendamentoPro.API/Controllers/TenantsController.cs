@@ -1,6 +1,8 @@
 using AgendamentoPro.Application.InputModels.Tenants;
 using AgendamentoPro.Application.Interfaces.Tenants;
 using AgendamentoPro.Core.Interfaces.Common;
+using AgendamentoPro.Core.Interfaces.Database;
+using AgendamentoPro.Infrastructure.Database.Multitenancy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -59,5 +61,25 @@ namespace AgendamentoPro.API.Controllers
         public async Task<IActionResult> Regras([FromServices] IAtualizarTenantUseCase useCase,
             int id, [FromBody] AtualizarRegrasNegocioInputModel input)
             => Ok(await useCase.AtualizarRegrasAsync(id, input));
+
+        /// <summary>
+        /// Em modo PerTenant, inicializa o banco físico do tenant (cria arquivo .db
+        /// e aplica migrations). No-op em modo Shared. Idempotente.
+        /// </summary>
+        [HttpPost("{id:int}/inicializar-database")]
+        [Authorize(Policy = "SuperAdmin")]
+        public async Task<IActionResult> InicializarDatabase(
+            [FromServices] TenantDatabaseInitializer initializer,
+            [FromServices] ITenantConnectionFactory factory,
+            int id)
+        {
+            await initializer.EnsureDatabaseAsync(id);
+            return Ok(new
+            {
+                tenantId = id,
+                mode = factory.Mode,
+                exists = factory.DatabaseExists(id)
+            });
+        }
     }
 }

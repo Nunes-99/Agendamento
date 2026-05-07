@@ -17,11 +17,13 @@ using AgendamentoPro.Application.UseCases.Relatorios;
 using AgendamentoPro.Application.UseCases.Servicos;
 using AgendamentoPro.Application.UseCases.Tenants;
 using AgendamentoPro.Core.Interfaces.Common;
+using AgendamentoPro.Core.Interfaces.Database;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
 using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories;
+using AgendamentoPro.Infrastructure.Database.Multitenancy;
 using AgendamentoPro.Infrastructure.Database.UnitOfWork;
 using AgendamentoPro.Infrastructure.Services.Auth;
 using AgendamentoPro.Infrastructure.Services.Cache;
@@ -46,12 +48,45 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddSingleton<AuditInterceptor>();
             var provider = config["Database:Provider"] ?? "Sqlite";
             var conn = config.GetConnectionString("Default") ?? "Data Source=agendamento.db";
+
+            // Multi-tenancy: modo padrão é "Shared" (todos no mesmo banco). Modo
+            // "PerTenant" cria um arquivo .db por tenant (apenas SQLite hoje).
+            // Trocar via env DATABASE_MULTITENANCY=PerTenant ou config Database:Multitenancy.
+            var modoMultitenancy = (Environment.GetEnvironmentVariable("DATABASE_MULTITENANCY")
+                ?? config["Database:Multitenancy"] ?? "Shared").Trim();
+            if (modoMultitenancy.Equals("PerTenant", StringComparison.OrdinalIgnoreCase)
+                && provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
+                var tenantsPath = Environment.GetEnvironmentVariable("TENANTS_PATH")
+                    ?? config["Database:TenantsPath"]
+                    ?? Path.Combine(AppContext.BaseDirectory, "tenants");
+                services.AddSingleton<ITenantConnectionFactory>(_ =>
+                    new PerTenantSqliteConnectionFactory(conn, tenantsPath));
+            }
+            else
+            {
+                services.AddSingleton<ITenantConnectionFactory>(_ => new SharedConnectionFactory(conn));
+            }
+            services.AddSingleton(sp => new TenantDatabaseInitializer(
+                sp.GetRequiredService<ITenantConnectionFactory>(), provider,
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TenantDatabaseInitializer>>()));
+
             services.AddDbContext<AgendamentoProDbContext>((sp, opt) =>
             {
+                // Em PerTenant, a connection do tenant atual é resolvida via TenantContext.
+                // Quando não há tenant resolvido (login, super-admin), usa shared.
+                var factory = sp.GetRequiredService<ITenantConnectionFactory>();
+                int? tid = null;
+                if (factory.IsPerTenant)
+                {
+                    var tenantCtx = sp.GetService<ITenantContext>();
+                    tid = tenantCtx?.TenantId;
+                }
+                var connStr = factory.GetConnectionString(tid);
                 if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
-                    opt.UseSqlServer(conn);
+                    opt.UseSqlServer(connStr);
                 else
-                    opt.UseSqlite(conn);
+                    opt.UseSqlite(connStr);
                 opt.AddInterceptors(sp.GetRequiredService<AuditInterceptor>());
             });
 
@@ -100,8 +135,15 @@ namespace AgendamentoPro.Infrastructure.IoC
                 c.Timeout = TimeSpan.FromSeconds(15);
             });
 
-            // Background service que envia lembretes 24h e 2h antes do agendamento.
-            services.AddHostedService<LembreteBackgroundService>();
+            // Lembretes 24h e 2h: Hangfire por padrão (com retry automático e dashboard).
+            // Para reativar o BackgroundService legado, defina USE_LEGACY_REMINDER=true no env.
+            // Job recorrente é registrado em Program.cs após o build.
+            services.AddScoped<AgendamentoPro.Infrastructure.Services.WhatsApp.LembreteJob>();
+            if (string.Equals(Environment.GetEnvironmentVariable("USE_LEGACY_REMINDER"), "true",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddHostedService<LembreteBackgroundService>();
+            }
 
             // UseCases
             services.AddScoped<ILoginUseCase, LoginUseCase>();

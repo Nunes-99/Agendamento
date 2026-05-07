@@ -142,7 +142,48 @@ Em **Production** o startup **falha imediatamente** se:
 | **Concorrência** | Unique-index `(R_RecId, AgeData, AgeHoraInicio)` no `Agendamento` |
 | **Validação** | FluentValidation em todos os InputModels (action filter global) |
 | **Headers HTTP** | nginx adiciona CSP, HSTS, X-Frame-Options, X-Content-Type-Options |
-| **Logs** | Serilog enriquecido com CorrelationId / TenantId / UserId por request |
+| **Logs** | Serilog enriquecido com CorrelationId / TenantId / UserId / Environment / MachineName por request |
+| **Audit** | EF SaveChangesInterceptor grava `LogAuditoria` em INSERT/UPDATE/DELETE com user/IP/old+new (mascarando senhas/tokens) |
+| **Soft Delete** | Filter global automático em entidades `ISoftDeletable` — `.IgnoreQueryFilters()` recupera quando preciso |
+| **Cross-tenant guard** | `OnTokenValidated` rejeita token cujo tenantId não bate com o tenant resolvido pelo path/header |
+| **Forwarded headers** | API atrás de proxy reverso enxerga scheme/IP/host reais |
+| **Background jobs** | Hangfire (in-memory storage) com retry automático + dashboard `/hangfire` (admin) |
+| **Cache** | `ITenantCache` (decorator do IMemoryCache) com prefixo `tenant:{id}:` automático |
+
+## Multi-tenancy: modo de banco
+
+Por default cada deploy usa **um banco compartilhado** com isolamento via foreign key
+`R_TenId` em todas as entidades + índices compostos. Funciona bem até centenas de
+tenants e é o recomendado.
+
+Para deploys que precisam de isolamento físico (LGPD-friendly, backup por tenant):
+
+```env
+DATABASE_MULTITENANCY=PerTenant
+TENANTS_PATH=/data/tenants
+```
+
+Em modo **PerTenant** cada tenant tem seu próprio arquivo SQLite. Para inicializar
+o banco físico de um tenant:
+
+```http
+POST /api/tenants/{id}/inicializar-database
+Authorization: Bearer <token-superadmin>
+```
+
+A operação é idempotente. A migração de dados existentes (Shared → PerTenant)
+precisa de tooling que copie linhas — não está incluído ainda.
+
+## Background jobs (lembretes)
+
+Lembretes 24h/2h rodam por default via **Hangfire** com storage in-memory:
+
+- Retry automático (3 tentativas, backoff 60s/5min/15min)
+- Dashboard em `/hangfire` (autenticado, SuperAdmin/Administrador)
+- Para reativar o BackgroundService legado, set `USE_LEGACY_REMINDER=true`
+
+Para persistir jobs entre restarts em produção real, troque `UseMemoryStorage()`
+por `UseSqlServerStorage(...)` ou `UsePostgreSqlStorage(...)` em `Program.cs`.
 
 ## Migrations
 
