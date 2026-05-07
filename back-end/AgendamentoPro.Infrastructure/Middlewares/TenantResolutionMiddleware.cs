@@ -32,15 +32,23 @@ namespace AgendamentoPro.Infrastructure.Middlewares
                 if (t != null) tenantContext.SetTenant(t.TenId, t.TenSlug);
             }
 
-            // 3) Path /api/t/{slug}/...
+            // 3) Path /api/t/{slug}/... (e /api/v{N}/t/{slug}/... pós-versionamento)
             if (!tenantContext.IsResolved)
             {
                 var path = context.Request.Path.Value ?? string.Empty;
                 var parts = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase)
-                    && parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+                string slugPath = null;
+                if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
-                    var t = await tenants.GetBySlugAsync(parts[2]);
+                    if (parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+                        slugPath = parts[2];
+                    else if (parts.Length >= 4 && parts[1].StartsWith("v", StringComparison.OrdinalIgnoreCase)
+                        && parts[2].Equals("t", StringComparison.OrdinalIgnoreCase))
+                        slugPath = parts[3];
+                }
+                if (!string.IsNullOrEmpty(slugPath))
+                {
+                    var t = await tenants.GetBySlugAsync(slugPath);
                     if (t != null) tenantContext.SetTenant(t.TenId, t.TenSlug);
                 }
             }

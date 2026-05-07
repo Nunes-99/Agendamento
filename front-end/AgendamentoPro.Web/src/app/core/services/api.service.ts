@@ -284,4 +284,29 @@ export class ApiService {
     return this.http.post<{ codigo: string; valor: number; validoAte: string }>(
       `${this.base}/admin/fidelidade/trocar-por-cupom`, { clienteId, pontos });
   }
+
+  // ----- OTP / Minha Conta (cliente final) -----
+  solicitarOtp(slug: string, telefone: string) {
+    return this.http.post<{ enviado: boolean; expiraEm: string; cooldownSegundos: number; codigoDev?: string }>(
+      `${this.base}/t/${slug}/otp/solicitar`, { telefone });
+  }
+  validarOtp(slug: string, telefone: string, codigo: string) {
+    return this.http.post<{ valido: boolean; token: string; expiracao: string; clienteId: number; clienteNome: string; mensagem?: string }>(
+      `${this.base}/t/${slug}/otp/validar`, { telefone, codigo });
+  }
+  minhaConta(slug: string) {
+    return this.http.get<any>(`${this.base}/t/${slug}/minha-conta`);
+  }
+  atualizarMinhaConta(slug: string, input: { nome?: string; email?: string }) {
+    return this.http.put<any>(`${this.base}/t/${slug}/minha-conta`, input);
+  }
+  meusAgendamentos(slug: string) {
+    return this.http.get<any[]>(`${this.base}/t/${slug}/minha-conta/agendamentos`);
+  }
+  meusPacotes(slug: string) {
+    return this.http.get<any[]>(`${this.base}/t/${slug}/minha-conta/pacotes`);
+  }
+  minhaFidelidade(slug: string) {
+    return this.http.get<{ saldo: number }>(`${this.base}/t/${slug}/minha-conta/fidelidade`);
+  }
 }

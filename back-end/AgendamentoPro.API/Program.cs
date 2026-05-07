@@ -153,10 +153,14 @@ try
                 var path = ctx.HttpContext.Request.Path.Value ?? "";
                 var parts = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string slugDoRequest = null;
-                if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase)
-                    && parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+                // Suporta /api/t/{slug}/... e /api/v{N}/t/{slug}/...
+                if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
-                    slugDoRequest = parts[2];
+                    if (parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+                        slugDoRequest = parts[2];
+                    else if (parts.Length >= 4 && parts[1].StartsWith("v", StringComparison.OrdinalIgnoreCase)
+                        && parts[2].Equals("t", StringComparison.OrdinalIgnoreCase))
+                        slugDoRequest = parts[3];
                 }
                 else if (ctx.HttpContext.Request.Headers.TryGetValue("X-Tenant-Slug", out var slugHeader))
                 {
@@ -199,10 +203,15 @@ try
         var path = httpCtx.Request.Path.Value ?? "";
         string slug = "_";
         var parts = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase)
-            && parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
-            slug = parts[2];
-        else if (httpCtx.Request.Headers.TryGetValue("X-Tenant-Slug", out var h))
+        if (parts.Length >= 3 && parts[0].Equals("api", StringComparison.OrdinalIgnoreCase))
+        {
+            if (parts[1].Equals("t", StringComparison.OrdinalIgnoreCase))
+                slug = parts[2];
+            else if (parts.Length >= 4 && parts[1].StartsWith("v", StringComparison.OrdinalIgnoreCase)
+                && parts[2].Equals("t", StringComparison.OrdinalIgnoreCase))
+                slug = parts[3];
+        }
+        if (slug == "_" && httpCtx.Request.Headers.TryGetValue("X-Tenant-Slug", out var h))
             slug = h.ToString();
         return $"{slug}|{ip}";
     }

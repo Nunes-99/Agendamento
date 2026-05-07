@@ -12,7 +12,7 @@ namespace AgendamentoPro.API.Controllers
     {
         // ----- Endpoints públicos (cliente final) -----
 
-        [HttpGet("api/avaliacoes/{token:guid}")]
+        [HttpGet("api/v1/avaliacoes/{token:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> Buscar(
             [FromServices] IAvaliacaoUseCase useCase, Guid token)
@@ -21,14 +21,14 @@ namespace AgendamentoPro.API.Controllers
             return v == null ? NotFound() : Ok(v);
         }
 
-        [HttpPost("api/avaliacoes/{token:guid}")]
+        [HttpPost("api/v1/avaliacoes/{token:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> Responder(
             [FromServices] IAvaliacaoUseCase useCase, Guid token,
             [FromBody] ResponderAvaliacaoInputModel input)
             => Ok(await useCase.ResponderAsync(token, input));
 
-        [HttpGet("api/t/{slug}/avaliacoes")]
+        [HttpGet("api/v1/t/{slug}/avaliacoes")]
         [AllowAnonymous]
         public async Task<IActionResult> ResumoPublico(
             [FromServices] IAvaliacaoUseCase useCase,
@@ -41,7 +41,7 @@ namespace AgendamentoPro.API.Controllers
 
         // ----- Endpoints administrativos -----
 
-        [HttpPost("api/admin/agendamentos/{agendamentoId:int}/avaliacao-link")]
+        [HttpPost("api/v1/admin/agendamentos/{agendamentoId:int}/avaliacao-link")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> ObterLinkAvaliacao(
             [FromServices] IAvaliacaoUseCase useCase,
@@ -52,7 +52,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(new { token, path = $"/avaliar/{token}" });
         }
 
-        [HttpGet("api/admin/avaliacoes")]
+        [HttpGet("api/v1/admin/avaliacoes")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Listar(
             [FromServices] IAvaliacaoUseCase useCase,
@@ -65,7 +65,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(new { items, total, page, pageSize });
         }
 
-        [HttpPost("api/admin/avaliacoes/{id:int}/visibilidade")]
+        [HttpPost("api/v1/admin/avaliacoes/{id:int}/visibilidade")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> AlterarVisibilidade(
             [FromServices] IAvaliacaoUseCase useCase,

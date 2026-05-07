@@ -11,7 +11,7 @@ namespace AgendamentoPro.API.Controllers
     public class ServicosController : BaseTenantController
     {
         // Endpoint público para o site do tenant
-        [HttpGet("api/t/{slug}/servicos")]
+        [HttpGet("api/v1/t/{slug}/servicos")]
         [AllowAnonymous]
         public async Task<IActionResult> ListarPublico(
             [FromServices] IConsultarServicoUseCase useCase,
@@ -21,7 +21,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ListarAsync(tenantId, somenteAtivos: true));
         }
 
-        [HttpGet("api/admin/servicos")]
+        [HttpGet("api/v1/admin/servicos")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> ListarAdmin(
             [FromServices] IConsultarServicoUseCase useCase,
@@ -32,7 +32,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ListarAsync(tenantId, somenteAtivos));
         }
 
-        [HttpGet("api/admin/servicos/{id:int}")]
+        [HttpGet("api/v1/admin/servicos/{id:int}")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> PorId(
             [FromServices] IConsultarServicoUseCase useCase,
@@ -43,7 +43,7 @@ namespace AgendamentoPro.API.Controllers
             return s == null ? NotFound() : Ok(s);
         }
 
-        [HttpPost("api/admin/servicos")]
+        [HttpPost("api/v1/admin/servicos")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Cadastrar(
             [FromServices] ICadastrarServicoUseCase useCase,
@@ -55,7 +55,7 @@ namespace AgendamentoPro.API.Controllers
             return CreatedAtAction(nameof(PorId), new { id = s.Id }, s);
         }
 
-        [HttpPut("api/admin/servicos/{id:int}")]
+        [HttpPut("api/v1/admin/servicos/{id:int}")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Atualizar(
             [FromServices] IAtualizarServicoUseCase useCase,
@@ -66,7 +66,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ExecuteAsync(tenantId, id, input));
         }
 
-        [HttpDelete("api/admin/servicos/{id:int}")]
+        [HttpDelete("api/v1/admin/servicos/{id:int}")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Excluir(
             [FromServices] IInativarServicoUseCase useCase,

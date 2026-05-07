@@ -13,7 +13,7 @@ namespace AgendamentoPro.API.Controllers
     {
         // ----- Endpoints públicos (catalog) -----
 
-        [HttpGet("api/t/{slug}/combos")]
+        [HttpGet("api/v1/t/{slug}/combos")]
         [AllowAnonymous]
         public async Task<IActionResult> ListarPublico(
             [FromServices] IComboUseCase useCase,
@@ -23,7 +23,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ListarAsync(tid, somenteAtivos: true));
         }
 
-        [HttpPost("api/t/{slug}/combos/{id:int}/agendar")]
+        [HttpPost("api/v1/t/{slug}/combos/{id:int}/agendar")]
         [AllowAnonymous]
         [EnableRateLimiting("auth")]
         public async Task<IActionResult> AgendarPublico(
@@ -37,7 +37,7 @@ namespace AgendamentoPro.API.Controllers
 
         // ----- Endpoints administrativos -----
 
-        [HttpGet("api/admin/combos")]
+        [HttpGet("api/v1/admin/combos")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Listar(
             [FromServices] IComboUseCase useCase,
@@ -48,7 +48,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ListarAsync(tid, somenteAtivos));
         }
 
-        [HttpGet("api/admin/combos/{id:int}")]
+        [HttpGet("api/v1/admin/combos/{id:int}")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Obter(
             [FromServices] IComboUseCase useCase,
@@ -59,7 +59,7 @@ namespace AgendamentoPro.API.Controllers
             return v == null ? NotFound() : Ok(v);
         }
 
-        [HttpPost("api/admin/combos")]
+        [HttpPost("api/v1/admin/combos")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Criar(
             [FromServices] IComboUseCase useCase,
@@ -70,7 +70,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.CriarAsync(tid, input));
         }
 
-        [HttpPut("api/admin/combos/{id:int}")]
+        [HttpPut("api/v1/admin/combos/{id:int}")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Atualizar(
             [FromServices] IComboUseCase useCase,
@@ -81,7 +81,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.AtualizarAsync(tid, id, input));
         }
 
-        [HttpDelete("api/admin/combos/{id:int}")]
+        [HttpDelete("api/v1/admin/combos/{id:int}")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Remover(
             [FromServices] IComboUseCase useCase,

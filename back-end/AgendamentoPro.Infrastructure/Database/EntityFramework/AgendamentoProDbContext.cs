@@ -43,6 +43,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<BloqueioAgenda> BloqueiosAgenda { get; set; }
         public DbSet<Notificacao> Notificacoes { get; set; }
         public DbSet<LogAuditoria> LogsAuditoria { get; set; }
+        public DbSet<OtpChallenge> OtpChallenges { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -302,6 +303,15 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
                 e.HasOne(x => x.Cliente).WithMany().HasForeignKey(x => x.R_CliId);
                 e.HasIndex(x => new { x.R_TenId, x.R_CliId }).IsUnique();
+            });
+
+            mb.Entity<OtpChallenge>(e =>
+            {
+                e.ToTable("OtpChallenge");
+                e.HasKey(x => x.OtpId);
+                e.Property(x => x.OtpTelefone).HasMaxLength(30).IsRequired();
+                e.Property(x => x.OtpCodigoHash).HasMaxLength(100).IsRequired();
+                e.HasIndex(x => new { x.R_TenId, x.OtpTelefone, x.OtpCriadoEm });
             });
 
             mb.Entity<Cupom>(e =>

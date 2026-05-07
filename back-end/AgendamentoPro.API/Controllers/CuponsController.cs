@@ -23,7 +23,7 @@ namespace AgendamentoPro.API.Controllers
         }
 
         // Admin: CRUD
-        [HttpGet("api/admin/cupons")]
+        [HttpGet("api/v1/admin/cupons")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Listar(
             [FromServices] AgendamentoProDbContext ctx,
@@ -36,7 +36,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(lista);
         }
 
-        [HttpPost("api/admin/cupons")]
+        [HttpPost("api/v1/admin/cupons")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Criar(
             [FromServices] AgendamentoProDbContext ctx,
@@ -52,7 +52,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(c);
         }
 
-        [HttpPost("api/admin/cupons/{id:int}/ativar")]
+        [HttpPost("api/v1/admin/cupons/{id:int}/ativar")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> AlternarAtivo(
             [FromServices] AgendamentoProDbContext ctx,
@@ -69,7 +69,7 @@ namespace AgendamentoPro.API.Controllers
         }
 
         // Público: cliente final valida cupom no checkout
-        [HttpGet("api/t/{slug}/cupons/{codigo}/validar")]
+        [HttpGet("api/v1/t/{slug}/cupons/{codigo}/validar")]
         [AllowAnonymous]
         public async Task<IActionResult> Validar(
             [FromServices] AgendamentoProDbContext ctx,

@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AgendamentoPro.API.Controllers
 {
     [ApiController]
-    [Route("api/admin/clientes")]
+    [Route("api/v1/admin/clientes")]
     [Produces("application/json")]
     [Authorize(Policy = "Atendente")]
     public class ClientesController : BaseTenantController

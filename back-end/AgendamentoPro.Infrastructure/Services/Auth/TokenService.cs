@@ -55,5 +55,36 @@ namespace AgendamentoPro.Infrastructure.Services.Auth
             rng.GetBytes(bytes);
             return Convert.ToBase64String(bytes);
         }
+
+        public (string Token, DateTime Expiracao) GerarTokenCliente(int clienteId, int tenantId, string slugTenant)
+        {
+            var settings = _config.GetSection("JwtSettings");
+            var secret = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? settings["SecretKey"]
+                ?? throw new InvalidOperationException("JWT SecretKey não configurado.");
+            var dias = int.TryParse(settings["ClienteTokenDias"], out var d) ? d : 7;
+            var expiracao = DateTime.UtcNow.AddDays(dias);
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, clienteId.ToString()),
+                new(ClaimTypes.Role, "Cliente"),
+                new("tipo", "cliente"),
+                new("clienteId", clienteId.ToString()),
+                new("tenantId", tenantId.ToString()),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+            if (!string.IsNullOrEmpty(slugTenant))
+                claims.Add(new Claim("tenantSlug", slugTenant));
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                issuer: settings["Issuer"],
+                audience: settings["Audience"],
+                claims: claims,
+                expires: expiracao,
+                signingCredentials: creds);
+            return (new JwtSecurityTokenHandler().WriteToken(token), expiracao);
+        }
     }
 }

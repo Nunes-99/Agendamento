@@ -15,7 +15,7 @@ namespace AgendamentoPro.API.Controllers
     /// ao cliente por WhatsApp/email no link "/t/{slug}/meu-agendamento/{token}".
     /// </summary>
     [ApiController]
-    [Route("api/agendamentos/acesso")]
+    [Route("api/v1/agendamentos/acesso")]
     [AllowAnonymous]
     [Produces("application/json")]
     public class MeuAgendamentoController : ControllerBase

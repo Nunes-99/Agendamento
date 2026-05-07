@@ -13,6 +13,8 @@ export const routes: Routes = [
       { path: 'agendar/:servicoId', loadComponent: () => import('./features/public/agendar/agendar.component').then(m => m.AgendarComponent) },
       { path: 'pacotes', loadComponent: () => import('./features/public/pacotes/comprar-pacote.component').then(m => m.ComprarPacoteComponent) },
       { path: 'lista-espera-publica', loadComponent: () => import('./features/public/lista-espera/lista-espera-publica.component').then(m => m.ListaEsperaPublicaComponent) },
+      { path: 'entrar', loadComponent: () => import('./features/public/minha-conta/entrar.component').then(m => m.EntrarClienteComponent) },
+      { path: 'minha-conta', loadComponent: () => import('./features/public/minha-conta/minha-conta.component').then(m => m.MinhaContaComponent) },
       { path: 'pagamento/:agendamentoId', loadComponent: () => import('./features/public/pagamento/pagamento.component').then(m => m.PagamentoComponent) },
       { path: 'confirmacao/:agendamentoId', loadComponent: () => import('./features/public/confirmacao/confirmacao.component').then(m => m.ConfirmacaoComponent) }
     ]

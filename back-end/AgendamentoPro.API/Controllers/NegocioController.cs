@@ -35,7 +35,7 @@ namespace AgendamentoPro.API.Controllers
             public DateTime DataInicio { get; set; }
         }
 
-        [HttpPost("api/admin/recorrencias")]
+        [HttpPost("api/v1/admin/recorrencias")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> CriarRecorrencia(
             [FromServices] AgendamentoProDbContext ctx,
@@ -78,7 +78,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(new { recorrenciaId = rec.RecId, criados = criados.Count, ids = criados, erros });
         }
 
-        [HttpGet("api/admin/recorrencias")]
+        [HttpGet("api/v1/admin/recorrencias")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> ListarRecorrencias(
             [FromServices] AgendamentoProDbContext ctx,
@@ -103,7 +103,7 @@ namespace AgendamentoPro.API.Controllers
             public int ValidadeDias { get; set; }
         }
 
-        [HttpGet("api/admin/pacotes")]
+        [HttpGet("api/v1/admin/pacotes")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> ListarPacotes(
             [FromServices] AgendamentoProDbContext ctx,
@@ -117,7 +117,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(lista);
         }
 
-        [HttpPost("api/admin/pacotes")]
+        [HttpPost("api/v1/admin/pacotes")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> CriarPacote(
             [FromServices] AgendamentoProDbContext ctx,
@@ -133,7 +133,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(pacote);
         }
 
-        [HttpPost("api/t/{slug}/pacotes/{pacoteId:int}/comprar")]
+        [HttpPost("api/v1/t/{slug}/pacotes/{pacoteId:int}/comprar")]
         [AllowAnonymous]
         public async Task<IActionResult> ComprarPacote(
             [FromServices] AgendamentoProDbContext ctx,
@@ -184,7 +184,7 @@ namespace AgendamentoPro.API.Controllers
             });
         }
 
-        [HttpGet("api/t/{slug}/saldos-pacote/{saldoId:int}")]
+        [HttpGet("api/v1/t/{slug}/saldos-pacote/{saldoId:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> ConsultarSaldoPacote(
             [FromServices] AgendamentoProDbContext ctx,
@@ -203,7 +203,7 @@ namespace AgendamentoPro.API.Controllers
             });
         }
 
-        [HttpGet("api/t/{slug}/pacotes")]
+        [HttpGet("api/v1/t/{slug}/pacotes")]
         [AllowAnonymous]
         public async Task<IActionResult> ListarPacotesPublico(
             [FromServices] AgendamentoProDbContext ctx,
@@ -218,7 +218,7 @@ namespace AgendamentoPro.API.Controllers
 
         // ============== Fidelidade ==============
 
-        [HttpGet("api/admin/fidelidade/clientes/{clienteId:int}")]
+        [HttpGet("api/v1/admin/fidelidade/clientes/{clienteId:int}")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> SaldoPontos(
             [FromServices] AgendamentoProDbContext ctx,
@@ -232,7 +232,7 @@ namespace AgendamentoPro.API.Controllers
 
         public class TrocarPontosInput { public int ClienteId { get; set; } public int Pontos { get; set; } }
 
-        [HttpPost("api/admin/fidelidade/trocar-por-cupom")]
+        [HttpPost("api/v1/admin/fidelidade/trocar-por-cupom")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> TrocarPorCupom(
             [FromServices] AgendamentoProDbContext ctx,

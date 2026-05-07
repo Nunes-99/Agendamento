@@ -118,6 +118,7 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IPontosFidelidadeRepository, PontosFidelidadeRepository>();
             services.AddScoped<ISaldoPacoteRepository, SaldoPacoteRepository>();
             services.AddScoped<IHorarioFuncionamentoRepository, HorarioFuncionamentoRepository>();
+            services.AddScoped<IOtpChallengeRepository, OtpChallengeRepository>();
 
             // Serviços de domínio
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
@@ -154,6 +155,7 @@ namespace AgendamentoPro.Infrastructure.IoC
 
             // UseCases
             services.AddScoped<ILoginUseCase, LoginUseCase>();
+            services.AddScoped<IOtpUseCase, OtpUseCase>();
             services.AddScoped<ISolicitarResetSenhaUseCase, SolicitarResetSenhaUseCase>();
             services.AddScoped<IRedefinirSenhaUseCase, RedefinirSenhaUseCase>();
             services.AddScoped<IRefreshTokenUseCase, RefreshTokenUseCase>();

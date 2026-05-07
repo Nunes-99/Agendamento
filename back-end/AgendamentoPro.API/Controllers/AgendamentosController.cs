@@ -14,7 +14,7 @@ namespace AgendamentoPro.API.Controllers
     {
         // ----- Endpoints públicos (cliente final agenda) -----
 
-        [HttpGet("api/t/{slug}/slots")]
+        [HttpGet("api/v1/t/{slug}/slots")]
         [AllowAnonymous]
         public async Task<IActionResult> Slots(
             [FromServices] IConsultarSlotsUseCase useCase,
@@ -26,7 +26,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ExecuteAsync(tid, servicoId, data, recursoId));
         }
 
-        [HttpPost("api/t/{slug}/agendamentos")]
+        [HttpPost("api/v1/t/{slug}/agendamentos")]
         [AllowAnonymous]
         public async Task<IActionResult> Criar(
             [FromServices] ICriarAgendamentoUseCase useCase,
@@ -38,7 +38,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("api/t/{slug}/agendamentos/{id:int}")]
+        [HttpGet("api/v1/t/{slug}/agendamentos/{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> Status(
             [FromServices] IConsultarAgendamentoUseCase useCase,
@@ -49,7 +49,7 @@ namespace AgendamentoPro.API.Controllers
             return ag == null ? NotFound() : Ok(ag);
         }
 
-        [HttpGet("api/t/{slug}/combos/grupos/{grupoComboId:guid}")]
+        [HttpGet("api/v1/t/{slug}/combos/grupos/{grupoComboId:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> AgendamentosDoCombo(
             [FromServices] IConsultarAgendamentoUseCase useCase,
@@ -62,7 +62,7 @@ namespace AgendamentoPro.API.Controllers
 
         // ----- Endpoints administrativos -----
 
-        [HttpGet("api/admin/agendamentos")]
+        [HttpGet("api/v1/admin/agendamentos")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Listar(
             [FromServices] IConsultarAgendamentoUseCase useCase,
@@ -75,7 +75,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ListarPaginadoAsync(tid, page, pageSize, data, status));
         }
 
-        [HttpGet("api/admin/agendamentos/agenda")]
+        [HttpGet("api/v1/admin/agendamentos/agenda")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Agenda(
             [FromServices] IConsultarAgendamentoUseCase useCase,
@@ -93,7 +93,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.AgendaDoDiaAsync(tid, data.Value, recursoId));
         }
 
-        [HttpPost("api/admin/agendamentos")]
+        [HttpPost("api/v1/admin/agendamentos")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> CriarAdmin(
             [FromServices] ICriarAgendamentoUseCase useCase,
@@ -104,7 +104,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ExecuteAdminAsync(tid, input));
         }
 
-        [HttpPost("api/admin/agendamentos/{id:int}/reagendar")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/reagendar")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Reagendar(
             [FromServices] IReagendarUseCase useCase,
@@ -115,7 +115,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ExecuteAsync(tid, id, input));
         }
 
-        [HttpPost("api/admin/agendamentos/{id:int}/cancelar")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/cancelar")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Cancelar(
             [FromServices] ICancelarAgendamentoUseCase useCase,
@@ -126,7 +126,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ExecuteAsync(tid, id, input));
         }
 
-        [HttpPost("api/admin/agendamentos/{id:int}/iniciar")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/iniciar")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Iniciar(
             [FromServices] IAlterarStatusAgendamentoUseCase useCase,
@@ -136,7 +136,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.IniciarAsync(tid, id));
         }
 
-        [HttpPost("api/admin/agendamentos/{id:int}/concluir")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/concluir")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Concluir(
             [FromServices] IAlterarStatusAgendamentoUseCase useCase,
@@ -146,7 +146,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ConcluirAsync(tid, id));
         }
 
-        [HttpPost("api/admin/agendamentos/{id:int}/no-show")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/no-show")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> NoShow(
             [FromServices] IAlterarStatusAgendamentoUseCase useCase,
@@ -156,7 +156,7 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.NoShowAsync(tid, id));
         }
 
-        [HttpPost("api/admin/agendamentos/{id:int}/confirmar-pagamento")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/confirmar-pagamento")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> ConfirmarPagamento(
             [FromServices] IAlterarStatusAgendamentoUseCase useCase,
@@ -168,7 +168,7 @@ namespace AgendamentoPro.API.Controllers
 
         // ----- Fotos antes/depois -----
 
-        [HttpPost("api/admin/agendamentos/{id:int}/fotos")]
+        [HttpPost("api/v1/admin/agendamentos/{id:int}/fotos")]
         [Authorize(Policy = "Atendente")]
         [RequestSizeLimit(15_000_000)]
         public async Task<IActionResult> UploadFoto(
@@ -182,13 +182,13 @@ namespace AgendamentoPro.API.Controllers
             return Ok(vm);
         }
 
-        [HttpGet("api/admin/agendamentos/{id:int}/fotos")]
+        [HttpGet("api/v1/admin/agendamentos/{id:int}/fotos")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> ListarFotos(
             [FromServices] IFotoAgendamentoUseCase useCase, int id)
             => Ok(await useCase.ListarAsync(id));
 
-        [HttpDelete("api/admin/agendamentos/fotos/{fotoId:int}")]
+        [HttpDelete("api/v1/admin/agendamentos/fotos/{fotoId:int}")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> RemoverFoto(
             [FromServices] IFotoAgendamentoUseCase useCase, int fotoId)

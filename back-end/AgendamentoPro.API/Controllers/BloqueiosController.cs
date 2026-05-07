@@ -12,7 +12,7 @@ namespace AgendamentoPro.API.Controllers
     /// A entidade já era utilizada pelo DisponibilidadeService mas só era criada via banco.
     /// </summary>
     [ApiController]
-    [Route("api/admin/bloqueios")]
+    [Route("api/v1/admin/bloqueios")]
     [Authorize(Policy = "AdminTenant")]
     [Produces("application/json")]
     public class BloqueiosController : BaseTenantController

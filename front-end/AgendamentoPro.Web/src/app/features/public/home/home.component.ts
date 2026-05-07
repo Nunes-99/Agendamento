@@ -32,10 +32,16 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
             <img *ngIf="tenant()?.personalizacao?.logoUrl as logo" [src]="logo" alt="logo" class="logo" />
             <h1>{{ tenant()?.nome }}</h1>
             <p *ngIf="tenant()?.descricao as desc">{{ desc }}</p>
-            <a mat-flat-button color="primary" [routerLink]="['/t', slug, 'servicos']">
-              <mat-icon>event</mat-icon>
-              Agendar agora
-            </a>
+            <div class="cta">
+              <a mat-flat-button color="primary" [routerLink]="['/t', slug, 'servicos']">
+                <mat-icon>event</mat-icon>
+                Agendar agora
+              </a>
+              <a mat-stroked-button [routerLink]="['/t', slug, 'entrar']" class="entrar">
+                <mat-icon>account_circle</mat-icon>
+                Minha conta
+              </a>
+            </div>
           </div>
         </header>
 
@@ -94,6 +100,8 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
   `,
   styleUrls: ['./home.component.scss'],
   styles: [`
+    .cta { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .cta .entrar { background: rgba(255,255,255,0.85); }
     .avaliacoes { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
     .avaliacoes h2 { display: flex; align-items: center; gap: 0.5rem; }
     .resumo { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }

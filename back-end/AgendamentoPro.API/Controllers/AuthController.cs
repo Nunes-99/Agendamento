@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace AgendamentoPro.API.Controllers
 {
     [ApiController]
-    [Route("api/auth")]
+    [Route("api/v1/auth")]
     [Produces("application/json")]
     [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase

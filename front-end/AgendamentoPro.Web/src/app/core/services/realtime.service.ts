@@ -17,7 +17,7 @@ export class RealtimeService {
     const token = this.auth.user()?.accessToken;
     if (!token) return;
 
-    const baseHub = environment.apiUrl.replace(/\/api\/?$/, '');
+    const baseHub = environment.apiUrl.replace(/\/api(\/v\d+)?\/?$/, '');
     this.connection = new HubConnectionBuilder()
       .withUrl(`${baseHub}/hubs/notificacoes`, { accessTokenFactory: () => token })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])

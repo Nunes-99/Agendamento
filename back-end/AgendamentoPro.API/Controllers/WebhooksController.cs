@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace AgendamentoPro.API.Controllers
 {
     [ApiController]
-    [Route("api/webhooks")]
+    [Route("api/v1/webhooks")]
     [AllowAnonymous]
     [EnableRateLimiting("webhook")]
     [Produces("application/json")]

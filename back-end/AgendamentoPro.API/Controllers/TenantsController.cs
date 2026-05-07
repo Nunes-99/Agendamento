@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AgendamentoPro.API.Controllers
 {
     [ApiController]
-    [Route("api/tenants")]
+    [Route("api/v1/tenants")]
     [Produces("application/json")]
     public class TenantsController : BaseTenantController
     {

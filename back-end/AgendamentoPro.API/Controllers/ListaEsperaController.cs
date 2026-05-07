@@ -28,7 +28,7 @@ namespace AgendamentoPro.API.Controllers
         }
 
         // Público: cliente entra na espera
-        [HttpPost("api/t/{slug}/lista-espera")]
+        [HttpPost("api/v1/t/{slug}/lista-espera")]
         [AllowAnonymous]
         [EnableRateLimiting("auth")]
         public async Task<IActionResult> Entrar(
@@ -46,7 +46,7 @@ namespace AgendamentoPro.API.Controllers
         }
 
         // Admin: lista espera
-        [HttpGet("api/admin/lista-espera")]
+        [HttpGet("api/v1/admin/lista-espera")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Listar(
             [FromServices] AgendamentoProDbContext ctx,
@@ -77,7 +77,7 @@ namespace AgendamentoPro.API.Controllers
         }
 
         // Admin: marca como notificado
-        [HttpPost("api/admin/lista-espera/{id:int}/notificar")]
+        [HttpPost("api/v1/admin/lista-espera/{id:int}/notificar")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> MarcarNotificado(
             [FromServices] AgendamentoProDbContext ctx,

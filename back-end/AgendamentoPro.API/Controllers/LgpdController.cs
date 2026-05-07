@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AgendamentoPro.API.Controllers
 {
     [ApiController]
-    [Route("api/admin/lgpd")]
+    [Route("api/v1/admin/lgpd")]
     [Produces("application/json")]
     public class LgpdController : BaseTenantController
     {

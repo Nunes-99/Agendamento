@@ -16,7 +16,7 @@ namespace AgendamentoPro.API.Controllers
     ///   3. POST /desativar → exige código atual e desativa
     /// </summary>
     [ApiController]
-    [Route("api/admin/2fa")]
+    [Route("api/v1/admin/2fa")]
     [Authorize]
     [Produces("application/json")]
     public class TwoFactorController : BaseTenantController

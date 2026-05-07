@@ -13,7 +13,7 @@ namespace AgendamentoPro.API.Controllers
     /// fechar caixa do dia, importação de clientes via CSV.
     /// </summary>
     [ApiController]
-    [Route("api/admin/tools")]
+    [Route("api/v1/admin/tools")]
     [Authorize(Policy = "AdminTenant")]
     [Produces("application/json")]
     public class AdminToolsController : BaseTenantController
