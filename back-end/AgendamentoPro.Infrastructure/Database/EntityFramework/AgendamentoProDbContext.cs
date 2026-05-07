@@ -35,6 +35,10 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<ComboServico> ComboServicos { get; set; }
         public DbSet<ListaEspera> ListaEspera { get; set; }
         public DbSet<Cupom> Cupons { get; set; }
+        public DbSet<AgendamentoRecorrente> AgendamentosRecorrentes { get; set; }
+        public DbSet<PacotePrePago> PacotesPrePagos { get; set; }
+        public DbSet<SaldoPacote> SaldosPacote { get; set; }
+        public DbSet<PontosFidelidade> PontosFidelidade { get; set; }
         public DbSet<HorarioFuncionamento> HorariosFuncionamento { get; set; }
         public DbSet<BloqueioAgenda> BloqueiosAgenda { get; set; }
         public DbSet<Notificacao> Notificacoes { get; set; }
@@ -256,6 +260,45 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.HasOne(x => x.Combo).WithMany(c => c.Servicos).HasForeignKey(x => x.R_ComId);
                 e.HasOne(x => x.Servico).WithMany().HasForeignKey(x => x.R_SerId);
                 e.HasIndex(x => new { x.R_ComId, x.R_SerId }).IsUnique();
+            });
+
+            mb.Entity<AgendamentoRecorrente>(e =>
+            {
+                e.ToTable("AgendamentoRecorrente");
+                e.HasKey(x => x.RecId);
+                e.Property(x => x.RecDiaSemana).HasConversion<int>();
+                e.Property(x => x.RecFrequencia).HasConversion<int>();
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasIndex(x => new { x.R_TenId, x.RecAtivo });
+            });
+
+            mb.Entity<PacotePrePago>(e =>
+            {
+                e.ToTable("PacotePrePago");
+                e.HasKey(x => x.PctId);
+                e.Property(x => x.PctNome).HasMaxLength(150).IsRequired();
+                e.Property(x => x.PctPreco).HasPrecision(10, 2);
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasOne(x => x.Servico).WithMany().HasForeignKey(x => x.R_SerId);
+                e.HasIndex(x => new { x.R_TenId, x.PctAtivo });
+            });
+
+            mb.Entity<SaldoPacote>(e =>
+            {
+                e.ToTable("SaldoPacote");
+                e.HasKey(x => x.SaldId);
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasOne(x => x.Pacote).WithMany().HasForeignKey(x => x.R_PctId);
+                e.HasIndex(x => new { x.R_TenId, x.R_CliId });
+            });
+
+            mb.Entity<PontosFidelidade>(e =>
+            {
+                e.ToTable("PontosFidelidade");
+                e.HasKey(x => x.PtsId);
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasOne(x => x.Cliente).WithMany().HasForeignKey(x => x.R_CliId);
+                e.HasIndex(x => new { x.R_TenId, x.R_CliId }).IsUnique();
             });
 
             mb.Entity<Cupom>(e =>

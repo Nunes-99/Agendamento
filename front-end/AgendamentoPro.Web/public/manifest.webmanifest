@@ -1,0 +1,14 @@
+{
+  "name": "AgendamentoPro",
+  "short_name": "AgendaPro",
+  "theme_color": "#6366f1",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" },
+    { "src": "logo.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+  ]
+}

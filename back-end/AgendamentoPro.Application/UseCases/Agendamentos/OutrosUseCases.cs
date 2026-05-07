@@ -7,6 +7,7 @@ using AgendamentoPro.Core.Enums;
 using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace AgendamentoPro.Application.UseCases.Agendamentos
 {
@@ -122,12 +123,52 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
     public class CancelarAgendamentoUseCase : ICancelarAgendamentoUseCase
     {
         private readonly IAgendamentoRepository _agendamentos;
+        private readonly IListaEsperaRepository _esperaRepo;
+        private readonly Core.Interfaces.Services.INotificadorWhatsApp _whatsapp;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _config;
+        private readonly Microsoft.Extensions.Logging.ILogger<CancelarAgendamentoUseCase> _logger;
         private readonly IUnitOfWork _uow;
 
-        public CancelarAgendamentoUseCase(IAgendamentoRepository a, IUnitOfWork u)
+        public CancelarAgendamentoUseCase(IAgendamentoRepository a,
+            IListaEsperaRepository esperaRepo,
+            Core.Interfaces.Services.INotificadorWhatsApp whatsapp,
+            Microsoft.Extensions.Configuration.IConfiguration config,
+            Microsoft.Extensions.Logging.ILogger<CancelarAgendamentoUseCase> logger,
+            IUnitOfWork u)
         {
             _agendamentos = a;
+            _esperaRepo = esperaRepo;
+            _whatsapp = whatsapp;
+            _config = config;
+            _logger = logger;
             _uow = u;
+        }
+
+        private async Task NotificarPrimeiroNaEsperaAsync(Agendamento ag)
+        {
+            try
+            {
+                var primeiro = await _esperaRepo.GetPrimeiroNaoNotificadoAsync(
+                    ag.R_TenId, ag.R_SerId, ag.AgeData);
+                if (primeiro == null) return;
+
+                var numero = primeiro.LesClienteTelefone;
+                if (!string.IsNullOrWhiteSpace(numero) && _whatsapp.Ativo)
+                {
+                    var slug = ag.Tenant?.TenSlug ?? "";
+                    var frontUrl = (Environment.GetEnvironmentVariable("APP_FRONTEND_URL")
+                        ?? _config["App:FrontendUrl"] ?? "").TrimEnd('/');
+                    var msg = $"Olá {primeiro.LesClienteNome}! Vagou um horário. Agende em {frontUrl}/t/{slug}/servicos";
+                    await _whatsapp.EnviarAsync(numero, msg);
+                }
+                primeiro.MarcarNotificado();
+                await _esperaRepo.UpdateAsync(primeiro);
+                await _uow.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao notificar lista de espera após cancelamento {Id}", ag.AgeId);
+            }
         }
 
         public async Task<AgendamentoViewModel> ExecuteAsync(int tenantId, int id, CancelarAgendamentoInputModel input)
@@ -154,13 +195,17 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                     }
                 }
                 await _uow.SaveChangesAsync();
-                // Retorna o agendamento que foi alvo da chamada (já cancelado)
+                await NotificarPrimeiroNaEsperaAsync(ag);
                 return AgendamentoMapper.Map(ag);
             }
 
             ag.Cancelar(motivo);
             await _agendamentos.UpdateAsync(ag);
             await _uow.SaveChangesAsync();
+
+            // Vagou um slot — notifica o primeiro da fila se houver alguém esperando
+            await NotificarPrimeiroNaEsperaAsync(ag);
+
             return AgendamentoMapper.Map(ag);
         }
     }

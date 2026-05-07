@@ -10,6 +10,7 @@ import { MatListModule } from '@angular/material/list';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeModeService } from '../../core/services/theme-mode.service';
 
 @Component({
   selector: 'app-admin-shell',
@@ -71,7 +72,12 @@ import { AuthService } from '../../core/services/auth.service';
             <mat-icon>menu</mat-icon>
           </button>
           <span class="spacer"></span>
-          <button mat-icon-button (click)="sair()" title="Sair">
+          <button mat-icon-button (click)="theme.alternar()"
+            [title]="theme.mode() === 'dark' ? 'Modo claro' : 'Modo escuro'"
+            attr.aria-label="Alternar tema">
+            <mat-icon>{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+          </button>
+          <button mat-icon-button (click)="sair()" title="Sair" attr.aria-label="Sair">
             <mat-icon>logout</mat-icon>
           </button>
         </mat-toolbar>
@@ -146,6 +152,7 @@ import { AuthService } from '../../core/services/auth.service';
 })
 export class AdminShellComponent implements OnInit {
   auth = inject(AuthService);
+  theme = inject(ThemeModeService);
   private router = inject(Router);
   private breakpoint = inject(BreakpointObserver);
   private destroyRef = inject(DestroyRef);

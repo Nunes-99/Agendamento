@@ -3,6 +3,48 @@
 Itens não implementados nas últimas rodadas, com classificação honesta de
 esforço/impacto. Ordenados por prioridade de produto (top = mais valor).
 
+> Atualizado após onda Bugs+UX+Compliance+Negócio (commit `9962212` → atual).
+
+---
+
+## ⚠️ Pendente desta onda (entregue parcial)
+
+### Onda F: i18n + Web Push
+**Status: NÃO IMPLEMENTADO** — entendi como refactor major.
+- **i18n** com `@ngx-translate/core` (MIT, gratuito): refactor de templates
+  é grande. ~2-3 dias.
+- **Web Push (VAPID)** gratuito mas: precisa gerar par de chaves no servidor,
+  registrar SW no frontend, tabela de subscriptions no backend, endpoint
+  pra emitir notificações. ~1-2 dias.
+
+### Onda G: Tests novos
+**Status: NÃO ADICIONADO** — features das últimas rodadas (LGPD, 2FA, lockout,
+cupom no fluxo, lista espera reagindo, recorrência, pacote, fidelidade) não
+têm tests dedicados. 89/89 verdes mas não cobrem o novo.
+
+### Onda H: a11y + versionamento /v1
+- **a11y básico** (aria-label nos botões) parcialmente feito (admin shell
+  tem nos toggles); falta auditoria geral.
+- **Versionamento `/v1/`** nos controllers — refactor de prefix em ~30
+  controllers. Não atacado.
+
+### Recorrência / Pacote / Fidelidade
+**Entities + DbContext + migration prontos.** Falta:
+- Use cases (CriarRecorrenciaUseCase que cria N agendamentos linkados)
+- Endpoints CRUD admin
+- Telas Angular admin
+- Integração no fluxo: agendamento concluído → credita pontos; cliente
+  resgata pontos → cupom auto-gerado
+- Cliente compra pacote → SaldoPacote criado; agendamento debita saldo
+
+### SignalR realtime + Skeleton screens
+- SignalR built-in .NET 8 mas precisa hub + cliente Angular.
+- ngx-skeleton-loader é MIT mas falta substituir os spinners atuais.
+
+### reCAPTCHA v3
+- Setup precisa chave site/secret na Google. Service backend pra validar
+  token. Bloqueio condicional após N falhas. Não atacado.
+
 ---
 
 ## Frontend pesado (UI das features de backend já existentes)

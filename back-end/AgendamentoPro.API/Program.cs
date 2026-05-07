@@ -356,11 +356,25 @@ try
         DisplayStorageConnectionString = false
     });
 
-    // Recurring job: lembretes a cada 5 min (substitui LembreteBackgroundService)
+    // Recurring jobs
     RecurringJob.AddOrUpdate<LembreteJob>(
         "lembretes-24h-2h",
         job => job.ExecutarAsync(CancellationToken.None),
         "*/5 * * * *",
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+    // Purge de logs de auditoria > 12 meses, todo dia às 4h UTC (LGPD/minimização)
+    RecurringJob.AddOrUpdate<AgendamentoPro.Infrastructure.Services.Manutencao.AuditPurgeJob>(
+        "purge-audit-log",
+        job => job.ExecutarAsync(CancellationToken.None),
+        "0 4 * * *",
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+    // Backup do SQLite + uploads, todo dia às 3h UTC
+    RecurringJob.AddOrUpdate<AgendamentoPro.Infrastructure.Services.Manutencao.BackupJob>(
+        "backup-diario",
+        job => job.ExecutarAsync(CancellationToken.None),
+        "0 3 * * *",
         new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
     // /api/health/live - liveness (sempre OK se o processo respondeu)

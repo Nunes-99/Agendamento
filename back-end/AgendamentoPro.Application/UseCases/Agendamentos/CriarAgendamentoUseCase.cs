@@ -4,6 +4,7 @@ using AgendamentoPro.Application.ViewModels.Agendamentos;
 using AgendamentoPro.Core.Entities.Agendamentos;
 using AgendamentoPro.Core.Entities.Clientes;
 using AgendamentoPro.Core.Entities.Pagamentos;
+using AgendamentoPro.Core.Entities.Servicos;
 using AgendamentoPro.Core.Enums;
 using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
@@ -20,6 +21,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         private readonly IClienteRepository _clientes;
         private readonly ITenantRepository _tenants;
         private readonly IPagamentoRepository _pagamentos;
+        private readonly ICupomRepository _cupons;
         private readonly IEnumerable<IGatewayPagamento> _gateways;
         private readonly IDisponibilidadeService _disponibilidade;
         private readonly IUnitOfWork _uow;
@@ -27,6 +29,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         public CriarAgendamentoUseCase(
             IAgendamentoRepository agendamentos, IServicoRepository servicos, IRecursoRepository recursos,
             IClienteRepository clientes, ITenantRepository tenants, IPagamentoRepository pagamentos,
+            ICupomRepository cupons,
             IEnumerable<IGatewayPagamento> gateways, IDisponibilidadeService disponibilidade, IUnitOfWork uow)
         {
             _agendamentos = agendamentos;
@@ -35,9 +38,23 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             _clientes = clientes;
             _tenants = tenants;
             _pagamentos = pagamentos;
+            _cupons = cupons;
             _gateways = gateways;
             _disponibilidade = disponibilidade;
             _uow = uow;
+        }
+
+        /// <summary>Aplica cupom ao valor total se válido. Retorna (novoValor, cupomAplicado).</summary>
+        private async Task<(decimal valor, Cupom cupom)> AplicarCupomAsync(int tenantId, string codigo, decimal valorBase)
+        {
+            if (string.IsNullOrWhiteSpace(codigo)) return (valorBase, null);
+            var c = await _cupons.GetByCodigoAsync(tenantId, codigo);
+            if (c == null || !c.EhValido(DateTime.UtcNow))
+                throw new ServicoException("Cupom inválido ou expirado.");
+            var novoValor = c.CalcularDesconto(valorBase);
+            c.RegistrarUso();
+            await _cupons.UpdateAsync(c);
+            return (novoValor, c);
         }
 
         public async Task<CriarAgendamentoResultViewModel> ExecuteAsync(int tenantId, CriarAgendamentoInputModel input)
@@ -105,8 +122,11 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                     throw new AgendamentoException("Horário indisponível: conflita com outro atendimento ou com o intervalo entre atendimentos.");
                 }
 
+                // Aplica cupom (se houver) ANTES da criação — afeta valor total e entrada
+                var (valorComDesconto, _) = await AplicarCupomAsync(tenantId, input.CupomCodigo, servico.SerPreco);
+
                 var agendamento = new Agendamento(tenantId, cliente.CliId, servico.SerId, recursoId,
-                    input.Data, input.HoraInicio, horaFim, servico.SerPreco,
+                    input.Data, input.HoraInicio, horaFim, valorComDesconto,
                     tenant.TenPercentualEntrada, input.Observacao);
 
                 await _agendamentos.CreateAsync(agendamento);

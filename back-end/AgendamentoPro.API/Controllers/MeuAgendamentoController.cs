@@ -20,6 +20,23 @@ namespace AgendamentoPro.API.Controllers
     [Produces("application/json")]
     public class MeuAgendamentoController : ControllerBase
     {
+        [HttpGet("{token:guid}/fotos")]
+        public async Task<IActionResult> Fotos(
+            [FromServices] IAgendamentoRepository agendamentos,
+            [FromServices] IFotoAgendamentoRepository fotos, Guid token)
+        {
+            var ag = await agendamentos.GetByAcessoTokenAsync(token);
+            if (ag == null) return NotFound();
+            var lista = await fotos.GetByAgendamentoAsync(ag.AgeId, ag.R_TenId);
+            return Ok(lista.Select(f => new
+            {
+                id = f.FotId,
+                tipo = f.FotTipo,
+                url = f.FotUrl,
+                criadoEm = f.FotCriadoEm
+            }));
+        }
+
         [HttpGet("{token:guid}")]
         public async Task<IActionResult> Obter(
             [FromServices] IAgendamentoRepository agendamentos, Guid token)

@@ -11,5 +11,6 @@ namespace AgendamentoPro.Application.InputModels.Servicos
         public string Observacao { get; set; }
         public ClientePublicoInputModel Cliente { get; set; }
         public FormaPagamento FormaPagamento { get; set; }
+        public string CupomCodigo { get; set; }
     }
 }

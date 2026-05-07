@@ -50,3 +50,37 @@
   --espaco-lg: 1.5rem;
   --espaco-xl: 2.5rem;
 }
+
+/* Dark mode: ativado por [data-theme="dark"] no <html>, controlado pelo
+   ThemeModeService (respeita prefers-color-scheme + override em localStorage). */
+:root[data-theme="dark"] {
+  --cor-primaria: #818cf8;
+  --cor-primaria-hover: #6366f1;
+  --cor-primaria-soft: #312e81;
+  --cor-secundaria: #f1f5f9;
+  --cor-acento: #a78bfa;
+
+  --cor-fundo: #0f172a;
+  --cor-fundo-card: #1e293b;
+  --cor-fundo-suave: #1a2332;
+  --cor-texto: #f1f5f9;
+  --cor-texto-medio: #cbd5e1;
+  --cor-texto-suave: #94a3b8;
+  --cor-borda: #334155;
+  --cor-borda-suave: #1e293b;
+
+  --cor-sucesso: #22c55e;
+  --cor-sucesso-soft: #14532d;
+  --cor-erro: #f87171;
+  --cor-erro-soft: #7f1d1d;
+  --cor-aviso: #fbbf24;
+  --cor-aviso-soft: #78350f;
+  --cor-info: #22d3ee;
+  --cor-info-soft: #164e63;
+
+  --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --sombra-elevada: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --sombra-flutuante: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}

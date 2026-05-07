@@ -11,6 +11,8 @@ namespace AgendamentoPro.Application.InputModels.Agendamentos
         public string Observacao { get; set; }
         public ClientePublicoInputModel Cliente { get; set; }
         public FormaPagamento FormaPagamento { get; set; }
+        /// <summary>Código de cupom opcional (validado e aplicado na criação).</summary>
+        public string CupomCodigo { get; set; }
     }
 
     public class ClientePublicoInputModel

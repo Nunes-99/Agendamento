@@ -26,6 +26,14 @@ export const routes: Routes = [
     path: 'meu-agendamento/:token',
     loadComponent: () => import('./features/public/meu-agendamento/meu-agendamento.component').then(m => m.MeuAgendamentoComponent)
   },
+  {
+    path: 'politica-privacidade',
+    loadComponent: () => import('./features/public/legal/legal.component').then(m => m.PoliticaPrivacidadeComponent)
+  },
+  {
+    path: 'termos-uso',
+    loadComponent: () => import('./features/public/legal/legal.component').then(m => m.TermosUsoComponent)
+  },
 
   // Login do administrador
   {
