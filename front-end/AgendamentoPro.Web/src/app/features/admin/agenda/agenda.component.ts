@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../../core/services/api.service';
@@ -21,7 +22,7 @@ type Preset = 'hoje' | 'semana' | 'mes' | 'custom';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatMenuModule, MatProgressSpinnerModule,
-    MatDialogModule],
+    MatTooltipModule, MatDialogModule],
   templateUrl: './agenda.component.html',
   styleUrls: ['./agenda.component.scss']
 })
@@ -166,9 +167,19 @@ export class AgendaComponent implements OnInit {
   }
 
   cancelar(a: Agendamento) {
+    // Se faz parte de combo, avisa que TODOS os agendamentos do grupo serão cancelados
+    if (a.grupoComboId) {
+      if (!confirm('Este agendamento faz parte de um combo. Cancelar vai cancelar TODOS os serviços do combo. Continuar?')) {
+        return;
+      }
+    }
     const motivo = prompt('Motivo do cancelamento:') || 'Cancelado pelo admin.';
     this.api.cancelarAgendamento(a.id, motivo).subscribe({
-      next: () => { this.snack.open('Agendamento cancelado', 'OK', { duration: 2000 }); this.carregar(); },
+      next: () => {
+        const msg = a.grupoComboId ? 'Combo cancelado (todos os serviços)' : 'Agendamento cancelado';
+        this.snack.open(msg, 'OK', { duration: 2500 });
+        this.carregar();
+      },
       error: e => this.snack.open(e.error?.message || 'Falha', 'OK', { duration: 4000, panelClass: 'snack-erro' })
     });
   }

@@ -26,7 +26,8 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             ValorEntrada = a.AgeValorEntrada,
             Observacao = a.AgeObservacao,
             MotivoCancelamento = a.AgeMotivoCancelamento,
-            CriadoEm = a.AgeCriadoEm
+            CriadoEm = a.AgeCriadoEm,
+            GrupoComboId = a.AgeGrupoComboId
         };
     }
 }

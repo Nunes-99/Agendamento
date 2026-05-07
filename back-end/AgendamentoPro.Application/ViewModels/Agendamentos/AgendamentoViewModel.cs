@@ -26,6 +26,8 @@ namespace AgendamentoPro.Application.ViewModels.Agendamentos
         public DateTime CriadoEm { get; set; }
         /// <summary>Token público da avaliação - presente apenas após Concluir.</summary>
         public Guid? AvaliacaoToken { get; set; }
+        /// <summary>Identificador do grupo combo - presente quando o agendamento veio de um combo.</summary>
+        public Guid? GrupoComboId { get; set; }
     }
 
     public class CriarAgendamentoResultViewModel

@@ -46,6 +46,15 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 TamanhoPagina = pageSize
             };
         }
+
+        public async Task<IEnumerable<AgendamentoViewModel>> PorGrupoComboAsync(int tenantId, Guid grupoComboId)
+        {
+            var lista = await _agendamentos.GetByGrupoComboAsync(grupoComboId);
+            // Filtra pelo tenant (defesa em profundidade — repositório já filtra por id do grupo único).
+            return lista.Where(a => a.R_TenId == tenantId)
+                .OrderBy(a => a.AgeData).ThenBy(a => a.AgeHoraInicio)
+                .Select(AgendamentoMapper.Map);
+        }
     }
 
     public class ReagendarUseCase : IReagendarUseCase
@@ -68,6 +77,13 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         {
             var ag = await _agendamentos.GetByIdAsync(id, tenantId)
                 ?? throw new AgendamentoException("Agendamento não encontrado.");
+
+            // Reagendar individual quebra a sequência contígua do combo. Bloqueia
+            // e orienta cancelar + criar novo combo. (Reagendamento em massa do
+            // combo inteiro é candidato a feature futura.)
+            if (ag.AgeGrupoComboId.HasValue)
+                throw new AgendamentoException(
+                    "Este agendamento faz parte de um combo. Cancele o combo inteiro e crie um novo no horário desejado.");
 
             var tenant = await _tenants.GetByIdAsync(tenantId);
             // Regra: só permitir reagendar com mais de N horas de antecedência (do agendamento original)
@@ -118,7 +134,31 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         {
             var ag = await _agendamentos.GetByIdAsync(id, tenantId)
                 ?? throw new AgendamentoException("Agendamento não encontrado.");
-            ag.Cancelar(input.Motivo ?? "Cancelado pelo usuário.");
+
+            var motivo = input.Motivo ?? "Cancelado pelo usuário.";
+
+            // Se faz parte de um combo, cancela TODOS os agendamentos do grupo.
+            // Cliente pagou 1x pelo combo inteiro - não faz sentido manter pedaços.
+            if (ag.AgeGrupoComboId.HasValue)
+            {
+                var grupo = (await _agendamentos.GetByGrupoComboAsync(ag.AgeGrupoComboId.Value))
+                    .Where(g => g.R_TenId == tenantId)
+                    .ToList();
+                foreach (var item in grupo)
+                {
+                    if (item.AgeStatus != Core.Enums.StatusAgendamento.Cancelado
+                        && item.AgeStatus != Core.Enums.StatusAgendamento.Concluido)
+                    {
+                        item.Cancelar(motivo);
+                        await _agendamentos.UpdateAsync(item);
+                    }
+                }
+                await _uow.SaveChangesAsync();
+                // Retorna o agendamento que foi alvo da chamada (já cancelado)
+                return AgendamentoMapper.Map(ag);
+            }
+
+            ag.Cancelar(motivo);
             await _agendamentos.UpdateAsync(ag);
             await _uow.SaveChangesAsync();
             return AgendamentoMapper.Map(ag);

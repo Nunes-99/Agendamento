@@ -131,6 +131,9 @@ export class ApiService {
   agendarCombo(slug: string, comboId: number, input: any): Observable<any> {
     return this.http.post(`${this.base}/t/${slug}/combos/${comboId}/agendar`, input);
   }
+  agendamentosDoGrupoCombo(slug: string, grupoComboId: string): Observable<Agendamento[]> {
+    return this.http.get<Agendamento[]>(`${this.base}/t/${slug}/combos/grupos/${grupoComboId}`);
+  }
 
   // ----- Fotos antes/depois -----
   uploadFoto(agendamentoId: number, tipo: TipoFoto, arquivo: File): Observable<FotoAgendamento> {

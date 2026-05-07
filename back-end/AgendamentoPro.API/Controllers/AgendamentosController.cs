@@ -49,6 +49,17 @@ namespace AgendamentoPro.API.Controllers
             return ag == null ? NotFound() : Ok(ag);
         }
 
+        [HttpGet("api/t/{slug}/combos/grupos/{grupoComboId:guid}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> AgendamentosDoCombo(
+            [FromServices] IConsultarAgendamentoUseCase useCase,
+            [FromServices] ITenantContext ctx, string slug, Guid grupoComboId)
+        {
+            var tid = RequireTenantId(ctx);
+            var lista = await useCase.PorGrupoComboAsync(tid, grupoComboId);
+            return Ok(lista);
+        }
+
         // ----- Endpoints administrativos -----
 
         [HttpGet("api/admin/agendamentos")]

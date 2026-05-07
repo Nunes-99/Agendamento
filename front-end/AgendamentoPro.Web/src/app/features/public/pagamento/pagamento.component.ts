@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../../core/services/api.service';
 import { interval, switchMap, takeWhile } from 'rxjs';
-import { CriarAgendamentoResult, StatusPagamento } from '../../../core/models/agendamento.model';
+import { Agendamento, CriarAgendamentoResult, StatusPagamento } from '../../../core/models/agendamento.model';
 
 @Component({
   selector: 'app-pagamento',
@@ -25,13 +25,32 @@ export class PagamentoComponent implements OnInit {
   slug = '';
   agendamentoId = 0;
   resultado = signal<CriarAgendamentoResult | null>(null);
+  grupoAgendamentos = signal<Agendamento[]>([]);
   statusPagamento = StatusPagamento;
+
+  ehCombo = computed(() => this.grupoAgendamentos().length > 1);
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
     this.agendamentoId = +(this.route.snapshot.paramMap.get('agendamentoId') || 0);
     const state = history.state.resultado as CriarAgendamentoResult;
-    if (state) this.resultado.set(state);
+    if (state) {
+      this.resultado.set(state);
+      // Se veio do agendar-combo, history.state também traz o grupoComboId.
+      const grupoId = history.state.grupoComboId as string | undefined;
+      if (grupoId) this.carregarGrupo(grupoId);
+    } else {
+      // Sem state: tenta buscar o agendamento e ver se faz parte de combo
+      this.api.consultarAgendamento(this.slug, this.agendamentoId).subscribe({
+        next: a => {
+          if (!this.resultado()) {
+            this.resultado.set({ agendamento: a, pagamento: null as any });
+          }
+          const grupoId = (a as any).grupoComboId;
+          if (grupoId) this.carregarGrupo(grupoId);
+        }
+      });
+    }
 
     // Polling do status do pagamento (cancela ao destruir o componente)
     interval(5000).pipe(
@@ -47,6 +66,18 @@ export class PagamentoComponent implements OnInit {
         this.router.navigate(['/t', this.slug, 'confirmacao', this.agendamentoId]);
       }
     });
+  }
+
+  private carregarGrupo(grupoId: string) {
+    this.api.agendamentosDoGrupoCombo(this.slug, grupoId).subscribe({
+      next: lista => this.grupoAgendamentos.set(lista),
+      error: () => { /* silencioso - exibe só o agendamento principal */ }
+    });
+  }
+
+  horaFormatada(hora: string | undefined): string {
+    if (!hora) return '';
+    return hora.length >= 5 ? hora.substring(0, 5) : hora;
   }
 
   copiarPix(qr: string) {

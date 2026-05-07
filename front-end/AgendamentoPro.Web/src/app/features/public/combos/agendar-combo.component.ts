@@ -178,7 +178,14 @@ export class AgendarComboComponent implements OnInit {
         this.enviando.set(false);
         const primeiroId = r.agendamentos?.[0]?.id;
         if (primeiroId) {
-          this.router.navigate(['/t', this.slug, 'pagamento', primeiroId]);
+          // state.resultado leva o pagamento agregado para o QR code; grupoComboId
+          // permite à tela de pagamento listar todos os N serviços do combo.
+          this.router.navigate(['/t', this.slug, 'pagamento', primeiroId], {
+            state: {
+              resultado: { agendamento: r.agendamentos[0], pagamento: r.pagamento },
+              grupoComboId: r.grupoComboId
+            }
+          });
         } else {
           this.snack.open('Agendamento criado!', 'OK', { duration: 3000 });
         }

@@ -106,6 +106,9 @@
     <div class="servico-bloco">
       <strong>{{ a.servicoNome }}</strong>
       <span><mat-icon>place</mat-icon> {{ a.recursoNome }}</span>
+      <span *ngIf="a.grupoComboId" class="combo-tag" matTooltip="Faz parte de um combo">
+        <mat-icon>local_offer</mat-icon> Combo
+      </span>
     </div>
 
     <div class="valor-bloco">

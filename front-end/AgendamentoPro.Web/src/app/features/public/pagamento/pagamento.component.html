@@ -1,11 +1,23 @@
 <div class="container">
-  <h2>Pagamento do sinal</h2>
+  <h2>{{ ehCombo() ? 'Pagamento do combo' : 'Pagamento do sinal' }}</h2>
 
   <ng-container *ngIf="resultado() as r; else carregando">
     <div class="info">
-      <p><strong>Agendamento #{{ r.agendamento.id }}</strong></p>
+      <p *ngIf="!ehCombo()"><strong>Agendamento #{{ r.agendamento.id }}</strong></p>
+      <p *ngIf="ehCombo()"><strong>Combo com {{ grupoAgendamentos().length }} serviços</strong></p>
       <p>Valor: <strong>R$ {{ r.pagamento?.valor | number:'1.2-2' }}</strong></p>
       <p>Aguardando confirmação...</p>
+    </div>
+
+    <div class="combo-itens" *ngIf="ehCombo()">
+      <h3>Sequência do atendimento</h3>
+      <ul>
+        <li *ngFor="let a of grupoAgendamentos()">
+          <mat-icon>schedule</mat-icon>
+          <span class="hora">{{ horaFormatada(a.horaInicio) }}–{{ horaFormatada(a.horaFim) }}</span>
+          <span class="nome">{{ a.servicoNome }}</span>
+        </li>
+      </ul>
     </div>
 
     <div class="qr" *ngIf="r.pagamento?.qrCode">

@@ -20,6 +20,7 @@ namespace AgendamentoPro.Application.Interfaces.Agendamentos
         Task<IEnumerable<AgendamentoViewModel>> AgendaDoDiaAsync(int tenantId, DateTime data, int? recursoId);
         Task<IEnumerable<AgendamentoViewModel>> AgendaPorPeriodoAsync(int tenantId, DateTime inicio, DateTime fim, int? recursoId);
         Task<PaginadoViewModel<AgendamentoViewModel>> ListarPaginadoAsync(int tenantId, int page, int pageSize, DateTime? data, StatusAgendamento? status);
+        Task<IEnumerable<AgendamentoViewModel>> PorGrupoComboAsync(int tenantId, Guid grupoComboId);
     }
     public interface IReagendarUseCase
     {

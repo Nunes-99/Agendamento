@@ -52,6 +52,8 @@ export interface Agendamento {
   observacao?: string;
   motivoCancelamento?: string;
   criadoEm: string;
+  avaliacaoToken?: string;
+  grupoComboId?: string;
 }
 
 export interface CriarAgendamentoInput {

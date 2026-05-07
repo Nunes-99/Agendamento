@@ -24,6 +24,7 @@ using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories;
 using AgendamentoPro.Infrastructure.Database.UnitOfWork;
 using AgendamentoPro.Infrastructure.Services.Auth;
+using AgendamentoPro.Infrastructure.Services.Email;
 using AgendamentoPro.Infrastructure.Services.Pagamento;
 using AgendamentoPro.Infrastructure.Services.Storage;
 using AgendamentoPro.Infrastructure.Services.Tenant;
@@ -80,6 +81,7 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IDisponibilidadeService, DisponibilidadeService>();
             services.AddScoped<ITenantSeeder, DemoDataSeeder>();
             services.AddSingleton<IFotoStorage, LocalFotoStorage>();
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
             // Integrações externas com HttpClient nomeado (resiliência via Polly opcional)
             services.AddHttpClient<IGatewayPagamento, MercadoPagoGateway>(c =>

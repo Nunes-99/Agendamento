@@ -7,6 +7,7 @@ using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Security.Cryptography;
 
 namespace AgendamentoPro.Application.UseCases.Auth
@@ -17,15 +18,17 @@ namespace AgendamentoPro.Application.UseCases.Auth
 
         private readonly IUsuarioRepository _usuarios;
         private readonly IPasswordResetRepository _resets;
+        private readonly IEmailSender _email;
         private readonly IUnitOfWork _uow;
         private readonly IConfiguration _config;
         private readonly ILogger<SolicitarResetSenhaUseCase> _logger;
 
         public SolicitarResetSenhaUseCase(IUsuarioRepository usuarios, IPasswordResetRepository resets,
-            IUnitOfWork uow, IConfiguration config, ILogger<SolicitarResetSenhaUseCase> logger)
+            IEmailSender email, IUnitOfWork uow, IConfiguration config,
+            ILogger<SolicitarResetSenhaUseCase> logger)
         {
-            _usuarios = usuarios; _resets = resets; _uow = uow;
-            _config = config; _logger = logger;
+            _usuarios = usuarios; _resets = resets; _email = email;
+            _uow = uow; _config = config; _logger = logger;
         }
 
         public async Task<SolicitarResetSenhaResultViewModel> ExecuteAsync(SolicitarResetSenhaInputModel input)
@@ -63,6 +66,15 @@ namespace AgendamentoPro.Application.UseCases.Auth
                 + "\n================================",
                 usuario.UsuEmail, Validade.TotalHours, link);
 
+            // Tenta enviar por e-mail. Se SMTP não estiver configurado, apenas loga
+            // (operador entrega o link manualmente).
+            if (_email.Ativo)
+            {
+                var html = MontarEmailHtml(usuario.UsuNome, link, Validade);
+                var texto = MontarEmailTexto(usuario.UsuNome, link, Validade);
+                await _email.EnviarAsync(usuario.UsuEmail, "Redefinir senha — AgendamentoPro", html, texto);
+            }
+
             return new SolicitarResetSenhaResultViewModel
             {
                 LinkGerado = true,
@@ -70,6 +82,27 @@ namespace AgendamentoPro.Application.UseCases.Auth
                 ExpiraEm = reset.RpsExpiraEm
             };
         }
+
+        private static string MontarEmailHtml(string nome, string link, TimeSpan validade) =>
+            $@"<div style='font-family:sans-serif;max-width:480px;margin:auto;padding:1.5rem'>
+                <h2 style='color:#1976d2;margin-top:0'>Redefinir senha</h2>
+                <p>Olá, {WebUtility.HtmlEncode(nome)}!</p>
+                <p>Recebemos uma solicitação para redefinir a senha da sua conta no AgendamentoPro.</p>
+                <p style='text-align:center;margin:1.5rem 0'>
+                    <a href='{link}' style='background:#1976d2;color:#fff;padding:0.75rem 1.5rem;border-radius:0.5rem;text-decoration:none;display:inline-block'>
+                        Redefinir minha senha
+                    </a>
+                </p>
+                <p style='color:#666;font-size:0.85rem'>Este link é válido por {validade.TotalHours:0} hora(s) e só pode ser usado uma vez.</p>
+                <p style='color:#666;font-size:0.85rem'>Se você não solicitou, ignore este e-mail. Sua senha continua segura.</p>
+                <p style='color:#999;font-size:0.75rem;margin-top:2rem'>Se o botão não funcionar, copie e cole esta URL no navegador:<br>{link}</p>
+            </div>";
+
+        private static string MontarEmailTexto(string nome, string link, TimeSpan validade) =>
+            $"Olá, {nome}!\n\n" +
+            $"Recebemos uma solicitação para redefinir a senha da sua conta no AgendamentoPro.\n\n" +
+            $"Acesse o link abaixo para escolher uma nova senha (válido por {validade.TotalHours:0} hora):\n{link}\n\n" +
+            "Se você não solicitou, ignore este e-mail.\n";
 
         private static string GerarToken()
         {

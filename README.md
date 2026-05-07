@@ -53,6 +53,8 @@ A resolução do tenant em cada request acontece em três níveis (em ordem):
   - `/avaliar/:token` → cliente final responde avaliação (sem login)
   - `/admin/login` → login do administrador
   - `/admin/{dashboard,agenda,servicos,recursos,clientes,combos,relatorios,configuracoes,avaliacoes}`
+  - `/admin/agendamentos/:id/fotos` → upload e galeria de fotos antes/depois
+  - `/esqueci-senha` e `/redefinir-senha?token=...` → fluxo público de reset
 
 ## Como executar
 
@@ -60,6 +62,12 @@ A resolução do tenant em cada request acontece em três níveis (em ordem):
 
 1. Copie `.env.example` para `.env` e preencha os valores (chaves do Mercado Pago, WhatsApp, JWT secret).
 2. Para SQLite local não há mais nada a configurar; para SQL Server ajuste `Database__Provider` e `ConnectionStrings__Default` em `.env`.
+
+## Documentação adicional
+
+- 📘 [`docs/setup-whatsapp-business.md`](docs/setup-whatsapp-business.md) — passo a passo para criar conta Meta Business, registrar número, gerar token permanente e submeter templates `lembrete_24h`/`lembrete_2h`.
+- 📘 [`docs/setup-mercado-pago.md`](docs/setup-mercado-pago.md) — passo a passo para criar aplicação MP, configurar webhook, gerar access token e webhook secret.
+- 🛠️ [`scripts/backup-sqlite.sh`](scripts/backup-sqlite.sh) e [`scripts/restore-sqlite.sh`](scripts/restore-sqlite.sh) — backup online do SQLite + uploads, com retenção configurável e cron sugerido.
 
 ### Backend (dev)
 
@@ -111,6 +119,8 @@ Healthchecks built-in nos containers — orquestrador detecta containers com ban
 | `MERCADOPAGO_WEBHOOK_SECRET` | Secret do webhook | Painel MP → Notificações → Webhooks |
 | `WHATSAPP_ACCESS_TOKEN` | System User Token | https://developers.facebook.com → WhatsApp → API Setup |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID do número que envia | Mesma página acima |
+| `APP_FRONTEND_URL` | URL pública do frontend (ex: `https://app.suaempresa.com.br`) — usada nos links de e-mail | — |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM_EMAIL` / `SMTP_FROM_NAME` / `SMTP_USE_SSL` | Configuração SMTP para envio de e-mails de reset de senha (opcional) | Gmail App Password, SendGrid, Mailgun, AWS SES, etc. |
 | `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` | Credenciais do super-admin | Defina o que quiser |
 | `UPLOADS_PATH` | Pasta para fotos (default `/data/uploads` no compose) | Volume persistente |
 
@@ -185,7 +195,8 @@ Use `BACKUP DATABASE` do próprio SQL Server agendado via SQL Agent ou cron + `s
 - **WhatsApp Cloud API**: integração via `INotificadorWhatsApp` + `BackgroundService` envia lembretes 24h e 2h antes do agendamento (templates `lembrete_24h` e `lembrete_2h` precisam ser pré-aprovados na Meta).
 - **Avaliação**: ao concluir agendamento, abre token público; cliente avalia 1-5 estrelas + comentário em `/avaliar/{token}`. Médias e últimas avaliações públicas no perfil do tenant.
 - **Fotos antes/depois**: upload por agendamento (até 10 MB, jpg/png/webp/gif). Servidas estaticamente em `/uploads/...`.
-- **Combos**: agrupa N serviços com preço promocional; visíveis no catálogo público.
+- **Combos**: agrupa N serviços com preço promocional. Catálogo público + fluxo de agendamento que cria N agendamentos contíguos no mesmo recurso (vinculados via `AgeGrupoComboId`) com cobrança agregada única. Cancelar 1 cancela todo o grupo; reagendar individual é bloqueado (cancele e crie novo).
+- **Reset de senha**: fluxo `/esqueci-senha` → token por e-mail (uso único, válido 1h) → `/redefinir-senha`. Quando SMTP configurado envia automaticamente; senão loga o link para o operador entregar manualmente. Refresh tokens existentes são revogados ao trocar a senha.
 
 ## Extensibilidade
 

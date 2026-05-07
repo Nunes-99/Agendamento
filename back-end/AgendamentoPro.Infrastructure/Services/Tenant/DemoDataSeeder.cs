@@ -3,6 +3,7 @@ using AgendamentoPro.Core.Entities.Clientes;
 using AgendamentoPro.Core.Entities.Recursos;
 using AgendamentoPro.Core.Entities.Servicos;
 using AgendamentoPro.Core.Enums;
+using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
 
@@ -20,15 +21,22 @@ namespace AgendamentoPro.Infrastructure.Services.Tenant
         private readonly IClienteRepository _clientes;
         private readonly IAgendamentoRepository _agendamentos;
         private readonly ITenantRepository _tenants;
+        private readonly IComboRepository _combos;
+        private readonly IAvaliacaoRepository _avaliacoes;
+        private readonly IUnitOfWork _uow;
 
         public DemoDataSeeder(IServicoRepository servicos, IRecursoRepository recursos,
-            IClienteRepository clientes, IAgendamentoRepository agendamentos, ITenantRepository tenants)
+            IClienteRepository clientes, IAgendamentoRepository agendamentos, ITenantRepository tenants,
+            IComboRepository combos, IAvaliacaoRepository avaliacoes, IUnitOfWork uow)
         {
             _servicos = servicos;
             _recursos = recursos;
             _clientes = clientes;
             _agendamentos = agendamentos;
             _tenants = tenants;
+            _combos = combos;
+            _avaliacoes = avaliacoes;
+            _uow = uow;
         }
 
         public async Task PopularAsync(int tenantId)
@@ -154,6 +162,76 @@ namespace AgendamentoPro.Infrastructure.Services.Tenant
                 if (random.Next(100) < 70) ag.ConfirmarPagamento();
 
                 await _agendamentos.CreateAsync(ag);
+            }
+
+            // 5. Combos promocionais (catálogo)
+            await SemearCombosAsync(tenantId, servicos);
+
+            // 6. Avaliações de clientes em agendamentos concluídos
+            await SemearAvaliacoesAsync(tenantId, random);
+        }
+
+        private async Task SemearCombosAsync(int tenantId, Servico[] servicos)
+        {
+            // Combo "Cuidado total" = Lavagem completa + Cera Premium
+            // Soma original ~190 -> promocional 159 (16% off)
+            var lavagemCompleta = servicos.FirstOrDefault(s => s.SerNome == "Lavagem Completa");
+            var ceraPremium = servicos.FirstOrDefault(s => s.SerNome == "Cera Premium");
+            if (lavagemCompleta != null && ceraPremium != null)
+            {
+                var combo = new Combo(tenantId, "Cuidado Total",
+                    "Lavagem completa + Cera premium para deixar seu carro impecável.",
+                    null, precoPromocional: 159m, ordem: 1);
+                combo.DefinirServicos(new[] { lavagemCompleta.SerId, ceraPremium.SerId });
+                await _combos.CreateAsync(combo);
+            }
+
+            // Combo "Detalhamento Completo" = Higienização interna + Polimento + Cera
+            var higInterna = servicos.FirstOrDefault(s => s.SerNome == "Higienização Interna");
+            var polimento = servicos.FirstOrDefault(s => s.SerNome == "Polimento Comercial");
+            if (higInterna != null && polimento != null && ceraPremium != null)
+            {
+                var combo = new Combo(tenantId, "Detalhamento Completo",
+                    "Recupera o brilho do seu carro: polimento + higienização interna + cera premium.",
+                    null, precoPromocional: 489m, ordem: 2);
+                combo.DefinirServicos(new[] { polimento.SerId, higInterna.SerId, ceraPremium.SerId });
+                await _combos.CreateAsync(combo);
+            }
+        }
+
+        private async Task SemearAvaliacoesAsync(int tenantId, Random random)
+        {
+            // Pega agendamentos concluídos do tenant (até ~10 mais recentes pra demo)
+            var hoje = DateTime.Today;
+            var concluidos = (await _agendamentos.GetByPeriodoAsync(tenantId,
+                hoje.AddDays(-30), hoje, null))
+                .Where(a => a.AgeStatus == StatusAgendamento.Concluido)
+                .OrderByDescending(a => a.AgeData)
+                .Take(12)
+                .ToList();
+
+            var comentarios = new[]
+            {
+                "Atendimento impecável, recomendo!",
+                "Carro ficou novinho. Ótimo serviço.",
+                "Profissional atencioso, voltarei sempre.",
+                "Preço justo e qualidade ótima.",
+                "Adorei o resultado, super recomendo.",
+                "Ambiente agradável, atendimento rápido.",
+                null, null, // alguns sem comentário
+                "Esperei pouco e o serviço foi caprichado.",
+                "Bom atendimento, mas demorou um pouco mais que o combinado.",
+                "Excelente! Voltarei na próxima semana."
+            };
+
+            foreach (var ag in concluidos)
+            {
+                var aval = new Avaliacao(tenantId, ag.AgeId, ag.R_CliId);
+                // 80% das demos respondidas com nota 4-5, 20% com nota 3
+                var nota = random.Next(100) < 80 ? random.Next(4, 6) : 3;
+                var comentario = comentarios[random.Next(comentarios.Length)];
+                aval.Responder(nota, comentario);
+                await _avaliacoes.CreateAsync(aval);
             }
         }
     }

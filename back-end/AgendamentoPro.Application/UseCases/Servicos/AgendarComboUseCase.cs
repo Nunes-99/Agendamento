@@ -22,6 +22,7 @@ namespace AgendamentoPro.Application.UseCases.Servicos
         private readonly IClienteRepository _clientes;
         private readonly ITenantRepository _tenants;
         private readonly IPagamentoRepository _pagamentos;
+        private readonly IHorarioFuncionamentoRepository _horarios;
         private readonly IDisponibilidadeService _disponibilidade;
         private readonly IEnumerable<IGatewayPagamento> _gateways;
         private readonly IUnitOfWork _uow;
@@ -29,11 +30,13 @@ namespace AgendamentoPro.Application.UseCases.Servicos
         public AgendarComboUseCase(IComboRepository combos, IAgendamentoRepository agendamentos,
             IServicoRepository servicos, IRecursoRepository recursos, IClienteRepository clientes,
             ITenantRepository tenants, IPagamentoRepository pagamentos,
+            IHorarioFuncionamentoRepository horarios,
             IDisponibilidadeService disponibilidade, IEnumerable<IGatewayPagamento> gateways, IUnitOfWork uow)
         {
             _combos = combos; _agendamentos = agendamentos; _servicos = servicos;
             _recursos = recursos; _clientes = clientes; _tenants = tenants;
-            _pagamentos = pagamentos; _disponibilidade = disponibilidade;
+            _pagamentos = pagamentos; _horarios = horarios;
+            _disponibilidade = disponibilidade;
             _gateways = gateways; _uow = uow;
         }
 
@@ -60,6 +63,32 @@ namespace AgendamentoPro.Application.UseCases.Servicos
             var dataHoraInicio = input.Data.Date.Add(input.HoraInicio);
             if (dataHoraInicio < DateTime.Now.AddHours(tenant.TenAntecedenciaMinHoras))
                 throw new AgendamentoException($"O agendamento exige antecedência mínima de {tenant.TenAntecedenciaMinHoras}h.");
+
+            // Validar horário de funcionamento: o combo inteiro precisa caber dentro do expediente
+            // do dia escolhido, e não pode atravessar a pausa para almoço/intervalo.
+            var horario = await _horarios.GetByDiaAsync(tenantId, input.Data.DayOfWeek);
+            if (horario == null || !horario.HorAberto)
+                throw new AgendamentoException("Estabelecimento fechado nessa data.");
+
+            var duracaoTotalCombo = TimeSpan.FromMinutes(servicosDoCombo.Sum(s => s.SerDuracaoMinutos));
+            var fimComboEstimado = input.HoraInicio.Add(duracaoTotalCombo);
+
+            if (input.HoraInicio < horario.HorAbertura)
+                throw new AgendamentoException(
+                    $"Horário de início ({input.HoraInicio:hh\\:mm}) anterior à abertura ({horario.HorAbertura:hh\\:mm}).");
+            if (fimComboEstimado > horario.HorFechamento)
+                throw new AgendamentoException(
+                    $"O combo dura {duracaoTotalCombo.TotalMinutes:0} min e terminaria às {fimComboEstimado:hh\\:mm}, depois do fechamento ({horario.HorFechamento:hh\\:mm}). Escolha um horário mais cedo.");
+
+            // Pausa: combo não pode atravessar nem cair dentro
+            if (horario.HorPausaInicio.HasValue && horario.HorPausaFim.HasValue)
+            {
+                var pausaInicio = horario.HorPausaInicio.Value;
+                var pausaFim = horario.HorPausaFim.Value;
+                if (input.HoraInicio < pausaFim && fimComboEstimado > pausaInicio)
+                    throw new AgendamentoException(
+                        $"O combo se sobrepõe ao intervalo do estabelecimento ({pausaInicio:hh\\:mm}–{pausaFim:hh\\:mm}). Escolha outro horário.");
+            }
 
             // Resolver recurso: se informado usa ele; senão usa o primeiro recurso ativo do tenant.
             // Importante: combo precisa de UM recurso só (todos os atendimentos seguem em sequência no mesmo box).
