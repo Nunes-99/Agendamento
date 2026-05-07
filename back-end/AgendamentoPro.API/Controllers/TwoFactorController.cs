@@ -33,18 +33,16 @@ namespace AgendamentoPro.API.Controllers
             if (u == null) return NotFound();
 
             var secret = totp.GerarSecret();
-            // Salva mas mantém UsuTotpAtivo=false até confirmação
+            // DefinirTotpSecret salva o secret mas NÃO ativa 2FA — fica pendente
+            // de confirmação via /confirmar. Se o usuário já tinha 2FA ativo,
+            // a chamada não troca o secret antigo até confirmar (segurança).
             u.DefinirTotpSecret(secret);
-            // truque: definir e desativar pra deixar TotpAtivo=false até confirmar
-            u.DefinirTotpSecret(secret);
-            // Reseta o flag manualmente — chamar DesativarTotp limparia o secret também,
-            // o que não queremos. Aceita o estado intermediário.
 
             await usuarios.UpdateAsync(u);
             await uow.SaveChangesAsync();
 
             var url = totp.GerarOtpAuthUrl(secret, u.UsuEmail, "AgendamentoPro");
-            return Ok(new { secret, otpauthUrl = url });
+            return Ok(new { secret, otpauthUrl = url, ativo = u.UsuTotpAtivo });
         }
 
         [HttpPost("confirmar")]
@@ -63,8 +61,8 @@ namespace AgendamentoPro.API.Controllers
             if (!totp.Verificar(u.UsuTotpSecret, codigo, DateTime.UtcNow))
                 return BadRequest(new { message = "Código inválido." });
 
-            // Confirmação OK: ativa de fato
-            u.DefinirTotpSecret(u.UsuTotpSecret);
+            // Confirmação OK: agora ativa 2FA de fato.
+            u.AtivarTotp();
             await usuarios.UpdateAsync(u);
             await uow.SaveChangesAsync();
             return Ok(new { ativo = true });

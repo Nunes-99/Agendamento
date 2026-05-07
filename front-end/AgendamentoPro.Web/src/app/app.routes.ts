@@ -21,6 +21,11 @@ export const routes: Routes = [
     path: 'avaliar/:token',
     loadComponent: () => import('./features/public/avaliar/avaliar.component').then(m => m.AvaliarComponent)
   },
+  // Self-service do cliente: ver/cancelar/reagendar agendamento sem login
+  {
+    path: 'meu-agendamento/:token',
+    loadComponent: () => import('./features/public/meu-agendamento/meu-agendamento.component').then(m => m.MeuAgendamentoComponent)
+  },
 
   // Login do administrador
   {
@@ -52,6 +57,15 @@ export const routes: Routes = [
       { path: 'clientes', loadComponent: () => import('./features/admin/clientes/clientes-admin.component').then(m => m.ClientesAdminComponent) },
       { path: 'avaliacoes', loadComponent: () => import('./features/admin/avaliacoes/avaliacoes.component').then(m => m.AvaliacoesComponent) },
       { path: 'agendamentos/:id/fotos', loadComponent: () => import('./features/admin/fotos/fotos-agendamento.component').then(m => m.FotosAgendamentoComponent) },
+      { path: 'cupons', loadComponent: () => import('./features/admin/cupons/cupons.component').then(m => m.CuponsComponent) },
+      { path: 'bloqueios', loadComponent: () => import('./features/admin/bloqueios/bloqueios.component').then(m => m.BloqueiosComponent) },
+      { path: 'lista-espera', loadComponent: () => import('./features/admin/lista-espera/lista-espera.component').then(m => m.ListaEsperaComponent) },
+      { path: 'auditoria', loadComponent: () => import('./features/admin/auditoria/auditoria.component').then(m => m.AuditoriaComponent) },
+      { path: 'kpis', loadComponent: () => import('./features/admin/kpis/kpis.component').then(m => m.KpisComponent) },
+      { path: 'caixa', loadComponent: () => import('./features/admin/caixa/caixa.component').then(m => m.CaixaComponent) },
+      { path: 'importar-clientes', loadComponent: () => import('./features/admin/importar-clientes/importar-clientes.component').then(m => m.ImportarClientesComponent) },
+      { path: 'lgpd', loadComponent: () => import('./features/admin/lgpd/lgpd.component').then(m => m.LgpdComponent) },
+      { path: 'seguranca/2fa', loadComponent: () => import('./features/admin/seguranca/dois-fatores.component').then(m => m.DoisFatoresComponent) },
       { path: 'relatorios', loadComponent: () => import('./features/admin/relatorios/relatorios.component').then(m => m.RelatoriosComponent) },
       { path: 'configuracoes', loadComponent: () => import('./features/admin/configuracoes/configuracoes.component').then(m => m.ConfiguracoesComponent) }
     ]

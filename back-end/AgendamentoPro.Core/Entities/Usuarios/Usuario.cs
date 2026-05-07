@@ -71,11 +71,16 @@ namespace AgendamentoPro.Core.Entities.Usuarios
         }
         public bool EstaBloqueado(DateTime agoraUtc) =>
             UsuBloqueadoAte.HasValue && agoraUtc < UsuBloqueadoAte.Value;
+        /// <summary>
+        /// Salva o secret pendente de confirmação. Não ativa 2FA — para isso é preciso
+        /// chamar AtivarTotp() depois que o usuário confirmar com um código válido.
+        /// </summary>
         public void DefinirTotpSecret(string base32Secret)
         {
             UsuTotpSecret = base32Secret;
-            UsuTotpAtivo = !string.IsNullOrEmpty(base32Secret);
+            // Não toca em UsuTotpAtivo — só Ativar/Desativar fazem isso explicitamente.
         }
+        public void AtivarTotp() => UsuTotpAtivo = !string.IsNullOrEmpty(UsuTotpSecret);
         public void DesativarTotp()
         {
             UsuTotpSecret = null;

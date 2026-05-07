@@ -148,4 +148,102 @@ export class ApiService {
   removerFoto(fotoId: number) {
     return this.http.delete<void>(`${this.base}/admin/agendamentos/fotos/${fotoId}`);
   }
+
+  // ----- LGPD -----
+  exportarDadosCliente(clienteId: number) {
+    return this.http.get(`${this.base}/admin/lgpd/clientes/${clienteId}/exportar`);
+  }
+  anonimizarCliente(clienteId: number) {
+    return this.http.post(`${this.base}/admin/lgpd/clientes/${clienteId}/anonimizar`, {});
+  }
+  anonimizarInativos(meses: number) {
+    return this.http.post<{ anonimizados: number }>(
+      `${this.base}/admin/lgpd/clientes/anonimizar-inativos?inativoHaMeses=${meses}`, {});
+  }
+
+  // ----- 2FA -----
+  iniciar2FA() {
+    return this.http.post<{ secret: string; otpauthUrl: string; ativo: boolean }>(
+      `${this.base}/admin/2fa/iniciar`, {});
+  }
+  confirmar2FA(codigo: string) {
+    return this.http.post<{ ativo: boolean }>(
+      `${this.base}/admin/2fa/confirmar?codigo=${encodeURIComponent(codigo)}`, {});
+  }
+  desativar2FA(codigo: string) {
+    return this.http.post<{ ativo: boolean }>(
+      `${this.base}/admin/2fa/desativar?codigo=${encodeURIComponent(codigo)}`, {});
+  }
+
+  // ----- Self-service cliente (token público) -----
+  obterMeuAgendamento(token: string): Observable<any> {
+    return this.http.get(`${this.base}/agendamentos/acesso/${token}`);
+  }
+  cancelarMeuAgendamento(token: string, motivo: string) {
+    return this.http.post(`${this.base}/agendamentos/acesso/${token}/cancelar`, { motivo });
+  }
+  reagendarMeuAgendamento(token: string, novaData: string, novaHoraInicio: string) {
+    return this.http.post(`${this.base}/agendamentos/acesso/${token}/reagendar`,
+      { novaData, novaHoraInicio });
+  }
+
+  // ----- Bloqueios admin -----
+  listarBloqueios(inicio?: string, fim?: string) {
+    let p = new HttpParams();
+    if (inicio) p = p.set('inicio', inicio);
+    if (fim) p = p.set('fim', fim);
+    return this.http.get<any[]>(`${this.base}/admin/bloqueios`, { params: p });
+  }
+  criarBloqueio(input: { recursoId?: number; dataInicio: string; dataFim: string; motivo: string }) {
+    return this.http.post(`${this.base}/admin/bloqueios`, input);
+  }
+
+  // ----- Lista de espera -----
+  entrarListaEspera(slug: string, input: any) {
+    return this.http.post(`${this.base}/t/${slug}/lista-espera`, input);
+  }
+  listarEsperaAdmin(data?: string, somenteNaoNotificados = true) {
+    let p = new HttpParams().set('somenteNaoNotificados', somenteNaoNotificados);
+    if (data) p = p.set('data', data);
+    return this.http.get<any[]>(`${this.base}/admin/lista-espera`, { params: p });
+  }
+  notificarEspera(id: number) {
+    return this.http.post(`${this.base}/admin/lista-espera/${id}/notificar`, {});
+  }
+
+  // ----- Audit log + KPIs + Caixa + CSV -----
+  auditoria(page: number, pageSize: number, filtros: { tabela?: string; acao?: string; de?: string; ate?: string } = {}) {
+    let p = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (filtros.tabela) p = p.set('tabela', filtros.tabela);
+    if (filtros.acao) p = p.set('acao', filtros.acao);
+    if (filtros.de) p = p.set('de', filtros.de);
+    if (filtros.ate) p = p.set('ate', filtros.ate);
+    return this.http.get<any>(`${this.base}/admin/tools/auditoria`, { params: p });
+  }
+  auditoriaDetalhe(id: number) {
+    return this.http.get(`${this.base}/admin/tools/auditoria/${id}`);
+  }
+  kpisAvancados(mesRef?: string) {
+    const p = mesRef ? new HttpParams().set('mesRef', mesRef) : new HttpParams();
+    return this.http.get<any>(`${this.base}/admin/tools/kpis`, { params: p });
+  }
+  caixaDoDia(data?: string) {
+    const p = data ? new HttpParams().set('data', data) : new HttpParams();
+    return this.http.get<any>(`${this.base}/admin/tools/caixa`, { params: p });
+  }
+  importarClientesCsv(csvConteudo: string) {
+    return this.http.post<{ inseridos: number; ignorados: number; erros: string[] }>(
+      `${this.base}/admin/tools/clientes/importar-csv`, { csvConteudo });
+  }
+
+  // ----- Cupons -----
+  listarCupons() { return this.http.get<any[]>(`${this.base}/admin/cupons`); }
+  criarCupom(input: any) { return this.http.post<any>(`${this.base}/admin/cupons`, input); }
+  alternarCupomAtivo(id: number, ativo: boolean) {
+    return this.http.post(`${this.base}/admin/cupons/${id}/ativar?ativo=${ativo}`, {});
+  }
+  validarCupom(slug: string, codigo: string, valorBase: number) {
+    return this.http.get<any>(
+      `${this.base}/t/${slug}/cupons/${encodeURIComponent(codigo)}/validar?valorBase=${valorBase}`);
+  }
 }

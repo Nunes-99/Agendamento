@@ -44,6 +44,29 @@ namespace AgendamentoPro.Infrastructure.Database.Migrations
                 nullable: false,
                 defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
 
+            // Popular agendamentos pré-existentes com tokens únicos antes do índice
+            // unique. Sem isso, todos teriam Guid.Empty e o índice falharia.
+            // Decisão por provider via ActiveProvider.
+            if (migrationBuilder.ActiveProvider != null
+                && migrationBuilder.ActiveProvider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
+                migrationBuilder.Sql(@"
+                    UPDATE Agendamento
+                    SET AgeAcessoToken =
+                        substr(lower(hex(randomblob(16))), 1, 8) || '-' ||
+                        substr(lower(hex(randomblob(16))), 1, 4) || '-' ||
+                        substr(lower(hex(randomblob(16))), 1, 4) || '-' ||
+                        substr(lower(hex(randomblob(16))), 1, 4) || '-' ||
+                        substr(lower(hex(randomblob(16))), 1, 12)
+                    WHERE AgeAcessoToken = '00000000-0000-0000-0000-000000000000';");
+            }
+            else
+            {
+                migrationBuilder.Sql(@"
+                    UPDATE Agendamento SET AgeAcessoToken = NEWID()
+                    WHERE AgeAcessoToken = '00000000-0000-0000-0000-000000000000';");
+            }
+
             migrationBuilder.CreateTable(
                 name: "Cupom",
                 columns: table => new

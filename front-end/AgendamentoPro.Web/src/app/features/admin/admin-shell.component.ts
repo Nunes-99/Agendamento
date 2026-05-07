@@ -49,8 +49,17 @@ import { AuthService } from '../../core/services/auth.service';
             <a mat-list-item routerLink="/admin/recursos" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>build</mat-icon> Recursos</a>
             <a mat-list-item routerLink="/admin/clientes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>people</mat-icon> Clientes</a>
             <a mat-list-item routerLink="/admin/combos" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>local_offer</mat-icon> Combos</a>
+            <a mat-list-item routerLink="/admin/cupons" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>confirmation_number</mat-icon> Cupons</a>
             <a mat-list-item routerLink="/admin/avaliacoes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>star</mat-icon> Avaliações</a>
+            <a mat-list-item routerLink="/admin/bloqueios" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>block</mat-icon> Bloqueios</a>
+            <a mat-list-item routerLink="/admin/lista-espera" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>hourglass_top</mat-icon> Lista de espera</a>
+            <a mat-list-item routerLink="/admin/kpis" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>insights</mat-icon> KPIs</a>
+            <a mat-list-item routerLink="/admin/caixa" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>point_of_sale</mat-icon> Caixa</a>
             <a mat-list-item routerLink="/admin/relatorios" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>insert_chart</mat-icon> Relatórios</a>
+            <a mat-list-item routerLink="/admin/auditoria" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>fact_check</mat-icon> Auditoria</a>
+            <a mat-list-item routerLink="/admin/lgpd" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>privacy_tip</mat-icon> LGPD</a>
+            <a mat-list-item routerLink="/admin/seguranca/2fa" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>shield</mat-icon> 2FA</a>
+            <a mat-list-item routerLink="/admin/importar-clientes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>upload_file</mat-icon> Importar CSV</a>
             <a mat-list-item routerLink="/admin/configuracoes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>settings</mat-icon> Configurações</a>
           </ng-container>
         </mat-nav-list>
