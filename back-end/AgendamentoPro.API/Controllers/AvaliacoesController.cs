@@ -41,6 +41,17 @@ namespace AgendamentoPro.API.Controllers
 
         // ----- Endpoints administrativos -----
 
+        [HttpPost("api/admin/agendamentos/{agendamentoId:int}/avaliacao-link")]
+        [Authorize(Policy = "Atendente")]
+        public async Task<IActionResult> ObterLinkAvaliacao(
+            [FromServices] IAvaliacaoUseCase useCase,
+            [FromServices] ITenantContext ctx, int agendamentoId)
+        {
+            var tid = RequireTenantId(ctx);
+            var token = await useCase.AbrirAsync(tid, agendamentoId);
+            return Ok(new { token, path = $"/avaliar/{token}" });
+        }
+
         [HttpGet("api/admin/avaliacoes")]
         [Authorize(Policy = "Atendente")]
         public async Task<IActionResult> Listar(

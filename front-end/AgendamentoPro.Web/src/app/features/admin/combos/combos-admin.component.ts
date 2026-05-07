@@ -21,8 +21,8 @@ import { Servico } from '../../../core/models/servico.model';
     MatInputModule, MatDialogModule, MatCheckboxModule, MatIconModule, MatSelectModule],
   template: `
     <h2 mat-dialog-title>
-      <mat-icon>{{ data?.combo ? 'edit' : 'add_circle' }}</mat-icon>
-      {{ data?.combo ? 'Editar combo' : 'Novo combo' }}
+      <mat-icon>{{ data.combo ? 'edit' : 'add_circle' }}</mat-icon>
+      {{ data.combo ? 'Editar combo' : 'Novo combo' }}
     </h2>
     <mat-dialog-content>
       <mat-form-field appearance="outline" class="full">
@@ -40,7 +40,7 @@ import { Servico } from '../../../core/models/servico.model';
       <mat-form-field appearance="outline" class="full">
         <mat-label>Serviços incluídos</mat-label>
         <mat-select [(ngModel)]="form.servicoIds" multiple required>
-          <mat-option *ngFor="let s of data?.servicos" [value]="s.id">
+          <mat-option *ngFor="let s of data.servicos" [value]="s.id">
             {{ s.nome }} — R$ {{ s.preco | number:'1.2-2' }}
           </mat-option>
         </mat-select>

@@ -109,6 +109,10 @@ export class ApiService {
   alterarVisibilidadeAvaliacao(id: number, publica: boolean) {
     return this.http.post(`${this.base}/admin/avaliacoes/${id}/visibilidade?publica=${publica}`, {});
   }
+  obterLinkAvaliacao(agendamentoId: number): Observable<{ token: string; path: string }> {
+    return this.http.post<{ token: string; path: string }>(
+      `${this.base}/admin/agendamentos/${agendamentoId}/avaliacao-link`, {});
+  }
 
   // ----- Combos -----
   combosPublicos(slug: string): Observable<Combo[]> {
@@ -124,6 +128,9 @@ export class ApiService {
   cadastrarCombo(input: ComboInput) { return this.http.post<Combo>(`${this.base}/admin/combos`, input); }
   atualizarCombo(id: number, input: ComboInput) { return this.http.put<Combo>(`${this.base}/admin/combos/${id}`, input); }
   excluirCombo(id: number) { return this.http.delete<void>(`${this.base}/admin/combos/${id}`); }
+  agendarCombo(slug: string, comboId: number, input: any): Observable<any> {
+    return this.http.post(`${this.base}/t/${slug}/combos/${comboId}/agendar`, input);
+  }
 
   // ----- Fotos antes/depois -----
   uploadFoto(agendamentoId: number, tipo: TipoFoto, arquivo: File): Observable<FotoAgendamento> {

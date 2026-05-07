@@ -24,6 +24,8 @@ namespace AgendamentoPro.Application.ViewModels.Agendamentos
         public string Observacao { get; set; }
         public string MotivoCancelamento { get; set; }
         public DateTime CriadoEm { get; set; }
+        /// <summary>Token público da avaliação - presente apenas após Concluir.</summary>
+        public Guid? AvaliacaoToken { get; set; }
     }
 
     public class CriarAgendamentoResultViewModel

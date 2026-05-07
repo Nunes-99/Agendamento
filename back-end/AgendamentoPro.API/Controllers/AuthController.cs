@@ -29,5 +29,30 @@ namespace AgendamentoPro.API.Controllers
             if (result == null) return Unauthorized(new { message = "Refresh token inválido." });
             return Ok(result);
         }
+
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword(
+            [FromServices] ISolicitarResetSenhaUseCase useCase,
+            [FromServices] IWebHostEnvironment env,
+            [FromBody] SolicitarResetSenhaInputModel input)
+        {
+            var result = await useCase.ExecuteAsync(input);
+            // Em produção, NUNCA retorna o link no body (apenas log do operador).
+            // Em dev/staging, retorna pra facilitar teste.
+            if (env.IsDevelopment())
+                return Ok(new { received = true, devLink = result.LinkReset, expiraEm = result.ExpiraEm });
+            return Ok(new { received = true });
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword(
+            [FromServices] IRedefinirSenhaUseCase useCase,
+            [FromBody] RedefinirSenhaInputModel input)
+        {
+            await useCase.ExecuteAsync(input);
+            return Ok(new { sucesso = true });
+        }
     }
 }

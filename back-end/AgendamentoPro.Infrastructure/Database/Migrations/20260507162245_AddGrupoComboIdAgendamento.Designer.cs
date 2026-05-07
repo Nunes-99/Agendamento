@@ -3,6 +3,7 @@ using System;
 using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AgendamentoPro.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(AgendamentoProDbContext))]
-    partial class AgendamentoProDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507162245_AddGrupoComboIdAgendamento")]
+    partial class AddGrupoComboIdAgendamento
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -827,42 +830,6 @@ namespace AgendamentoPro.Infrastructure.Database.Migrations
                     b.ToTable("Tenant", (string)null);
                 });
 
-            modelBuilder.Entity("AgendamentoPro.Core.Entities.Usuarios.PasswordReset", b =>
-                {
-                    b.Property<int>("RpsId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("R_UsuId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("RpsCriadoEm")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("RpsExpiraEm")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RpsToken")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("RpsUsado")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("RpsUsadoEm")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("RpsId");
-
-                    b.HasIndex("R_UsuId");
-
-                    b.HasIndex("RpsToken")
-                        .IsUnique();
-
-                    b.ToTable("PasswordReset", (string)null);
-                });
-
             modelBuilder.Entity("AgendamentoPro.Core.Entities.Usuarios.Usuario", b =>
                 {
                     b.Property<int>("UsuId")
@@ -1137,17 +1104,6 @@ namespace AgendamentoPro.Infrastructure.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("AgendamentoPro.Core.Entities.Usuarios.PasswordReset", b =>
-                {
-                    b.HasOne("AgendamentoPro.Core.Entities.Usuarios.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("R_UsuId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("AgendamentoPro.Core.Entities.Usuarios.Usuario", b =>

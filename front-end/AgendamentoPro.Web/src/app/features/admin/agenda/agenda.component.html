@@ -134,6 +134,12 @@
         <button mat-menu-item (click)="concluir(a)" *ngIf="a.status === StatusAgendamento.EmAndamento || a.status === StatusAgendamento.Confirmado">
           <mat-icon>check</mat-icon> Concluir
         </button>
+        <button mat-menu-item [routerLink]="['/admin/agendamentos', a.id, 'fotos']">
+          <mat-icon>photo_library</mat-icon> Fotos antes/depois
+        </button>
+        <button mat-menu-item (click)="copiarLinkAvaliacao(a)" *ngIf="a.status === StatusAgendamento.Concluido">
+          <mat-icon>star</mat-icon> Copiar link de avaliação
+        </button>
         <button mat-menu-item (click)="noShow(a)" *ngIf="a.status === StatusAgendamento.Confirmado || a.status === StatusAgendamento.PendentePagamento">
           <mat-icon>person_off</mat-icon> Marcar não compareceu
         </button>

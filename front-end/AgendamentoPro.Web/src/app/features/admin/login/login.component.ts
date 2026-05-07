@@ -1,6 +1,6 @@
 import { Component, DestroyRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,7 +28,7 @@ interface ErroLogin {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule,
+  imports: [CommonModule, FormsModule, RouterLink, MatButtonModule, MatFormFieldModule,
     MatInputModule, MatIconModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']

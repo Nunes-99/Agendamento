@@ -62,6 +62,7 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IConfiguracaoTenantRepository, ConfiguracaoTenantRepository>();
             services.AddScoped<IUsuarioRepository, UsuarioRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
             services.AddScoped<IServicoRepository, ServicoRepository>();
             services.AddScoped<IRecursoRepository, RecursoRepository>();
             services.AddScoped<IClienteRepository, ClienteRepository>();
@@ -95,6 +96,8 @@ namespace AgendamentoPro.Infrastructure.IoC
 
             // UseCases
             services.AddScoped<ILoginUseCase, LoginUseCase>();
+            services.AddScoped<ISolicitarResetSenhaUseCase, SolicitarResetSenhaUseCase>();
+            services.AddScoped<IRedefinirSenhaUseCase, RedefinirSenhaUseCase>();
             services.AddScoped<IRefreshTokenUseCase, RefreshTokenUseCase>();
             services.AddScoped<ICriarTenantUseCase, CriarTenantUseCase>();
             services.AddScoped<IConsultarTenantUseCase, ConsultarTenantUseCase>();
@@ -120,6 +123,7 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IFotoAgendamentoUseCase, FotoAgendamentoUseCase>();
             services.AddScoped<IAvaliacaoUseCase, AvaliacaoUseCase>();
             services.AddScoped<IComboUseCase, ComboUseCase>();
+            services.AddScoped<IAgendarComboUseCase, AgendarComboUseCase>();
             services.AddScoped<IDashboardUseCase, DashboardUseCase>();
             services.AddScoped<IRelatoriosUseCase, RelatoriosUseCase>();
 

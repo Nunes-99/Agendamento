@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -10,7 +10,7 @@ import { Combo } from '../../../core/models/combo.model';
 @Component({
   selector: 'app-combos-publico',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, CurrencyPipe],
+  imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule, MatProgressSpinnerModule, CurrencyPipe],
   template: `
     <header class="topo">
       <h1><mat-icon>local_offer</mat-icon> Combos promocionais</h1>
@@ -41,6 +41,10 @@ import { Combo } from '../../../core/models/combo.model';
               <strong class="preco-promo">{{ c.precoPromocional | currency:'BRL' }}</strong>
               <span class="economia" *ngIf="c.economia > 0">Economize {{ c.economia | currency:'BRL' }}</span>
             </div>
+
+            <a mat-flat-button color="primary" [routerLink]="['/t', slug, 'agendar-combo', c.id]">
+              <mat-icon>event</mat-icon> Agendar combo
+            </a>
           </div>
         </article>
       </div>
@@ -78,10 +82,11 @@ export class CombosPublicoComponent implements OnInit {
   private api = inject(ApiService);
   combos = signal<Combo[]>([]);
   carregando = signal(true);
+  slug = '';
 
   ngOnInit() {
-    const slug = this.route.snapshot.paramMap.get('slug') || this.route.parent?.snapshot.paramMap.get('slug') || '';
-    this.api.combosPublicos(slug).subscribe({
+    this.slug = this.route.snapshot.paramMap.get('slug') || this.route.parent?.snapshot.paramMap.get('slug') || '';
+    this.api.combosPublicos(this.slug).subscribe({
       next: list => { this.combos.set(list); this.carregando.set(false); },
       error: () => this.carregando.set(false)
     });

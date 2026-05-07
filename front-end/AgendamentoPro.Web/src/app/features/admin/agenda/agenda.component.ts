@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,7 +19,7 @@ type Preset = 'hoje' | 'semana' | 'mes' | 'custom';
 @Component({
   selector: 'app-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule,
+  imports: [CommonModule, FormsModule, RouterLink, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatMenuModule, MatProgressSpinnerModule,
     MatDialogModule],
   templateUrl: './agenda.component.html',
@@ -169,6 +170,32 @@ export class AgendaComponent implements OnInit {
     this.api.cancelarAgendamento(a.id, motivo).subscribe({
       next: () => { this.snack.open('Agendamento cancelado', 'OK', { duration: 2000 }); this.carregar(); },
       error: e => this.snack.open(e.error?.message || 'Falha', 'OK', { duration: 4000, panelClass: 'snack-erro' })
+    });
+  }
+
+  copiarLinkAvaliacao(a: Agendamento) {
+    this.api.obterLinkAvaliacao(a.id).subscribe({
+      next: r => {
+        const url = window.location.origin + r.path;
+        const tel = (a as any).clienteWhatsApp || (a as any).clienteTelefone;
+        const numeroLimpo = tel ? tel.replace(/\D/g, '') : '';
+        const ddi = numeroLimpo.length === 10 || numeroLimpo.length === 11 ? '55' + numeroLimpo : numeroLimpo;
+        const msg = encodeURIComponent(`Olá ${a.clienteNome || ''}! Como foi seu atendimento? Avalie em: ${url}`);
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(
+            () => this.snack.open('Link copiado! Cole no WhatsApp do cliente.', 'Abrir wa.me', { duration: 6000 })
+              .onAction().subscribe(() => {
+                if (ddi) window.open(`https://wa.me/${ddi}?text=${msg}`, '_blank');
+              }),
+            () => this.snack.open(url, 'OK', { duration: 8000 })
+          );
+        } else if (ddi) {
+          window.open(`https://wa.me/${ddi}?text=${msg}`, '_blank');
+        } else {
+          this.snack.open(url, 'OK', { duration: 8000 });
+        }
+      },
+      error: e => this.snack.open(e.error?.message || 'Falha ao gerar link', 'OK', { duration: 4000, panelClass: 'snack-erro' })
     });
   }
 

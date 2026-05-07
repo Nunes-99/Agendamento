@@ -91,6 +91,11 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
             return Task.CompletedTask;
         }
 
+        public async Task<IEnumerable<Agendamento>> GetByGrupoComboAsync(Guid grupoComboId)
+            => await _ctx.Agendamentos
+                .Where(a => a.AgeGrupoComboId == grupoComboId)
+                .ToListAsync();
+
         public async Task<IEnumerable<Agendamento>> GetExpiradosPagamentoAsync()
         {
             var agora = DateTime.UtcNow;

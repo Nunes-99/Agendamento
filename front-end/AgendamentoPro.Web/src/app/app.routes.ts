@@ -9,6 +9,7 @@ export const routes: Routes = [
       { path: '', loadComponent: () => import('./features/public/home/home.component').then(m => m.HomeComponent) },
       { path: 'servicos', loadComponent: () => import('./features/public/servicos/servicos-publico.component').then(m => m.ServicosPublicoComponent) },
       { path: 'combos', loadComponent: () => import('./features/public/combos/combos-publico.component').then(m => m.CombosPublicoComponent) },
+      { path: 'agendar-combo/:comboId', loadComponent: () => import('./features/public/combos/agendar-combo.component').then(m => m.AgendarComboComponent) },
       { path: 'agendar/:servicoId', loadComponent: () => import('./features/public/agendar/agendar.component').then(m => m.AgendarComponent) },
       { path: 'pagamento/:agendamentoId', loadComponent: () => import('./features/public/pagamento/pagamento.component').then(m => m.PagamentoComponent) },
       { path: 'confirmacao/:agendamentoId', loadComponent: () => import('./features/public/confirmacao/confirmacao.component').then(m => m.ConfirmacaoComponent) }
@@ -25,6 +26,14 @@ export const routes: Routes = [
   {
     path: 'admin/login',
     loadComponent: () => import('./features/admin/login/login.component').then(m => m.LoginComponent)
+  },
+  {
+    path: 'esqueci-senha',
+    loadComponent: () => import('./features/admin/senha/esqueci-senha.component').then(m => m.EsqueciSenhaComponent)
+  },
+  {
+    path: 'redefinir-senha',
+    loadComponent: () => import('./features/admin/senha/redefinir-senha.component').then(m => m.RedefinirSenhaComponent)
   },
 
   // Painel administrativo (autenticado)

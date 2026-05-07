@@ -21,6 +21,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<ConfiguracaoTenant> ConfiguracoesTenant { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<PasswordReset> PasswordResets { get; set; }
         public DbSet<Servico> Servicos { get; set; }
         public DbSet<Recurso> Recursos { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
@@ -102,6 +103,15 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.R_UsuId);
             });
 
+            mb.Entity<PasswordReset>(e =>
+            {
+                e.ToTable("PasswordReset");
+                e.HasKey(x => x.RpsId);
+                e.Property(x => x.RpsToken).HasMaxLength(200).IsRequired();
+                e.HasIndex(x => x.RpsToken).IsUnique();
+                e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.R_UsuId);
+            });
+
             mb.Entity<Servico>(e =>
             {
                 e.ToTable("Servico");
@@ -162,6 +172,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.HasIndex(x => new { x.R_RecId, x.AgeData, x.AgeHoraInicio }).IsUnique()
                     .HasFilter(null);
                 e.HasIndex(x => new { x.R_TenId, x.AgeData });
+                e.HasIndex(x => x.AgeGrupoComboId);
             });
 
             mb.Entity<Pagamento>(e =>

@@ -13,5 +13,6 @@ namespace AgendamentoPro.Core.Interfaces.Database.Repositories
         Task<int> CreateAsync(Agendamento agendamento);
         Task UpdateAsync(Agendamento agendamento);
         Task<IEnumerable<Agendamento>> GetExpiradosPagamentoAsync();
+        Task<IEnumerable<Agendamento>> GetByGrupoComboAsync(Guid grupoComboId);
     }
 }

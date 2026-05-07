@@ -34,6 +34,12 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
         public DateTime? AgeCanceladoEm { get; private set; }
         public DateTime AgeCriadoEm { get; private set; }
         public DateTime? AgeAtualizadoEm { get; private set; }
+        /// <summary>
+        /// Identificador opcional que agrupa N agendamentos vindos do mesmo combo.
+        /// Quando o pagamento agregado é aprovado, todos os agendamentos com este id
+        /// são confirmados juntos.
+        /// </summary>
+        public Guid? AgeGrupoComboId { get; private set; }
 
         public Tenant Tenant { get; private set; }
         public Cliente Cliente { get; private set; }
@@ -48,7 +54,8 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
 
         public Agendamento(int rTenId, int rCliId, int rSerId, int rRecId,
             DateTime data, TimeSpan horaInicio, TimeSpan horaFim,
-            decimal valorTotal, decimal percentualEntrada, string observacao)
+            decimal valorTotal, decimal percentualEntrada, string observacao,
+            Guid? grupoComboId = null)
         {
             Pagamentos = new List<Pagamento>();
             R_TenId = rTenId;
@@ -65,6 +72,7 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
             AgeStatus = StatusAgendamento.PendentePagamento;
             AgePagamentoStatus = StatusPagamento.Pendente;
             AgeCriadoEm = DateTime.UtcNow;
+            AgeGrupoComboId = grupoComboId;
             Validate();
         }
 

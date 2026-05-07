@@ -3,6 +3,7 @@ using AgendamentoPro.Application.Interfaces.Servicos;
 using AgendamentoPro.Core.Interfaces.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AgendamentoPro.API.Controllers
 {
@@ -20,6 +21,18 @@ namespace AgendamentoPro.API.Controllers
         {
             var tid = RequireTenantId(ctx);
             return Ok(await useCase.ListarAsync(tid, somenteAtivos: true));
+        }
+
+        [HttpPost("api/t/{slug}/combos/{id:int}/agendar")]
+        [AllowAnonymous]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> AgendarPublico(
+            [FromServices] IAgendarComboUseCase useCase,
+            [FromServices] ITenantContext ctx, string slug, int id,
+            [FromBody] AgendarComboInputModel input)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await useCase.ExecuteAsync(tid, id, input));
         }
 
         // ----- Endpoints administrativos -----

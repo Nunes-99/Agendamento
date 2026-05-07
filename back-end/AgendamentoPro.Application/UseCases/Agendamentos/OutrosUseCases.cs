@@ -168,9 +168,11 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
 
             // Abre avaliação ao concluir - cliente recebe link público.
             // Idempotente: se já existe avaliação, reutiliza o token existente.
-            await _avaliacoes.AbrirAsync(tenantId, ag.AgeId);
+            var token = await _avaliacoes.AbrirAsync(tenantId, ag.AgeId);
 
-            return AgendamentoMapper.Map(ag);
+            var vm = AgendamentoMapper.Map(ag);
+            vm.AvaliacaoToken = token;
+            return vm;
         }
 
         public async Task<AgendamentoViewModel> NoShowAsync(int tenantId, int id)

@@ -89,8 +89,22 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
                         var ag = await _agendamentos.GetByIdAsync(pagamento.R_AgeId, pagamento.R_TenId);
                         if (ag != null)
                         {
-                            ag.ConfirmarPagamento();
-                            await _agendamentos.UpdateAsync(ag);
+                            // Se este agendamento faz parte de um combo, confirma TODOS do grupo.
+                            // Caso contrário, confirma apenas o agendamento isolado.
+                            if (ag.AgeGrupoComboId.HasValue)
+                            {
+                                var grupo = await _agendamentos.GetByGrupoComboAsync(ag.AgeGrupoComboId.Value);
+                                foreach (var item in grupo)
+                                {
+                                    item.ConfirmarPagamento();
+                                    await _agendamentos.UpdateAsync(item);
+                                }
+                            }
+                            else
+                            {
+                                ag.ConfirmarPagamento();
+                                await _agendamentos.UpdateAsync(ag);
+                            }
                         }
                         alterou = true;
                     }
