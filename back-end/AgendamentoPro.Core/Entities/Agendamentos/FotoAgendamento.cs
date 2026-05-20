@@ -48,5 +48,16 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
             FotTamanhoBytes = tamanhoBytes;
             FotCriadoEm = DateTime.UtcNow;
         }
+
+        /// <summary>
+        /// Atualiza o tamanho gravado no banco após o resize concluir em background.
+        /// O upload original pode ter 5 MB; após o resize sobra ~500 KB — sem essa
+        /// chamada o banco continuaria reportando o valor antigo.
+        /// </summary>
+        public void AtualizarTamanho(long bytes)
+        {
+            if (bytes < 0) throw new DomainException("Tamanho não pode ser negativo.");
+            FotTamanhoBytes = bytes;
+        }
     }
 }

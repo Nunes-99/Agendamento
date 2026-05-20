@@ -156,7 +156,9 @@ Healthchecks built-in nos containers — orquestrador detecta containers com ban
 | `APP_FRONTEND_URL` | URL pública do frontend (ex: `https://app.suaempresa.com.br`) — usada nos links de e-mail | — |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM_EMAIL` / `SMTP_FROM_NAME` / `SMTP_USE_SSL` | Configuração SMTP para envio de e-mails de reset de senha (opcional) | Gmail App Password, SendGrid, Mailgun, AWS SES, etc. |
 | `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` | Credenciais do super-admin | Defina o que quiser |
-| `UPLOADS_PATH` | Pasta para fotos (default `/data/uploads` no compose) | Volume persistente |
+| `UPLOADS_PATH` | Pasta para fotos (default `/data/uploads` no compose, ignorado se `STORAGE_PROVIDER=s3`) | Volume persistente |
+| `STORAGE_PROVIDER` | `local` (default) ou `s3` | — |
+| `S3_BUCKET` / `S3_REGION` / `S3_ENDPOINT` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_PUBLIC_BASE_URL` / `S3_FORCE_PATH_STYLE` | Configuração do bucket S3 (ou MinIO/B2/R2). Veja `Storage de fotos` abaixo. | AWS console / MinIO / Backblaze |
 
 Em **Development** o sistema usa um JWT secret padrão e gera senha aleatória se não houver `SUPERADMIN_PASSWORD`.
 Em **Production** o startup **falha imediatamente** se:
@@ -208,16 +210,37 @@ Authorization: Bearer <token-superadmin>
 A operação é idempotente. A migração de dados existentes (Shared → PerTenant)
 precisa de tooling que copie linhas — não está incluído ainda.
 
+## Storage de fotos
+
+Default é **disco local** (`LocalFotoStorage`): arquivos em `UPLOADS_PATH`, servidos via `/uploads/...`. Para múltiplas réplicas ou backup gerenciado, use **S3 ou compatível** (MinIO, Backblaze B2, Cloudflare R2):
+
+```env
+STORAGE_PROVIDER=s3
+S3_BUCKET=meu-bucket
+S3_REGION=us-east-1
+# Opcionais (MinIO/B2/R2):
+S3_ENDPOINT=https://s3.us-west-002.backblazeb2.com
+S3_FORCE_PATH_STYLE=true
+S3_PUBLIC_BASE_URL=https://cdn.exemplo.com  # se usar CloudFront/Fastly
+# Credenciais (default usa chain provider AWS — IAM role/instance profile):
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+```
+
+> **Resize**: o `FotoResizeJob` precisa de um caminho local para o ImageSharp. Em modo S3 o resize é pulado e o upload original fica como está. Para resize pós-upload em S3, configure `S3 Event → Lambda` (AWS) ou um worker externo que baixa-redimensiona-sobe. Frontend pode usar query params do CloudFront/Imgix para resize on-the-fly.
+
 ## Background jobs (lembretes)
 
-Lembretes 24h/2h rodam por default via **Hangfire** com storage in-memory:
+Lembretes 24h/2h rodam via **Hangfire** com storage persistente — jobs sobrevivem a restart do processo:
 
+- **Provider SQLite** (default): arquivo separado `hangfire.db` em `AppContext.BaseDirectory` (configurável via `HANGFIRE_DB_PATH`).
+- **Provider SqlServer**: usa a mesma connection string da aplicação; Hangfire cria o schema `[HangFire]` automaticamente no primeiro boot.
+- **Escape hatch**: `HANGFIRE_STORAGE=Memory` reativa o modo in-memory (útil em testes/CI; jobs somem em restart).
+
+Outros pontos:
 - Retry automático (3 tentativas, backoff 60s/5min/15min)
 - Dashboard em `/hangfire` (autenticado, SuperAdmin/Administrador)
 - Para reativar o BackgroundService legado, set `USE_LEGACY_REMINDER=true`
-
-Para persistir jobs entre restarts em produção real, troque `UseMemoryStorage()`
-por `UseSqlServerStorage(...)` ou `UsePostgreSqlStorage(...)` em `Program.cs`.
 
 ## Migrations
 
@@ -276,7 +299,7 @@ Use `BACKUP DATABASE` do próprio SQL Server agendado via SQL Agent ou cron + `s
 ## Extensibilidade
 
 - Novos gateways de pagamento: implemente `IGatewayPagamento` no Infrastructure e registre no IoC.
-- Storage de fotos remoto (S3, Azure Blob): implemente `IFotoStorage` substituindo `LocalFotoStorage`.
+- Storage de fotos: `S3FotoStorage` já incluído (S3, MinIO, B2, R2 — ative com `STORAGE_PROVIDER=s3`). Para Azure Blob ou outros, implemente `IFotoStorage`.
 - Novo canal de notificação (e-mail, push): adicione um service no Core e implemente.
 - Novos relatórios: adicione método em `IRelatoriosUseCase`.
 

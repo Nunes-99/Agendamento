@@ -16,16 +16,19 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         private readonly IFotoStorage _storage;
         private readonly ITenantContext _tenant;
         private readonly IUnitOfWork _uow;
+        private readonly IFotoResizeEnqueuer _resizeEnqueuer;
 
         public FotoAgendamentoUseCase(IAgendamentoRepository agendamentos,
             IFotoAgendamentoRepository fotos, IFotoStorage storage,
-            ITenantContext tenant, IUnitOfWork uow)
+            ITenantContext tenant, IUnitOfWork uow,
+            IFotoResizeEnqueuer resizeEnqueuer = null)
         {
             _agendamentos = agendamentos;
             _fotos = fotos;
             _storage = storage;
             _tenant = tenant;
             _uow = uow;
+            _resizeEnqueuer = resizeEnqueuer;
         }
 
         public async Task<FotoAgendamentoViewModel> UploadAsync(int agendamentoId, TipoFoto tipo,
@@ -37,16 +40,16 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             var ag = await _agendamentos.GetByIdAsync(agendamentoId, _tenant.TenantId.Value)
                 ?? throw new AgendamentoException("Agendamento não encontrado.");
 
-            var url = await _storage.SalvarAsync(ag.R_TenId, ag.AgeId, nomeOriginal, contentType, conteudo, ct);
+            var salvo = await _storage.SalvarAsync(ag.R_TenId, ag.AgeId, nomeOriginal, contentType, conteudo, ct);
 
-            // contentLength obtido pela posição do stream após cópia para o storage,
-            // mas como já consumimos, recuperamos via FileInfo? Para simplicidade armazena 0;
-            // o storage pode ser estendido para retornar tamanho. Aqui usa Stream.Length se disponível.
-            long tamanho = 0;
-            try { if (conteudo.CanSeek) tamanho = conteudo.Length; } catch { }
-
-            var foto = new FotoAgendamento(ag.R_TenId, ag.AgeId, tipo, url, nomeOriginal, contentType, tamanho);
+            var foto = new FotoAgendamento(ag.R_TenId, ag.AgeId, tipo, salvo.Url,
+                nomeOriginal, contentType, salvo.TamanhoBytes);
             await _fotos.CreateAsync(foto);
+
+            // Resize ocorre em background; o job atualiza FotTamanhoBytes ao terminar
+            // pra refletir o tamanho real do arquivo após o resize (que pode ser
+            // bem menor que o original).
+            _resizeEnqueuer?.Enfileirar(foto.FotId, ag.R_TenId, salvo.Url);
 
             return ToViewModel(foto);
         }
@@ -80,5 +83,13 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             TamanhoBytes = f.FotTamanhoBytes,
             CriadoEm = f.FotCriadoEm
         };
+    }
+
+    /// <summary>
+    /// Abstração pra enfileirar o resize sem acoplar a Application ao Hangfire.
+    /// </summary>
+    public interface IFotoResizeEnqueuer
+    {
+        void Enfileirar(int fotoId, int tenantId, string urlRelativa);
     }
 }

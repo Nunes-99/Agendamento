@@ -1,8 +1,6 @@
 using AgendamentoPro.Core.Interfaces.Services;
-using Hangfire;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SixLabors.ImageSharp.Processing;
 
 namespace AgendamentoPro.Infrastructure.Services.Storage
 {
@@ -10,6 +8,8 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
     /// Storage local em disco. Escreve em UPLOADS_PATH/{tenantId}/{agendamentoId}/{guid}.{ext}
     /// e retorna URL relativa /uploads/{tenantId}/{agendamentoId}/{guid}.{ext}.
     /// O frontend deve servir essa rota via static files (Program.cs UseStaticFiles).
+    /// O resize de imagens grandes é enfileirado pelo `FotoAgendamentoUseCase` em
+    /// `FotoResizeJob` — este storage apenas grava o original.
     /// </summary>
     public class LocalFotoStorage : IFotoStorage
     {
@@ -25,20 +25,17 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
 
         private readonly string _basePath;
         private readonly ILogger<LocalFotoStorage> _logger;
-        private readonly IBackgroundJobClient _backgroundJobs;
 
-        public LocalFotoStorage(IConfiguration config, ILogger<LocalFotoStorage> logger,
-            IBackgroundJobClient backgroundJobs = null)
+        public LocalFotoStorage(IConfiguration config, ILogger<LocalFotoStorage> logger)
         {
             _logger = logger;
-            _backgroundJobs = backgroundJobs;
             _basePath = Environment.GetEnvironmentVariable("UPLOADS_PATH")
                 ?? config["Uploads:Path"]
                 ?? Path.Combine(AppContext.BaseDirectory, "uploads");
             Directory.CreateDirectory(_basePath);
         }
 
-        public async Task<string> SalvarAsync(int tenantId, int agendamentoId,
+        public async Task<FotoSalvaResult> SalvarAsync(int tenantId, int agendamentoId,
             string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default)
         {
             if (tenantId <= 0 || agendamentoId <= 0)
@@ -56,6 +53,7 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
             var nome = $"{Guid.NewGuid():N}{ext}";
             var caminho = Path.Combine(dir, nome);
 
+            long totalGravado;
             try
             {
                 await using var fs = new FileStream(caminho, FileMode.CreateNew, FileAccess.Write, FileShare.None,
@@ -70,6 +68,7 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
                         throw new InvalidOperationException("Arquivo excede o tamanho máximo permitido (10 MB).");
                     await fs.WriteAsync(buffer.AsMemory(0, lidos), ct);
                 }
+                totalGravado = total;
             }
             catch
             {
@@ -78,59 +77,36 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
                 throw;
             }
 
-            // Resize via Hangfire: agenda em background pra não bloquear o request.
-            // Original sobe primeiro, redimensionamento ocorre em segundos.
-            // Em testes/dev sem Hangfire, o redimensionamento roda inline.
-            if (_backgroundJobs != null)
-                _backgroundJobs.Enqueue(() => RedimensionarSeNecessarioAsync(caminho));
-            else
-                try { await RedimensionarSeNecessarioAsync(caminho); }
-                catch { /* falha silenciosa: original já está no disco */ }
-
-            // URL relativa servida via /uploads via UseStaticFiles
-            return $"/uploads/{tenantId}/{agendamentoId}/{nome}";
-        }
-
-        // Hangfire serializa o método estático + caminho. Sem dependências de instância.
-        public static async Task RedimensionarSeNecessarioAsync(string caminho)
-        {
-            const int LadoMaximo = 1920;
-            using var img = await SixLabors.ImageSharp.Image.LoadAsync(caminho);
-            if (img.Width <= LadoMaximo && img.Height <= LadoMaximo) return;
-            var ratio = (double)LadoMaximo / Math.Max(img.Width, img.Height);
-            var novoW = (int)Math.Round(img.Width * ratio);
-            var novoH = (int)Math.Round(img.Height * ratio);
-            img.Mutate(x => x.Resize(novoW, novoH));
-
-            var ext = Path.GetExtension(caminho).ToLowerInvariant();
-            SixLabors.ImageSharp.Formats.IImageEncoder encoder = ext switch
-            {
-                ".jpg" or ".jpeg" => new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 },
-                ".png" => new SixLabors.ImageSharp.Formats.Png.PngEncoder(),
-                ".webp" => new SixLabors.ImageSharp.Formats.Webp.WebpEncoder { Quality = 85 },
-                ".gif" => new SixLabors.ImageSharp.Formats.Gif.GifEncoder(),
-                _ => new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 }
-            };
-            await using var fs = File.Create(caminho);
-            await img.SaveAsync(fs, encoder);
+            var url = $"/uploads/{tenantId}/{agendamentoId}/{nome}";
+            return new FotoSalvaResult(url, totalGravado);
         }
 
         public Task RemoverAsync(string urlRelativa, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(urlRelativa)) return Task.CompletedTask;
+            var fullTarget = ResolverCaminhoSeguro(urlRelativa);
+            if (fullTarget == null) return Task.CompletedTask;
+            try { if (File.Exists(fullTarget)) File.Delete(fullTarget); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Falha ao remover {Caminho}", fullTarget); }
+            return Task.CompletedTask;
+        }
+
+        public string ResolverCaminho(string urlRelativa) => ResolverCaminhoSeguro(urlRelativa);
+
+        /// <summary>Resolve com defesa básica contra path traversal; retorna null se inválida.</summary>
+        private string ResolverCaminhoSeguro(string urlRelativa)
+        {
+            if (string.IsNullOrWhiteSpace(urlRelativa)) return null;
             var caminhoRelativo = urlRelativa.TrimStart('/').Replace("uploads/", string.Empty, StringComparison.OrdinalIgnoreCase);
             var caminho = Path.Combine(_basePath, caminhoRelativo);
-            // Defesa básica contra path traversal
             var fullBase = Path.GetFullPath(_basePath);
             var fullTarget = Path.GetFullPath(caminho);
             if (!fullTarget.StartsWith(fullBase, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("RemoverAsync: tentativa de path traversal bloqueada: {Url}", urlRelativa);
-                return Task.CompletedTask;
+                _logger.LogWarning("Path traversal bloqueado: {Url}", urlRelativa);
+                return null;
             }
-            try { if (File.Exists(fullTarget)) File.Delete(fullTarget); }
-            catch (Exception ex) { _logger.LogWarning(ex, "Falha ao remover {Caminho}", fullTarget); }
-            return Task.CompletedTask;
+            return fullTarget;
         }
     }
 }

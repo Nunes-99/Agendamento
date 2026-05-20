@@ -126,7 +126,44 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IDisponibilidadeService, DisponibilidadeService>();
             services.AddScoped<ITenantSeeder, DemoDataSeeder>();
-            services.AddSingleton<IFotoStorage, LocalFotoStorage>();
+            // Storage de fotos: local (default) ou S3-compatível via STORAGE_PROVIDER=s3.
+            var storageProvider = (Environment.GetEnvironmentVariable("STORAGE_PROVIDER")
+                ?? config["Storage:Provider"] ?? "local").Trim();
+            if (storageProvider.Equals("s3", StringComparison.OrdinalIgnoreCase))
+            {
+                services.AddSingleton<Amazon.S3.IAmazonS3>(_ =>
+                {
+                    var endpoint = Environment.GetEnvironmentVariable("S3_ENDPOINT") ?? config["Storage:S3:Endpoint"];
+                    var region = Environment.GetEnvironmentVariable("S3_REGION") ?? config["Storage:S3:Region"] ?? "us-east-1";
+                    var accessKey = Environment.GetEnvironmentVariable("S3_ACCESS_KEY") ?? config["Storage:S3:AccessKey"];
+                    var secretKey = Environment.GetEnvironmentVariable("S3_SECRET_KEY") ?? config["Storage:S3:SecretKey"];
+                    var forcePathStyle = (Environment.GetEnvironmentVariable("S3_FORCE_PATH_STYLE")
+                        ?? config["Storage:S3:ForcePathStyle"] ?? "false")
+                        .Equals("true", StringComparison.OrdinalIgnoreCase);
+
+                    var cfg = new Amazon.S3.AmazonS3Config { ForcePathStyle = forcePathStyle };
+                    if (!string.IsNullOrWhiteSpace(endpoint))
+                    {
+                        cfg.ServiceURL = endpoint;
+                        cfg.AuthenticationRegion = region; // signing region quando custom endpoint
+                    }
+                    else
+                    {
+                        cfg.RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region);
+                    }
+
+                    return string.IsNullOrWhiteSpace(accessKey)
+                        ? new Amazon.S3.AmazonS3Client(cfg)
+                        : new Amazon.S3.AmazonS3Client(accessKey, secretKey, cfg);
+                });
+                services.AddSingleton<IFotoStorage, S3FotoStorage>();
+            }
+            else
+            {
+                services.AddSingleton<IFotoStorage, LocalFotoStorage>();
+            }
+            services.AddScoped<IFotoResizeEnqueuer, HangfireFotoResizeEnqueuer>();
+            services.AddScoped<FotoResizeJob>();
             services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
             // Cache em memória com isolamento por tenant (evita bleed-through)

@@ -6,6 +6,8 @@ using AgendamentoPro.Infrastructure.Services.WhatsApp;
 using FluentValidation;
 using Hangfire;
 using Hangfire.MemoryStorage;
+using Hangfire.SqlServer;
+using Hangfire.Storage.SQLite;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -318,13 +320,48 @@ try
             .SetVaryByRouteValue("slug").Tag("publico"));
     });
 
-    // Hangfire: storage in-memory (sem dependência externa). Para produção real
-    // com persistência de jobs, troque por UseSqlServerStorage / UsePostgreSqlStorage.
-    builder.Services.AddHangfire(cfg => cfg
-        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-        .UseSimpleAssemblyNameTypeSerializer()
-        .UseRecommendedSerializerSettings()
-        .UseMemoryStorage());
+    // Hangfire: storage persistente (jobs sobrevivem a restart).
+    //  - Provider Sqlite  → arquivo separado "hangfire.db" (não compartilha com EF Migrations)
+    //  - Provider SqlServer → mesma connection string (Hangfire cria schema [HangFire] sozinho)
+    //  - Override:  HANGFIRE_STORAGE=Memory  (somente dev/testes; jobs somem em restart)
+    var hangfireMode = (Environment.GetEnvironmentVariable("HANGFIRE_STORAGE")
+        ?? builder.Configuration["Hangfire:Storage"] ?? "").Trim();
+    var hangfireDbProvider = (builder.Configuration["Database:Provider"] ?? "Sqlite").Trim();
+    builder.Services.AddHangfire(cfg =>
+    {
+        cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+           .UseSimpleAssemblyNameTypeSerializer()
+           .UseRecommendedSerializerSettings();
+
+        if (hangfireMode.Equals("Memory", StringComparison.OrdinalIgnoreCase))
+        {
+            cfg.UseMemoryStorage();
+        }
+        else if (hangfireDbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            var connStr = builder.Configuration.GetConnectionString("Default")
+                ?? throw new InvalidOperationException(
+                    "ConnectionStrings:Default obrigatório para Hangfire em SqlServer.");
+            cfg.UseSqlServerStorage(connStr, new SqlServerStorageOptions
+            {
+                CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                QueuePollInterval = TimeSpan.Zero,
+                UseRecommendedIsolationLevel = true,
+                DisableGlobalLocks = true,
+                PrepareSchemaIfNecessary = true
+            });
+        }
+        else
+        {
+            // Default: arquivo `hangfire.db` no mesmo diretório do banco principal.
+            // Garante que, em Docker, ele caia no volume persistente (/data) — não em /app.
+            var hangfirePath = Environment.GetEnvironmentVariable("HANGFIRE_DB_PATH")
+                ?? builder.Configuration["Hangfire:DbPath"]
+                ?? DeriveHangfireDbPath(builder.Configuration.GetConnectionString("Default"));
+            cfg.UseSQLiteStorage(hangfirePath);
+        }
+    });
     builder.Services.AddHangfireServer(opts =>
     {
         opts.WorkerCount = 2;
@@ -436,6 +473,30 @@ try
     }).AllowAnonymous();
 
     app.Run();
+
+    // Coloca hangfire.db ao lado do agendamento.db. Em Docker, o connection string aponta
+    // pra /data/agendamento.db (volume persistente) — Hangfire então vai pra /data/hangfire.db
+    // automaticamente sem precisar de configuração extra.
+    static string DeriveHangfireDbPath(string mainConnectionString)
+    {
+        const string defaultPath = "hangfire.db";
+        if (string.IsNullOrWhiteSpace(mainConnectionString)) return Path.Combine(AppContext.BaseDirectory, defaultPath);
+        // Extrai "Data Source=..." da connection string SQLite
+        var parts = mainConnectionString.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var p in parts)
+        {
+            if (p.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase)
+                || p.StartsWith("DataSource=", StringComparison.OrdinalIgnoreCase)
+                || p.StartsWith("Filename=", StringComparison.OrdinalIgnoreCase))
+            {
+                var valor = p.Substring(p.IndexOf('=') + 1).Trim();
+                var dir = Path.GetDirectoryName(valor);
+                if (!string.IsNullOrWhiteSpace(dir)) return Path.Combine(dir, defaultPath);
+                return defaultPath; // mesmo diretório de trabalho do main DB
+            }
+        }
+        return Path.Combine(AppContext.BaseDirectory, defaultPath);
+    }
 
     static Task WriteHealthResponse(HttpContext ctx, HealthReport report)
     {
