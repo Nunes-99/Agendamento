@@ -148,5 +148,34 @@ namespace AgendamentoPro.Tests.Validators
             r.IsValid.Should().BeFalse();
             r.Errors.Should().Contain(e => e.PropertyName == nameof(AtualizarPersonalizacaoInputModel.LogoUrl));
         }
+
+        [Theory]
+        [InlineData("#FFF")]       // RGB curto
+        [InlineData("#FFFA")]      // RGBA curto
+        [InlineData("#1976d2")]    // RGB
+        [InlineData("#1976d2cc")]  // RGBA
+        [InlineData("")]
+        [InlineData(null)]
+        public void PersonalizacaoValidator_CoresValidas_Passam(string cor)
+        {
+            var v = new AtualizarPersonalizacaoValidator();
+            var r = v.Validate(new AtualizarPersonalizacaoInputModel
+            { CorPrimaria = cor, CorSecundaria = cor, CorAcento = cor });
+            r.IsValid.Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData("#FF")]        // 2 chars — inválido
+        [InlineData("#FFFFF")]     // 5 chars — inválido
+        [InlineData("#FFFFFFF")]   // 7 chars — inválido
+        [InlineData("#GGGGGG")]    // chars não-hex
+        [InlineData("FFFFFF")]     // sem #
+        [InlineData("#")]          // só #
+        public void PersonalizacaoValidator_CoresInvalidas_Reprovadas(string cor)
+        {
+            var v = new AtualizarPersonalizacaoValidator();
+            var r = v.Validate(new AtualizarPersonalizacaoInputModel { CorPrimaria = cor });
+            r.IsValid.Should().BeFalse();
+        }
     }
 }

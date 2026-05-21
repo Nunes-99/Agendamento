@@ -71,8 +71,15 @@ namespace AgendamentoPro.API.Controllers
         public async Task<IActionResult> InicializarDatabase(
             [FromServices] TenantDatabaseInitializer initializer,
             [FromServices] ITenantConnectionFactory factory,
+            [FromServices] Core.Interfaces.Database.Repositories.ITenantRepository tenants,
             int id)
         {
+            // Sem essa checagem, SuperAdmin com ID errado criava arquivo `tenant-X.db`
+            // órfão (sem registro correspondente no banco shared). Acumulava lixo no
+            // diretório TENANTS_PATH.
+            var tenant = await tenants.GetByIdAsync(id);
+            if (tenant == null) return NotFound(new { message = "Tenant não encontrado no banco compartilhado." });
+
             await initializer.EnsureDatabaseAsync(id);
             return Ok(new
             {

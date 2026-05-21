@@ -47,7 +47,13 @@ namespace AgendamentoPro.Application.Validators.Tenants
 
     public class AtualizarPersonalizacaoValidator : AbstractValidator<AtualizarPersonalizacaoInputModel>
     {
-        private static readonly Regex CorRegex = new("^#[0-9a-fA-F]{3,8}$", RegexOptions.Compiled);
+        // CSS hex aceita só 3, 4 (com alpha curto), 6 ou 8 (com alpha) caracteres.
+        // Antes o regex "{3,8}" deixava passar #FFFF (alpha curto - ok), #FFFFF (5
+        // - inválido em CSS) e #FFFFFFF (7 - inválido). Frontend renderizaria preto
+        // ou transparente nas cores inválidas.
+        private static readonly Regex CorRegex = new(
+            "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+            RegexOptions.Compiled);
 
         /// <summary>
         /// Aceita URL absoluta http/https ou caminho relativo (ex: /uploads/...).

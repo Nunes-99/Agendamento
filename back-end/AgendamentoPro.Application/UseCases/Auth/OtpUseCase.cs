@@ -93,10 +93,18 @@ namespace AgendamentoPro.Application.UseCases.Auth
                 {
                     await _whats.EnviarTemplateAsync(telefone, "otp_codigo_verificacao", "pt_BR", codigo);
                 }
-                else
+                else if (IsDev)
                 {
+                    // SEGURANÇA: só loga o código em Development. Em produção, se WhatsApp
+                    // estiver inativo, qualquer ops com acesso aos logs viria a ter
+                    // bypass de auth — logar = login sem credenciais.
                     _logger.LogInformation("WhatsApp inativo — código OTP {Codigo} para {Tel} (modo dev)",
                         codigo, telefone);
+                }
+                else
+                {
+                    _logger.LogWarning("WhatsApp inativo em produção: OTP gerado mas não enviado para {Tel}. " +
+                        "Configure WHATSAPP_ACCESS_TOKEN — cliente não receberá o código.", telefone);
                 }
             }
             catch (Exception ex)
