@@ -8,6 +8,7 @@ using AgendamentoPro.Core.Interfaces.Services;
 using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace AgendamentoPro.API.Controllers
@@ -80,6 +81,10 @@ namespace AgendamentoPro.API.Controllers
 
         [HttpPost("api/v1/t/{slug}/pacotes/{pacoteId:int}/comprar")]
         [AllowAnonymous]
+        // 5/min/IP — endpoint cria SaldoPacote e dispara cobrança no gateway.
+        // Sem rate-limit dedicado, atacante anônimo pode disparar N cobranças
+        // (poluição no painel do gateway, consumo de quota MP).
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Comprar(
             [FromServices] AgendamentoProDbContext ctx,
             [FromServices] ITenantContext tenant,

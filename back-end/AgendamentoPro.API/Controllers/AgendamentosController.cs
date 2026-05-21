@@ -5,6 +5,7 @@ using AgendamentoPro.Core.Enums;
 using AgendamentoPro.Core.Interfaces.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AgendamentoPro.API.Controllers
 {
@@ -28,6 +29,11 @@ namespace AgendamentoPro.API.Controllers
 
         [HttpPost("api/v1/t/{slug}/agendamentos")]
         [AllowAnonymous]
+        // 5/min/IP — sem isso, atacante anônimo pode "squattear" slots criando
+        // agendamentos PendentePagamento em massa (bloqueiam horários por 15min
+        // até o webhook expirar). Mesmo limite que CombosController.AgendarPublico
+        // e ListaEspera.Entrar usam.
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Criar(
             [FromServices] ICriarAgendamentoUseCase useCase,
             [FromServices] ITenantContext ctx, string slug,
