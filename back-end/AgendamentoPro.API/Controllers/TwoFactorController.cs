@@ -17,7 +17,12 @@ namespace AgendamentoPro.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/v1/admin/2fa")]
-    [Authorize]
+    // SEGURANÇA: usa policy "Atendente" — sem isso, JWT de cliente OTP (que
+    // tem ClaimTypes.NameIdentifier = clienteId e Role = "Cliente") era aceito.
+    // ObterUsuarioId() lê NameIdentifier e o use case chamava GetByIdAsync(usuariosRepo, X)
+    // com X = clienteId, eventualmente coincidindo com UsuId de um admin → o cliente
+    // OTP podia trocar o secret 2FA daquele admin (privilege escalation).
+    [Authorize(Policy = "Atendente")]
     [Produces("application/json")]
     public class TwoFactorController : BaseTenantController
     {
