@@ -88,20 +88,20 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
                     if (saldo.Ativar())
                     {
                         await _saldosPacote.UpdateAsync(saldo);
-                        if (registro != null)
-                        {
-                            registro.MarcarProcessado();
-                            await _webhooks.UpdateAsync(registro);
-                        }
-                        await _uow.SaveChangesAsync();
                         _logger.LogInformation("Webhook {Gateway}: SaldoPacote {SaldId} ativado.",
                             gateway.Nome, saldo.SaldId);
                     }
+                    // Marca processado mesmo se Ativar() retornou false (já ativo)
+                    // — caso contrário o gateway retentaria o webhook indefinidamente.
+                    await FinalizarRegistroAsync(registro);
                     return;
                 }
 
                 _logger.LogWarning("Webhook {Gateway}: pagamento {GatewayId} não encontrado (nem como agendamento nem como pacote).",
                     gateway.Nome, evento.GatewayId);
+                // Mesmo cenário: marca processado pra parar de retentar (não vai aparecer
+                // mais — pagamento foi deletado ou nunca existiu).
+                await FinalizarRegistroAsync(registro);
                 return;
             }
 
@@ -118,7 +118,13 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
                             // Caso contrário, confirma apenas o agendamento isolado.
                             if (ag.AgeGrupoComboId.HasValue)
                             {
-                                var grupo = await _agendamentos.GetByGrupoComboAsync(ag.AgeGrupoComboId.Value);
+                                // Filtra por tenant (defesa em profundidade — GUID é único mas
+                                // o repo não filtra). E pula itens já cancelados/concluídos
+                                // para evitar exception em ConfirmarPagamento().
+                                var grupo = (await _agendamentos.GetByGrupoComboAsync(ag.AgeGrupoComboId.Value))
+                                    .Where(g => g.R_TenId == pagamento.R_TenId
+                                        && g.AgeStatus != StatusAgendamento.Cancelado
+                                        && g.AgeStatus != StatusAgendamento.Concluido);
                                 foreach (var item in grupo)
                                 {
                                     item.ConfirmarPagamento();
@@ -176,6 +182,19 @@ namespace AgendamentoPro.Application.UseCases.Pagamentos
                     valor = pagamento.PagValor
                 });
             }
+        }
+
+        /// <summary>
+        /// Marca o WebhookEvento como processado e salva, mesmo em caminhos onde
+        /// a entidade alvo já estava no estado final (idempotência). Sem isso, o
+        /// gateway retentaria o webhook indefinidamente.
+        /// </summary>
+        private async Task FinalizarRegistroAsync(Core.Entities.Pagamentos.WebhookEvento registro)
+        {
+            if (registro == null) return;
+            registro.MarcarProcessado();
+            await _webhooks.UpdateAsync(registro);
+            await _uow.SaveChangesAsync();
         }
     }
 }

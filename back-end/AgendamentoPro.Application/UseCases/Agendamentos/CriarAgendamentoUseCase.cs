@@ -130,9 +130,14 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 // ① Verifica saldo de pacote pré-pago do cliente para este serviço.
                 //    Se houver, debita 1 e PULA cobrança — agendamento já fica confirmado.
                 var saldoPacote = await _saldosPacote.GetSaldoValidoAsync(tenantId, cliente.CliId, servico.SerId);
+                var vaiUsarSaldo = saldoPacote != null;
 
-                // ② Aplica cupom (se houver) ANTES da criação — afeta valor total e entrada
-                var (valorComDesconto, _) = await AplicarCupomAsync(tenantId, input.CupomCodigo, servico.SerPreco);
+                // ② Aplica cupom apenas se NÃO for usar saldo. Quando o saldo cobre o
+                //    atendimento, o cupom seria "queimado" sem reduzir custo — preservar
+                //    pra próximo agendamento.
+                var (valorComDesconto, _) = vaiUsarSaldo
+                    ? (servico.SerPreco, (Cupom)null)
+                    : await AplicarCupomAsync(tenantId, input.CupomCodigo, servico.SerPreco);
 
                 var agendamento = new Agendamento(tenantId, cliente.CliId, servico.SerId, recursoId,
                     input.Data, input.HoraInicio, horaFim, valorComDesconto,

@@ -199,6 +199,17 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 }
                 await _uow.SaveChangesAsync();
                 await NotificarPrimeiroNaEsperaAsync(ag);
+
+                // Notifica admin (alinhado com o caminho single)
+                _ = _realtime.NotificarTenantAsync(tenantId, "agendamento-cancelado", new
+                {
+                    agendamentoId = ag.AgeId,
+                    grupoComboId = ag.AgeGrupoComboId,
+                    data = ag.AgeData,
+                    horaInicio = ag.AgeHoraInicio,
+                    motivo
+                });
+
                 return AgendamentoMapper.Map(ag);
             }
 
