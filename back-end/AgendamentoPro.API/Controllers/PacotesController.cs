@@ -52,6 +52,12 @@ namespace AgendamentoPro.API.Controllers
             [FromBody] CriarPacoteInput input)
         {
             var tid = RequireTenantId(tenant);
+            // CROSS-TENANT: garantir que o serviço pertence ao mesmo tenant — sem
+            // isso, admin do A poderia criar pacote referenciando serviço do B.
+            var servico = await ctx.Servicos.FirstOrDefaultAsync(
+                s => s.SerId == input.ServicoId && s.R_TenId == tid);
+            if (servico == null) return BadRequest(new { message = "Serviço inválido." });
+
             var pacote = new PacotePrePago(tid, input.ServicoId, input.Nome,
                 input.Quantidade, input.Preco, input.ValidadeDias);
             ctx.PacotesPrePagos.Add(pacote);
@@ -100,9 +106,12 @@ namespace AgendamentoPro.API.Controllers
             ctx.SaldosPacote.Add(saldo);
             await uow.SaveChangesAsync();
 
-            var gateway = gateways.FirstOrDefault();
+            // Pacote é cobrado em PIX upfront. Sem Suporta(Pix), se Stripe estiver
+            // registrado antes de MP, FirstOrDefault() pegaria Stripe (que não suporta
+            // PIX) e quebraria o endpoint.
+            var gateway = gateways.FirstOrDefault(g => g.Suporta(FormaPagamento.Pix));
             if (gateway == null)
-                return StatusCode(500, new { message = "Gateway de pagamento não configurado." });
+                return StatusCode(500, new { message = "Nenhum gateway configurado suporta PIX." });
 
             var cobranca = await gateway.CriarCobrancaAsync(tid, agendamentoId: 0,
                 pacote.PctPreco, FormaPagamento.Pix,

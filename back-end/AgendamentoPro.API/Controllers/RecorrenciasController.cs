@@ -1,6 +1,7 @@
 using AgendamentoPro.Core.Entities.Agendamentos;
 using AgendamentoPro.Core.Interfaces.Common;
 using AgendamentoPro.Core.Interfaces.Database.Common;
+using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +34,7 @@ namespace AgendamentoPro.API.Controllers
         public async Task<IActionResult> Criar(
             [FromServices] AgendamentoProDbContext ctx,
             [FromServices] ITenantContext tenant,
+            [FromServices] IAgendamentoRepository agendamentosRepo,
             [FromServices] IUnitOfWork uow,
             [FromBody] CriarRecorrenciaInput input)
         {
@@ -41,6 +43,11 @@ namespace AgendamentoPro.API.Controllers
             if (servico == null) return BadRequest(new { message = "Serviço inválido." });
             var cliente = await ctx.Clientes.FirstOrDefaultAsync(c => c.CliId == input.ClienteId && c.R_TenId == tid);
             if (cliente == null) return BadRequest(new { message = "Cliente inválido." });
+            // CROSS-TENANT: sem essa checagem, admin do tenant A poderia ocupar slot
+            // do recurso do tenant B com a série inteira.
+            var recurso = await ctx.Recursos.FirstOrDefaultAsync(r => r.RecId == input.RecursoId && r.R_TenId == tid);
+            if (recurso == null) return BadRequest(new { message = "Recurso inválido." });
+            if (!recurso.RecAtivo) return BadRequest(new { message = "Recurso inativo." });
             var tenantInfo = await ctx.Tenants.FirstOrDefaultAsync(t => t.TenId == tid);
 
             var rec = new AgendamentoRecorrente(tid, input.ClienteId, input.ServicoId, input.RecursoId,
@@ -48,14 +55,23 @@ namespace AgendamentoPro.API.Controllers
             ctx.AgendamentosRecorrentes.Add(rec);
             await ctx.SaveChangesAsync();
 
-            // Cria os N agendamentos individuais
+            // Cria os N agendamentos individuais. Checa conflito ANTES de criar pra
+            // distinguir "horário já ocupado" de outros erros e dar uma mensagem
+            // específica. O índice único permanece como rede de segurança final.
             var horaFim = input.HoraInicio.Add(TimeSpan.FromMinutes(servico.SerDuracaoMinutos));
+            var buffer = TimeSpan.FromMinutes(tenantInfo?.TenBufferMinutos ?? 0);
             var criados = new List<int>();
             var erros = new List<string>();
             foreach (var data in rec.GerarDatas())
             {
                 try
                 {
+                    if (await agendamentosRepo.ExisteConflitoAsync(tid, input.RecursoId, data.Date,
+                            input.HoraInicio.Subtract(buffer), horaFim.Add(buffer)))
+                    {
+                        erros.Add($"{data:dd/MM}: horário indisponível (conflito com outro agendamento).");
+                        continue;
+                    }
                     var ag = new Agendamento(tid, input.ClienteId, input.ServicoId, input.RecursoId,
                         data, input.HoraInicio, horaFim, servico.SerPreco,
                         tenantInfo?.TenPercentualEntrada ?? 20m,
