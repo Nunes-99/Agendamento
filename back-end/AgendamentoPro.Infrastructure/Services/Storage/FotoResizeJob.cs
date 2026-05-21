@@ -1,3 +1,4 @@
+using AgendamentoPro.Core.Interfaces.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
 using Hangfire;
@@ -30,6 +31,14 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
         public async Task ExecutarAsync(int fotoId, int tenantId, string urlRelativa)
         {
             using var scope = _scopeFactory.CreateScope();
+
+            // CRÍTICO em modo PerTenant: sem setar o TenantContext, a factory do
+            // DbContext resolve a connection do banco SHARED, e a foto (que vive
+            // no banco do tenant) não é encontrada — o resize roda mas o
+            // FotTamanhoBytes nunca é atualizado. Em modo Shared, o setter é no-op.
+            var tCtx = scope.ServiceProvider.GetRequiredService<ITenantContext>();
+            tCtx.SetTenant(tenantId, slug: null);
+
             var storage = scope.ServiceProvider.GetRequiredService<IFotoStorage>();
             var caminho = storage.ResolverCaminho(urlRelativa);
             if (caminho == null || !File.Exists(caminho))

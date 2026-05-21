@@ -25,19 +25,21 @@ namespace AgendamentoPro.Application.UseCases.Servicos
         private readonly IHorarioFuncionamentoRepository _horarios;
         private readonly IDisponibilidadeService _disponibilidade;
         private readonly IEnumerable<IGatewayPagamento> _gateways;
+        private readonly INotificacaoRealtime _realtime;
         private readonly IUnitOfWork _uow;
 
         public AgendarComboUseCase(IComboRepository combos, IAgendamentoRepository agendamentos,
             IServicoRepository servicos, IRecursoRepository recursos, IClienteRepository clientes,
             ITenantRepository tenants, IPagamentoRepository pagamentos,
             IHorarioFuncionamentoRepository horarios,
-            IDisponibilidadeService disponibilidade, IEnumerable<IGatewayPagamento> gateways, IUnitOfWork uow)
+            IDisponibilidadeService disponibilidade, IEnumerable<IGatewayPagamento> gateways,
+            INotificacaoRealtime realtime, IUnitOfWork uow)
         {
             _combos = combos; _agendamentos = agendamentos; _servicos = servicos;
             _recursos = recursos; _clientes = clientes; _tenants = tenants;
             _pagamentos = pagamentos; _horarios = horarios;
             _disponibilidade = disponibilidade;
-            _gateways = gateways; _uow = uow;
+            _gateways = gateways; _realtime = realtime; _uow = uow;
         }
 
         public async Task<AgendarComboResultViewModel> ExecuteAsync(int tenantId, int comboId, AgendarComboInputModel input)
@@ -50,6 +52,8 @@ namespace AgendamentoPro.Application.UseCases.Servicos
                 ?? throw new ServicoException("Combo não encontrado.");
             if (!combo.ComAtivo) throw new ServicoException("Combo indisponível.");
             if (combo.Servicos.Count == 0) throw new ServicoException("Combo sem serviços vinculados.");
+            if (combo.ComPrecoPromocional <= 0)
+                throw new ServicoException("Combo com preço promocional inválido. Contate o suporte.");
 
             // Carregar serviços (com duração) na ordem do combo
             var servicosDoCombo = combo.Servicos
@@ -59,10 +63,12 @@ namespace AgendamentoPro.Application.UseCases.Servicos
             if (servicosDoCombo.Count != combo.Servicos.Count)
                 throw new ServicoException("Algum serviço do combo está inativo. Tente novamente mais tarde.");
 
-            // Antecedência mínima (do primeiro slot)
+            // Antecedência mínima (do primeiro slot) e máxima — alinhado com CriarAgendamentoUseCase.
             var dataHoraInicio = input.Data.Date.Add(input.HoraInicio);
             if (dataHoraInicio < DateTime.Now.AddHours(tenant.TenAntecedenciaMinHoras))
                 throw new AgendamentoException($"O agendamento exige antecedência mínima de {tenant.TenAntecedenciaMinHoras}h.");
+            if (dataHoraInicio > DateTime.Now.AddDays(tenant.TenAntecedenciaMaxDias))
+                throw new AgendamentoException($"Não é permitido agendar com mais de {tenant.TenAntecedenciaMaxDias} dias de antecedência.");
 
             // Validar horário de funcionamento: o combo inteiro precisa caber dentro do expediente
             // do dia escolhido, e não pode atravessar a pausa para almoço/intervalo.
@@ -194,6 +200,18 @@ namespace AgendamentoPro.Application.UseCases.Servicos
                 }
 
                 await _uow.CommitAsync();
+
+                // Notifica admin em tempo real (alinhado com CriarAgendamentoUseCase)
+                _ = _realtime.NotificarTenantAsync(tenantId, "novo-agendamento", new
+                {
+                    agendamentoId = primeiro.AgeId,
+                    grupoComboId,
+                    clienteNome = cliente.CliNome,
+                    servicoNome = $"Combo: {combo.ComNome}",
+                    data = primeiro.AgeData,
+                    horaInicio = primeiro.AgeHoraInicio,
+                    statusPagamento = primeiro.AgePagamentoStatus.ToString()
+                });
 
                 return new AgendarComboResultViewModel
                 {
