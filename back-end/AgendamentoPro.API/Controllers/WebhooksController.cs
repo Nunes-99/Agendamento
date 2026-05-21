@@ -16,10 +16,13 @@ namespace AgendamentoPro.API.Controllers
         public async Task<IActionResult> Pagamento(
             [FromServices] IProcessarWebhookPagamentoUseCase useCase,
             string gateway,
-            [FromHeader(Name = "X-Signature")] string assinatura = null)
+            [FromHeader(Name = "X-Signature")] string xSignature = null,
+            [FromHeader(Name = "Stripe-Signature")] string stripeSignature = null)
         {
             using var reader = new StreamReader(Request.Body);
             var payload = await reader.ReadToEndAsync();
+            // Cada gateway envia em seu próprio header — usa o primeiro disponível.
+            var assinatura = !string.IsNullOrEmpty(stripeSignature) ? stripeSignature : xSignature;
             await useCase.ExecuteAsync(gateway, payload, assinatura);
             return Ok(new { received = true });
         }
