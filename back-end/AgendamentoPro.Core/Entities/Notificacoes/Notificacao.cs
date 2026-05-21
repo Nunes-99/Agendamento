@@ -45,5 +45,8 @@ namespace AgendamentoPro.Core.Entities.Notificacoes
             NotStatus = "Erro";
             NotErro = erro;
         }
+
+        /// <summary>Usado quando o canal original falha e o envio cai pra um fallback (ex: WhatsApp → SMS).</summary>
+        public void AlterarCanal(string novoCanal) => NotCanal = novoCanal;
     }
 }

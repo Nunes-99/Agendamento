@@ -89,19 +89,20 @@ namespace AgendamentoPro.Infrastructure.Services.WhatsApp
 
             var ctx = scope.ServiceProvider.GetRequiredService<AgendamentoProDbContext>();
             var whatsapp = scope.ServiceProvider.GetRequiredService<INotificadorWhatsApp>();
-            if (!whatsapp.Ativo)
+            var sms = scope.ServiceProvider.GetRequiredService<ISmsSender>();
+            if (!whatsapp.Ativo && !sms.Ativo)
             {
-                _logger.LogDebug("LembreteJob (tenant {Tid}): WhatsApp inativo, ignorado.", tenantId);
+                _logger.LogDebug("LembreteJob (tenant {Tid}): WhatsApp e SMS inativos, ignorado.", tenantId);
                 return;
             }
 
             var agora = DateTime.UtcNow;
-            await DispararAsync(ctx, whatsapp, "Lembrete24h", agora.AddHours(24), ct);
-            await DispararAsync(ctx, whatsapp, "Lembrete2h", agora.AddHours(2), ct);
+            await DispararAsync(ctx, whatsapp, sms, "Lembrete24h", agora.AddHours(24), ct);
+            await DispararAsync(ctx, whatsapp, sms, "Lembrete2h", agora.AddHours(2), ct);
         }
 
         private async Task DispararAsync(AgendamentoProDbContext ctx, INotificadorWhatsApp whatsapp,
-            string tipo, DateTime alvo, CancellationToken ct)
+            ISmsSender sms, string tipo, DateTime alvo, CancellationToken ct)
         {
             var inicio = alvo.AddMinutes(-Janela.TotalMinutes);
             var fim = alvo.AddMinutes(Janela.TotalMinutes);
@@ -128,37 +129,67 @@ namespace AgendamentoPro.Infrastructure.Services.WhatsApp
                 var numero = ag.Cliente?.CliWhatsApp ?? ag.Cliente?.CliTelefone;
                 if (string.IsNullOrWhiteSpace(numero)) continue;
 
+                var canal = whatsapp.Ativo ? "WhatsApp" : "SMS";
                 var notificacao = new Notificacao(ag.R_TenId, ag.AgeId,
-                    canal: "WhatsApp", tipo: tipo, destinatario: numero,
+                    canal: canal, tipo: tipo, destinatario: numero,
                     mensagem: $"{tipo} - {ag.Servico?.SerNome} em {dataHora:dd/MM HH:mm}");
                 ctx.Notificacoes.Add(notificacao);
                 await ctx.SaveChangesAsync(ct);
 
-                try
+                var enviadoComSucesso = false;
+                string erroDetalhe = null;
+
+                if (whatsapp.Ativo)
                 {
-                    if (tipo == "Lembrete24h")
+                    try
                     {
-                        await whatsapp.EnviarTemplateAsync(numero, "lembrete_24h", "pt_BR",
-                            ag.Cliente?.CliNome ?? "Cliente",
-                            ag.Servico?.SerNome ?? "serviço",
-                            dataHora.ToString("dd/MM/yyyy"),
-                            dataHora.ToString("HH:mm"),
-                            ag.Tenant?.TenNome ?? "");
+                        if (tipo == "Lembrete24h")
+                        {
+                            await whatsapp.EnviarTemplateAsync(numero, "lembrete_24h", "pt_BR",
+                                ag.Cliente?.CliNome ?? "Cliente",
+                                ag.Servico?.SerNome ?? "serviço",
+                                dataHora.ToString("dd/MM/yyyy"),
+                                dataHora.ToString("HH:mm"),
+                                ag.Tenant?.TenNome ?? "");
+                        }
+                        else
+                        {
+                            await whatsapp.EnviarTemplateAsync(numero, "lembrete_2h", "pt_BR",
+                                ag.Cliente?.CliNome ?? "Cliente",
+                                ag.Servico?.SerNome ?? "serviço",
+                                dataHora.ToString("HH:mm"));
+                        }
+                        enviadoComSucesso = true;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        await whatsapp.EnviarTemplateAsync(numero, "lembrete_2h", "pt_BR",
-                            ag.Cliente?.CliNome ?? "Cliente",
-                            ag.Servico?.SerNome ?? "serviço",
-                            dataHora.ToString("HH:mm"));
+                        _logger.LogWarning(ex, "Falha ao enviar {Tipo} por WhatsApp para agendamento {Id} — tentando SMS", tipo, ag.AgeId);
+                        erroDetalhe = ex.Message.Length > 800 ? ex.Message[..800] : ex.Message;
                     }
-                    notificacao.MarcarEnviada();
                 }
-                catch (Exception ex)
+
+                // Fallback SMS (Twilio): se WhatsApp inativo OU falhou.
+                if (!enviadoComSucesso && sms.Ativo)
                 {
-                    _logger.LogWarning(ex, "Falha ao enviar {Tipo} para agendamento {Id}", tipo, ag.AgeId);
-                    notificacao.MarcarErro(ex.Message.Length > 1000 ? ex.Message[..1000] : ex.Message);
+                    var texto = tipo == "Lembrete24h"
+                        ? $"Olá {ag.Cliente?.CliNome ?? "Cliente"}! Lembrete: {ag.Servico?.SerNome ?? "seu atendimento"} amanhã em {dataHora:dd/MM HH:mm} ({ag.Tenant?.TenNome ?? ""})."
+                        : $"Olá {ag.Cliente?.CliNome ?? "Cliente"}! Seu atendimento ({ag.Servico?.SerNome ?? "serviço"}) é hoje em {dataHora:HH:mm}.";
+                    enviadoComSucesso = await sms.EnviarAsync(numero, texto, ct);
+                    if (enviadoComSucesso)
+                    {
+                        notificacao.AlterarCanal("SMS");
+                        if (erroDetalhe != null)
+                            _logger.LogInformation("SMS fallback bem-sucedido p/ agendamento {Id} (WhatsApp falhou).", ag.AgeId);
+                    }
+                    else if (erroDetalhe == null)
+                    {
+                        erroDetalhe = "Falha no envio SMS.";
+                    }
                 }
+
+                if (enviadoComSucesso) notificacao.MarcarEnviada();
+                else if (erroDetalhe != null) notificacao.MarcarErro(erroDetalhe);
+
                 ctx.Notificacoes.Update(notificacao);
                 await ctx.SaveChangesAsync(ct);
             }

@@ -169,6 +169,9 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddSingleton<IWebPushSender, AgendamentoPro.Infrastructure.Services.WebPush.WebPushSender>();
             services.AddScoped<IWebPushSubscriptionRepository,
                 AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories.WebPushSubscriptionRepository>();
+
+            // SMS fallback via Twilio (no-op se TWILIO_* não setado).
+            services.AddSingleton<ISmsSender, AgendamentoPro.Infrastructure.Services.Sms.TwilioSmsSender>();
             services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
             // Cache em memória com isolamento por tenant (evita bleed-through)
@@ -180,6 +183,15 @@ namespace AgendamentoPro.Infrastructure.IoC
             {
                 c.Timeout = TimeSpan.FromSeconds(30);
             });
+            // Stripe é opt-in: só registra se STRIPE_SECRET_KEY estiver definido.
+            // Sem isso, o gateway ficaria visível mas falharia no primeiro uso —
+            // melhor manter a lista de IGatewayPagamento limpa.
+            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY")
+                ?? config["Stripe:SecretKey"]))
+            {
+                services.AddSingleton<IGatewayPagamento,
+                    AgendamentoPro.Infrastructure.Services.Pagamento.StripeGateway>();
+            }
             services.AddHttpClient<INotificadorWhatsApp, WhatsAppCloudNotificador>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(15);

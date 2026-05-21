@@ -297,8 +297,8 @@ Use `BACKUP DATABASE` do próprio SQL Server agendado via SQL Agent ou cron + `s
 - **Status do agendamento**: `PendentePagamento → Confirmado → EmAndamento → Concluido` (ou `Cancelado` / `NoShow`).
 - **Reagendamento**: somente com antecedência ≥ limite do tenant (default 24h), mantém valor pago.
 - **Cancelamento**: registra motivo e data.
-- **Pagamento via gateway**: abstração `IGatewayPagamento` (Mercado Pago implementado; PIX, cartão, checkout).
-- **WhatsApp Cloud API**: integração via `INotificadorWhatsApp` + `BackgroundService` envia lembretes 24h e 2h antes do agendamento (templates `lembrete_24h` e `lembrete_2h` precisam ser pré-aprovados na Meta).
+- **Pagamento via gateway**: abstração `IGatewayPagamento`. Mercado Pago (PIX, cartão, checkout) sempre disponível; Stripe ativa quando `STRIPE_SECRET_KEY` está setado (cartão crédito/débito via Checkout Session). PIX no Stripe não é suportado — use MP. Webhook Stripe valida `Stripe-Signature`.
+- **WhatsApp Cloud API**: integração via `INotificadorWhatsApp` + `BackgroundService` envia lembretes 24h e 2h antes do agendamento (templates `lembrete_24h` e `lembrete_2h` precisam ser pré-aprovados na Meta). Quando WhatsApp falha (template rejeitado, número sem WhatsApp), o `LembreteJob` faz fallback automático para **SMS via Twilio** se `TWILIO_*` estiver configurado.
 - **Avaliação**: ao concluir agendamento, abre token público; cliente avalia 1-5 estrelas + comentário em `/avaliar/{token}`. Médias e últimas avaliações públicas no perfil do tenant.
 - **Fotos antes/depois**: upload por agendamento (até 10 MB, jpg/png/webp/gif). Servidas estaticamente em `/uploads/...`.
 - **Combos**: agrupa N serviços com preço promocional. Catálogo público + fluxo de agendamento que cria N agendamentos contíguos no mesmo recurso (vinculados via `AgeGrupoComboId`) com cobrança agregada única. Cancelar 1 cancela todo o grupo; reagendar individual é bloqueado (cancele e crie novo).
