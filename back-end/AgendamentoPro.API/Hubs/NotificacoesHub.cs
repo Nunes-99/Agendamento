@@ -8,8 +8,13 @@ namespace AgendamentoPro.API.Hubs
     /// Hub SignalR para notificações realtime ao admin.
     /// Eventos: novo agendamento, pagamento aprovado, foto enviada, etc.
     /// Cada admin entra no grupo "tenant-{id}" pra receber só do próprio tenant.
+    ///
+    /// SEGURANÇA: usa Policy "Atendente" — sem isso, JWT de cliente OTP (que
+    /// também carrega claim tenantId) seria aceito e o cliente final receberia
+    /// todas as notificações administrativas (nome de outros clientes, valores
+    /// pagos, motivos de cancelamento).
     /// </summary>
-    [Authorize]
+    [Authorize(Policy = "Atendente")]
     public class NotificacoesHub : Hub
     {
         public override async Task OnConnectedAsync()

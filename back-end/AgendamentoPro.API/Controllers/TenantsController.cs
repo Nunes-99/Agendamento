@@ -29,8 +29,17 @@ namespace AgendamentoPro.API.Controllers
 
         [HttpGet("{id:int}")]
         [Authorize]
-        public async Task<IActionResult> PorId([FromServices] IConsultarTenantUseCase useCase, int id)
+        public async Task<IActionResult> PorId([FromServices] IConsultarTenantUseCase useCase,
+            [FromServices] ITenantContext ctx, int id)
         {
+            // CROSS-TENANT: SuperAdmin pode consultar qualquer tenant. Qualquer outro
+            // usuário (admin tenant, atendente, cliente OTP) só vê o próprio. Sem essa
+            // checagem, qualquer JWT válido lia email/CNPJ/telefone de outros tenants.
+            if (!User.IsInRole("SuperAdmin"))
+            {
+                if (!ctx.IsResolved || ctx.TenantId != id)
+                    return Forbid();
+            }
             var t = await useCase.PorIdAsync(id);
             return t == null ? NotFound() : Ok(t);
         }
@@ -47,20 +56,41 @@ namespace AgendamentoPro.API.Controllers
         [HttpPut("{id:int}")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Atualizar([FromServices] IAtualizarTenantUseCase useCase,
-            int id, [FromBody] AtualizarTenantInputModel input)
-            => Ok(await useCase.ExecuteAsync(id, input));
+            [FromServices] ITenantContext ctx, int id, [FromBody] AtualizarTenantInputModel input)
+        {
+            if (!ValidarOwnerOuSuperAdmin(ctx, id, out var forbid)) return forbid;
+            return Ok(await useCase.ExecuteAsync(id, input));
+        }
 
         [HttpPut("{id:int}/personalizacao")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Personalizacao([FromServices] IAtualizarTenantUseCase useCase,
-            int id, [FromBody] AtualizarPersonalizacaoInputModel input)
-            => Ok(await useCase.AtualizarPersonalizacaoAsync(id, input));
+            [FromServices] ITenantContext ctx, int id, [FromBody] AtualizarPersonalizacaoInputModel input)
+        {
+            if (!ValidarOwnerOuSuperAdmin(ctx, id, out var forbid)) return forbid;
+            return Ok(await useCase.AtualizarPersonalizacaoAsync(id, input));
+        }
 
         [HttpPut("{id:int}/regras")]
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> Regras([FromServices] IAtualizarTenantUseCase useCase,
-            int id, [FromBody] AtualizarRegrasNegocioInputModel input)
-            => Ok(await useCase.AtualizarRegrasAsync(id, input));
+            [FromServices] ITenantContext ctx, int id, [FromBody] AtualizarRegrasNegocioInputModel input)
+        {
+            if (!ValidarOwnerOuSuperAdmin(ctx, id, out var forbid)) return forbid;
+            return Ok(await useCase.AtualizarRegrasAsync(id, input));
+        }
+
+        /// <summary>
+        /// Verifica que o admin chamando o endpoint é dono do tenant alvo (ou SuperAdmin).
+        /// Sem isso, admin de A com JWT válido fazia PUT em /tenants/B/* e editava o B.
+        /// </summary>
+        private bool ValidarOwnerOuSuperAdmin(ITenantContext ctx, int tenantIdAlvo, out IActionResult forbid)
+        {
+            if (User.IsInRole("SuperAdmin")) { forbid = null; return true; }
+            if (ctx.IsResolved && ctx.TenantId == tenantIdAlvo) { forbid = null; return true; }
+            forbid = Forbid();
+            return false;
+        }
 
         /// <summary>
         /// Em modo PerTenant, inicializa o banco físico do tenant (cria arquivo .db
