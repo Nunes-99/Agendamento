@@ -32,10 +32,19 @@ namespace AgendamentoPro.API.Controllers
             var u = await usuarios.GetByIdAsync(usuId);
             if (u == null) return NotFound();
 
+            // Se já está ATIVO, bloquear: sobrescrever o secret aqui permitiria
+            // que um atacante com sessão bloqueasse o usuário (ele perderia acesso
+            // ao gerador antigo, e o novo secret estaria com o atacante).
+            // Para reconfigurar, exigir Desativar (que exige código atual) primeiro.
+            if (u.UsuTotpAtivo)
+                return BadRequest(new
+                {
+                    message = "2FA já está ativo. Para reconfigurar, desative primeiro usando o código atual."
+                });
+
             var secret = totp.GerarSecret();
             // DefinirTotpSecret salva o secret mas NÃO ativa 2FA — fica pendente
-            // de confirmação via /confirmar. Se o usuário já tinha 2FA ativo,
-            // a chamada não troca o secret antigo até confirmar (segurança).
+            // de confirmação via /confirmar.
             u.DefinirTotpSecret(secret);
 
             await usuarios.UpdateAsync(u);
@@ -58,7 +67,8 @@ namespace AgendamentoPro.API.Controllers
             if (u == null || string.IsNullOrEmpty(u.UsuTotpSecret))
                 return BadRequest(new { message = "Inicie o setup de 2FA primeiro." });
 
-            if (!totp.Verificar(u.UsuTotpSecret, codigo, DateTime.UtcNow))
+            var step = totp.VerificarERetornarStep(u.UsuTotpSecret, codigo, DateTime.UtcNow);
+            if (step < 0 || !u.RegistrarTotpStep(step))
                 return BadRequest(new { message = "Código inválido." });
 
             // Confirmação OK: agora ativa 2FA de fato.
@@ -82,7 +92,9 @@ namespace AgendamentoPro.API.Controllers
             if (!u.UsuTotpAtivo) return Ok(new { ativo = false });
 
             // Exige código atual antes de desativar (proteção contra session hijack)
-            if (!totp.Verificar(u.UsuTotpSecret, codigo, DateTime.UtcNow))
+            // Também rejeita replay (mesmo código já usado).
+            var step = totp.VerificarERetornarStep(u.UsuTotpSecret, codigo, DateTime.UtcNow);
+            if (step < 0 || !u.RegistrarTotpStep(step))
                 return BadRequest(new { message = "Código inválido." });
 
             u.DesativarTotp();

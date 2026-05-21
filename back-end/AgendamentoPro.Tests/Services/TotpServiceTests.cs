@@ -48,5 +48,15 @@ namespace AgendamentoPro.Tests.Services
             svc.Verificar(entrada, "123456", DateTime.UtcNow).Should().BeFalse();
             svc.Verificar("ABCDE", entrada, DateTime.UtcNow).Should().BeFalse();
         }
+
+        [Fact]
+        public void VerificarERetornarStep_CodigoInvalido_RetornaMenos1()
+        {
+            var svc = new TotpService();
+            var secret = svc.GerarSecret();
+            svc.VerificarERetornarStep(secret, "000000", DateTime.UtcNow).Should().Be(-1);
+            svc.VerificarERetornarStep(secret, "abcdef", DateTime.UtcNow).Should().Be(-1);
+            svc.VerificarERetornarStep(null, "123456", DateTime.UtcNow).Should().Be(-1);
+        }
     }
 }

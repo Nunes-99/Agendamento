@@ -92,6 +92,42 @@ namespace AgendamentoPro.Tests.Entities
             u.DesativarTotp();
             u.UsuTotpSecret.Should().BeNull();
             u.UsuTotpAtivo.Should().BeFalse();
+            u.UsuTotpUltimoStep.Should().BeNull();
+        }
+
+        [Fact]
+        public void RegistrarTotpStep_PrimeiraVez_RetornaTrue()
+        {
+            var u = Novo();
+            u.RegistrarTotpStep(100).Should().BeTrue();
+            u.UsuTotpUltimoStep.Should().Be(100);
+        }
+
+        [Fact]
+        public void RegistrarTotpStep_MesmoStep_RetornaFalseEhReplay()
+        {
+            var u = Novo();
+            u.RegistrarTotpStep(100).Should().BeTrue();
+            u.RegistrarTotpStep(100).Should().BeFalse(); // replay
+            u.UsuTotpUltimoStep.Should().Be(100);
+        }
+
+        [Fact]
+        public void RegistrarTotpStep_StepAntiga_RetornaFalse()
+        {
+            var u = Novo();
+            u.RegistrarTotpStep(100).Should().BeTrue();
+            u.RegistrarTotpStep(99).Should().BeFalse(); // janela anterior — replay
+            u.UsuTotpUltimoStep.Should().Be(100);
+        }
+
+        [Fact]
+        public void RegistrarTotpStep_StepNova_Atualiza()
+        {
+            var u = Novo();
+            u.RegistrarTotpStep(100).Should().BeTrue();
+            u.RegistrarTotpStep(101).Should().BeTrue();
+            u.UsuTotpUltimoStep.Should().Be(101);
         }
     }
 }

@@ -29,25 +29,29 @@ namespace AgendamentoPro.Infrastructure.Services.Auth
         }
 
         public bool Verificar(string secretBase32, string codigo, DateTime agoraUtc)
+            => VerificarERetornarStep(secretBase32, codigo, agoraUtc) >= 0;
+
+        public long VerificarERetornarStep(string secretBase32, string codigo, DateTime agoraUtc)
         {
-            if (string.IsNullOrWhiteSpace(secretBase32) || string.IsNullOrWhiteSpace(codigo)) return false;
-            if (!int.TryParse(codigo.Trim(), out _)) return false;
-            if (codigo.Length != Digitos) return false;
+            if (string.IsNullOrWhiteSpace(secretBase32) || string.IsNullOrWhiteSpace(codigo)) return -1;
+            if (!int.TryParse(codigo.Trim(), out _)) return -1;
+            if (codigo.Length != Digitos) return -1;
 
             var key = DeBase32(secretBase32);
-            if (key.Length == 0) return false;
+            if (key.Length == 0) return -1;
 
             var stepAtual = (long)((agoraUtc - DateTime.UnixEpoch).TotalSeconds / TimeStep);
             for (var offset = -JanelaSteps; offset <= JanelaSteps; offset++)
             {
-                var esperado = GerarCodigo(key, stepAtual + offset);
+                var step = stepAtual + offset;
+                var esperado = GerarCodigo(key, step);
                 if (CryptographicOperations.FixedTimeEquals(
                     Encoding.UTF8.GetBytes(esperado), Encoding.UTF8.GetBytes(codigo)))
                 {
-                    return true;
+                    return step;
                 }
             }
-            return false;
+            return -1;
         }
 
         private static string GerarCodigo(byte[] key, long step)

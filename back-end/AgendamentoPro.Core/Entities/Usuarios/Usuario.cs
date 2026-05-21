@@ -24,6 +24,11 @@ namespace AgendamentoPro.Core.Entities.Usuarios
         public DateTime? UsuBloqueadoAte { get; private set; }
         public string UsuTotpSecret { get; private set; }
         public bool UsuTotpAtivo { get; private set; }
+        /// <summary>
+        /// Última step TOTP (30s buckets desde epoch) que foi aceita com sucesso.
+        /// Impede replay: o mesmo código não pode ser usado 2x. RFC 6238 §5.2.
+        /// </summary>
+        public long? UsuTotpUltimoStep { get; private set; }
 
         public Tenant Tenant { get; private set; }
 
@@ -85,6 +90,19 @@ namespace AgendamentoPro.Core.Entities.Usuarios
         {
             UsuTotpSecret = null;
             UsuTotpAtivo = false;
+            UsuTotpUltimoStep = null;
+        }
+
+        /// <summary>
+        /// Registra a step TOTP usada. Idempotente: chamada com step menor é no-op.
+        /// Retorna true se o registro foi feito, false se a step é antiga (replay).
+        /// </summary>
+        public bool RegistrarTotpStep(long step)
+        {
+            if (UsuTotpUltimoStep.HasValue && step <= UsuTotpUltimoStep.Value)
+                return false;
+            UsuTotpUltimoStep = step;
+            return true;
         }
         public void Ativar() => UsuAtivo = true;
         public void Inativar() => UsuAtivo = false;

@@ -83,8 +83,11 @@ namespace AgendamentoPro.Application.UseCases.Auth
             {
                 if (string.IsNullOrEmpty(input.CodigoTotp))
                     return new LoginViewModel { RequerTotp = true };
-                if (!_totp.Verificar(usuario.UsuTotpSecret, input.CodigoTotp, DateTime.UtcNow))
+
+                var step = _totp.VerificarERetornarStep(usuario.UsuTotpSecret, input.CodigoTotp, DateTime.UtcNow);
+                if (step < 0 || !usuario.RegistrarTotpStep(step))
                 {
+                    // Inválido OU replay (mesmo código já usado dentro da janela).
                     usuario.RegistrarFalhaLogin(TentativasMax, DuracaoBloqueio);
                     await _usuarios.UpdateAsync(usuario);
                     await _uow.SaveChangesAsync();

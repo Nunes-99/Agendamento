@@ -2,6 +2,7 @@ using AgendamentoPro.Application.Interfaces.Lgpd;
 using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
+using AgendamentoPro.Core.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 
 namespace AgendamentoPro.Application.UseCases.Lgpd
@@ -12,15 +13,16 @@ namespace AgendamentoPro.Application.UseCases.Lgpd
         private readonly IAgendamentoRepository _agendamentos;
         private readonly IAvaliacaoRepository _avaliacoes;
         private readonly IFotoAgendamentoRepository _fotos;
+        private readonly IFotoStorage _storage;
         private readonly IUnitOfWork _uow;
         private readonly ILogger<LgpdUseCase> _logger;
 
         public LgpdUseCase(IClienteRepository clientes, IAgendamentoRepository agendamentos,
             IAvaliacaoRepository avaliacoes, IFotoAgendamentoRepository fotos,
-            IUnitOfWork uow, ILogger<LgpdUseCase> logger)
+            IFotoStorage storage, IUnitOfWork uow, ILogger<LgpdUseCase> logger)
         {
             _clientes = clientes; _agendamentos = agendamentos;
-            _avaliacoes = avaliacoes; _fotos = fotos;
+            _avaliacoes = avaliacoes; _fotos = fotos; _storage = storage;
             _uow = uow; _logger = logger;
         }
 
@@ -72,7 +74,27 @@ namespace AgendamentoPro.Application.UseCases.Lgpd
             var c = await _clientes.GetByIdAsync(clienteId, tenantId)
                 ?? throw new ClienteException("Cliente não encontrado.");
 
-            // Mantém o registro pra integridade dos agendamentos passados,
+            // LGPD direito ao esquecimento: fotos antes/depois podem conter o rosto
+            // do cliente. Antes de anonimizar os campos textuais, deletar fisicamente
+            // as fotos de TODOS os agendamentos do cliente (storage + DB).
+            var agendamentosDoCliente = await _agendamentos.GetPorClienteAsync(tenantId, clienteId);
+            var fotosRemovidas = 0;
+            foreach (var ag in agendamentosDoCliente)
+            {
+                var fotos = await _fotos.GetByAgendamentoAsync(ag.AgeId, tenantId);
+                foreach (var f in fotos)
+                {
+                    try { await _storage.RemoverAsync(f.FotUrl); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "LGPD: falha ao remover arquivo da foto {FotoId} (continuando)", f.FotId);
+                    }
+                    await _fotos.DeleteAsync(f.FotId, tenantId);
+                    fotosRemovidas++;
+                }
+            }
+
+            // Mantém o registro do Cliente pra integridade dos agendamentos passados,
             // mas remove qualquer identificação pessoal.
             c.Atualizar(
                 nome: $"Cliente removido #{c.CliId}",
@@ -84,8 +106,8 @@ namespace AgendamentoPro.Application.UseCases.Lgpd
             await _clientes.UpdateAsync(c);
             await _uow.SaveChangesAsync();
 
-            _logger.LogWarning("LGPD: cliente {ClienteId} do tenant {TenantId} foi anonimizado.",
-                clienteId, tenantId);
+            _logger.LogWarning("LGPD: cliente {ClienteId} do tenant {TenantId} anonimizado ({Fotos} fotos removidas).",
+                clienteId, tenantId, fotosRemovidas);
         }
 
         public async Task<int> AnonimizarInativosAsync(int tenantId, int inativoHaMeses)

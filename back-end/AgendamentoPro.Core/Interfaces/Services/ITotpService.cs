@@ -15,5 +15,11 @@ namespace AgendamentoPro.Core.Interfaces.Services
 
         /// <summary>Valida um código de 6 dígitos contra o secret.</summary>
         bool Verificar(string secretBase32, string codigo, DateTime agoraUtc);
+
+        /// <summary>
+        /// Versão que devolve a step (bucket 30s) que matched, para o caller
+        /// armazenar e impedir replay. Retorna -1 se inválido.
+        /// </summary>
+        long VerificarERetornarStep(string secretBase32, string codigo, DateTime agoraUtc);
     }
 }
