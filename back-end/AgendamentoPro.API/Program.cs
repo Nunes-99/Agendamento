@@ -290,9 +290,14 @@ try
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
     });
 
-    // Validação de APP_PUBLIC_URL em produção: deve ser HTTPS para callbacks dos gateways.
+    // Validação de URLs em produção: APP_PUBLIC_URL é callback dos gateways (HTTPS
+    // obrigatório pelos próprios gateways). APP_FRONTEND_URL é incluído em links
+    // de reset de senha, validação de OTP/avaliação enviados por email/WhatsApp —
+    // se for HTTP, o token vai em texto claro pela rede do cliente.
     var appPublicUrl = Environment.GetEnvironmentVariable("APP_PUBLIC_URL")
         ?? builder.Configuration["App:PublicUrl"];
+    var appFrontendUrl = Environment.GetEnvironmentVariable("APP_FRONTEND_URL")
+        ?? builder.Configuration["App:FrontendUrl"];
     if (!builder.Environment.IsDevelopment())
     {
         if (string.IsNullOrWhiteSpace(appPublicUrl))
@@ -301,6 +306,14 @@ try
         if (!appPublicUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
                 "APP_PUBLIC_URL deve usar HTTPS em produção (callbacks de gateway não aceitam HTTP).");
+        // APP_FRONTEND_URL é opcional (cai pra APP_PUBLIC_URL se vazio). Se definido,
+        // exigir HTTPS — token de reset/OTP/avaliação seguiriam por canal cifrado.
+        if (!string.IsNullOrWhiteSpace(appFrontendUrl)
+            && !appFrontendUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "APP_FRONTEND_URL deve usar HTTPS em produção — links de reset/OTP/avaliação vão por email/WhatsApp.");
+        }
     }
 
     builder.Services.WireUp(builder.Configuration);

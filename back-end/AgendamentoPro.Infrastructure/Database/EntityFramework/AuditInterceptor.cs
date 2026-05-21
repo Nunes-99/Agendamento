@@ -22,12 +22,16 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
     /// </summary>
     public class AuditInterceptor : SaveChangesInterceptor
     {
-        // Campos com dados sensíveis (senhas/tokens/secrets). NÃO inclui PagPayloadGateway
-        // nem WhEvPayload — esses são JSONs dos gateways úteis pra debug e não contêm
-        // credenciais (apenas valores e IDs de transação que já estão noutros campos).
+        // Campos com dados sensíveis (senhas/tokens/secrets/CPF). NÃO inclui
+        // PagPayloadGateway nem WhEvPayload — esses são JSONs dos gateways úteis
+        // pra debug e não contêm credenciais (apenas valores e IDs de transação
+        // que já estão noutros campos).
+        //
+        // CPF é PII forte sob LGPD: trata como sensível. Telefone/email/nome ficam
+        // legíveis para diagnóstico de incidentes (audit purge limita a 12 meses).
         private static readonly HashSet<string> CamposSensiveis = new(StringComparer.OrdinalIgnoreCase)
         {
-            "UsuSenha", "RpsToken", "RefToken", "UsuTotpSecret"
+            "UsuSenha", "RpsToken", "RefToken", "UsuTotpSecret", "CliCpf"
         };
 
         private readonly IHttpContextAccessor _http;
@@ -119,7 +123,8 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                     : prop.CurrentValue;
                 if (CamposSensiveis.Contains(nome) || nome.Contains("Senha", StringComparison.OrdinalIgnoreCase)
                     || nome.Contains("Password", StringComparison.OrdinalIgnoreCase)
-                    || nome.Contains("Secret", StringComparison.OrdinalIgnoreCase))
+                    || nome.Contains("Secret", StringComparison.OrdinalIgnoreCase)
+                    || nome.Contains("Cpf", StringComparison.OrdinalIgnoreCase))
                 {
                     dict[nome] = valor == null ? null : "***";
                 }
