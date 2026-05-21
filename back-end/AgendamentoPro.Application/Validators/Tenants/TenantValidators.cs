@@ -49,11 +49,28 @@ namespace AgendamentoPro.Application.Validators.Tenants
     {
         private static readonly Regex CorRegex = new("^#[0-9a-fA-F]{3,8}$", RegexOptions.Compiled);
 
+        /// <summary>
+        /// Aceita URL absoluta http/https ou caminho relativo (ex: /uploads/...).
+        /// Rejeita schemes perigosos (javascript:, data:, file:, vbscript:) que
+        /// poderiam virar XSS quando colados em href/src do frontend.
+        /// </summary>
+        private static bool UrlSegura(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return true; // opcional
+            var trimmed = url.Trim();
+            if (trimmed.StartsWith("/")) return true; // caminho relativo do próprio host
+            if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)) return false;
+            return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+        }
+
         public AtualizarPersonalizacaoValidator()
         {
-            RuleFor(x => x.LogoUrl).MaximumLength(500);
-            RuleFor(x => x.BannerUrl).MaximumLength(500);
-            RuleFor(x => x.FaviconUrl).MaximumLength(500);
+            RuleFor(x => x.LogoUrl).MaximumLength(500)
+                .Must(UrlSegura).WithMessage("LogoUrl deve ser http(s) ou caminho relativo.");
+            RuleFor(x => x.BannerUrl).MaximumLength(500)
+                .Must(UrlSegura).WithMessage("BannerUrl deve ser http(s) ou caminho relativo.");
+            RuleFor(x => x.FaviconUrl).MaximumLength(500)
+                .Must(UrlSegura).WithMessage("FaviconUrl deve ser http(s) ou caminho relativo.");
             RuleFor(x => x.Fonte).MaximumLength(50);
             RuleFor(x => x.CorPrimaria).Must(c => string.IsNullOrEmpty(c) || CorRegex.IsMatch(c))
                 .WithMessage("Cor primária em formato HEX inválido.");

@@ -118,5 +118,35 @@ namespace AgendamentoPro.Tests.Validators
             var r = v.Validate(input);
             r.IsValid.Should().BeFalse();
         }
+
+        [Theory]
+        [InlineData("https://cdn.example.com/logo.png")]
+        [InlineData("http://example.com/x.jpg")]
+        [InlineData("/uploads/1/2/foto.jpg")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void PersonalizacaoValidator_UrlsSeguras_Passa(string url)
+        {
+            var v = new AtualizarPersonalizacaoValidator();
+            var r = v.Validate(new AtualizarPersonalizacaoInputModel
+            {
+                LogoUrl = url, BannerUrl = url, FaviconUrl = url
+            });
+            r.IsValid.Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData("javascript:alert(1)")]
+        [InlineData("data:text/html;base64,PHNjcmlwdD4=")]
+        [InlineData("file:///etc/passwd")]
+        [InlineData("vbscript:msgbox(1)")]
+        [InlineData("nao-e-url-valida")]
+        public void PersonalizacaoValidator_UrlsInseguras_Reprovadas(string url)
+        {
+            var v = new AtualizarPersonalizacaoValidator();
+            var r = v.Validate(new AtualizarPersonalizacaoInputModel { LogoUrl = url });
+            r.IsValid.Should().BeFalse();
+            r.Errors.Should().Contain(e => e.PropertyName == nameof(AtualizarPersonalizacaoInputModel.LogoUrl));
+        }
     }
 }

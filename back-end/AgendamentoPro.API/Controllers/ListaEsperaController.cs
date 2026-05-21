@@ -38,6 +38,25 @@ namespace AgendamentoPro.API.Controllers
             string slug, [FromBody] EntrarEsperaInput input)
         {
             var tid = RequireTenantId(tenant);
+
+            // CROSS-TENANT: input.ServicoId vem do request sem auth — atacante pode
+            // tentar entrar na espera de serviço de outro tenant. O slug do path
+            // resolve tenant; o serviço precisa pertencer a esse mesmo tenant.
+            var servicoExiste = await ctx.Servicos.AnyAsync(s =>
+                s.SerId == input.ServicoId && s.R_TenId == tid && s.SerAtivo);
+            if (!servicoExiste) return BadRequest(new { message = "Serviço inválido." });
+
+            // Anti-spam básico: mesmo telefone, mesmo serviço, mesma data → idempotente.
+            // Sem isso, atacante pode inflar a fila com a mesma entrada.
+            var jaExiste = !string.IsNullOrWhiteSpace(input.ClienteTelefone)
+                && await ctx.ListaEspera.AnyAsync(l => l.R_TenId == tid
+                    && l.R_SerId == input.ServicoId
+                    && l.LesDataDesejada == input.DataDesejada.Date
+                    && l.LesClienteTelefone == input.ClienteTelefone
+                    && !l.LesNotificado);
+            if (jaExiste)
+                return Ok(new { jaInscrito = true });
+
             var item = new ListaEspera(tid, input.ServicoId, input.DataDesejada,
                 input.ClienteNome, input.ClienteTelefone, input.ClienteEmail, input.Observacao);
             ctx.ListaEspera.Add(item);
