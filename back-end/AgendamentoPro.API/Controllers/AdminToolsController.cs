@@ -134,6 +134,13 @@ namespace AgendamentoPro.API.Controllers
         // ===== Importação CSV de clientes =====
         public class ImportarClientesInput { public string CsvConteudo { get; set; } }
 
+        /// <summary>
+        /// Limite de 2 MB no payload (~ 20-30k clientes). Acima disso o admin deveria
+        /// dividir o arquivo. Sem esse limite, payload arbitrário derruba o processo
+        /// por OOM (StringReader + entities tracked em memória).
+        /// </summary>
+        private const int CsvMaxBytes = 2 * 1024 * 1024;
+
         [HttpPost("clientes/importar-csv")]
         public async Task<IActionResult> ImportarClientes(
             [FromServices] AgendamentoProDbContext ctx,
@@ -144,8 +151,28 @@ namespace AgendamentoPro.API.Controllers
             if (string.IsNullOrWhiteSpace(input?.CsvConteudo))
                 return BadRequest(new { message = "CSV vazio. Cabeçalho esperado: nome,telefone,email,cpf" });
 
+            if (input.CsvConteudo.Length > CsvMaxBytes)
+                return BadRequest(new
+                {
+                    message = $"CSV excede o tamanho máximo ({CsvMaxBytes / 1024 / 1024} MB). Divida em arquivos menores."
+                });
+
+            // Pré-carrega telefones e emails existentes do tenant para deduplicar.
+            // Usa lower-case + dígitos para comparação (ignora máscara do telefone).
+            var existentes = await ctx.Clientes.AsNoTracking()
+                .Where(c => c.R_TenId == tid)
+                .Select(c => new { c.CliTelefone, c.CliEmail })
+                .ToListAsync();
+            var telefonesUsados = new HashSet<string>(
+                existentes.Select(e => NormalizarTelefone(e.CliTelefone))
+                    .Where(t => !string.IsNullOrEmpty(t)));
+            var emailsUsados = new HashSet<string>(
+                existentes.Select(e => (e.CliEmail ?? "").Trim().ToLowerInvariant())
+                    .Where(e => !string.IsNullOrEmpty(e)));
+
             // Usa CsvHelper: trata aspas, escapes, encoding UTF-8 com BOM, etc.
-            var inseridos = 0; var ignorados = 0; var erros = new List<string>();
+            var inseridos = 0; var ignorados = 0; var duplicados = 0;
+            var erros = new List<string>();
             try
             {
                 using var reader = new StringReader(input.CsvConteudo);
@@ -170,6 +197,19 @@ namespace AgendamentoPro.API.Controllers
                     var tel = TryGet(csv, "telefone");
                     var email = TryGet(csv, "email");
                     var cpf = TryGet(csv, "cpf");
+
+                    var telNorm = NormalizarTelefone(tel);
+                    var emailNorm = (email ?? "").Trim().ToLowerInvariant();
+
+                    // Dedup: contra existentes no banco E contra outras linhas já processadas
+                    // neste mesmo CSV. Usa telefone OU email como chave de unicidade.
+                    if ((!string.IsNullOrEmpty(telNorm) && !telefonesUsados.Add(telNorm)) ||
+                        (!string.IsNullOrEmpty(emailNorm) && !emailsUsados.Add(emailNorm)))
+                    {
+                        duplicados++;
+                        continue;
+                    }
+
                     try
                     {
                         var c = new Core.Entities.Clientes.Cliente(tid, nome, email, tel, tel, cpf);
@@ -184,8 +224,12 @@ namespace AgendamentoPro.API.Controllers
             {
                 return BadRequest(new { message = "CSV inválido: " + ex.Message });
             }
-            return Ok(new { inseridos, ignorados, erros });
+            return Ok(new { inseridos, ignorados, duplicados, erros });
         }
+
+        private static string NormalizarTelefone(string raw) =>
+            string.IsNullOrEmpty(raw) ? string.Empty
+                : new string(raw.Where(char.IsDigit).ToArray());
 
         private static string TryGet(CsvHelper.CsvReader csv, string nome)
         {

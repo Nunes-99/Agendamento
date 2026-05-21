@@ -30,6 +30,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
         private readonly string _accessToken;
         private readonly string _webhookSecret;
         private readonly string _appPublicUrl;
+        private readonly bool _isProduction;
 
         public string Nome => "MercadoPago";
 
@@ -50,6 +51,9 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
             _appPublicUrl = (Environment.GetEnvironmentVariable("APP_PUBLIC_URL")
                 ?? config["App:PublicUrl"]
                 ?? "http://localhost:5050").TrimEnd('/');
+            _isProduction = string.Equals(
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                "Production", StringComparison.OrdinalIgnoreCase);
 
             _http.BaseAddress = new Uri(BaseUrl);
             if (!string.IsNullOrEmpty(_accessToken))
@@ -170,7 +174,23 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
             // Verificação de assinatura (Mercado Pago x-signature: ts=...,v1=...).
             // Inclui validação do timestamp (replay protection - aceita até 5 min de diferença).
-            if (!string.IsNullOrEmpty(_webhookSecret))
+            //
+            // FAIL CLOSED em produção: sem MERCADOPAGO_WEBHOOK_SECRET configurado,
+            // qualquer requisição externa marcaria pagamentos como aprovados sem
+            // validação — vulnerabilidade crítica. Em dev permite (no-op silencioso)
+            // pra facilitar testes manuais.
+            if (string.IsNullOrEmpty(_webhookSecret))
+            {
+                if (_isProduction)
+                {
+                    _logger.LogError(
+                        "Webhook MercadoPago: MERCADOPAGO_WEBHOOK_SECRET não configurado em Production — rejeitando.");
+                    return null;
+                }
+                _logger.LogWarning(
+                    "Webhook MercadoPago: sem secret configurado (modo dev). Em produção isso seria recusado.");
+            }
+            else
             {
                 if (string.IsNullOrEmpty(assinatura))
                 {

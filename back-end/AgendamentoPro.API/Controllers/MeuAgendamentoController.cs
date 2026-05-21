@@ -4,8 +4,11 @@ using AgendamentoPro.Application.UseCases.Agendamentos;
 using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
+using AgendamentoPro.Core.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace AgendamentoPro.API.Controllers
 {
@@ -69,6 +72,11 @@ namespace AgendamentoPro.API.Controllers
         public async Task<IActionResult> Cancelar(
             [FromServices] IAgendamentoRepository agendamentos,
             [FromServices] ITenantRepository tenants,
+            [FromServices] IListaEsperaRepository esperaRepo,
+            [FromServices] INotificadorWhatsApp whatsapp,
+            [FromServices] INotificacaoRealtime realtime,
+            [FromServices] IConfiguration config,
+            [FromServices] ILogger<MeuAgendamentoController> logger,
             [FromServices] IUnitOfWork uow,
             Guid token, [FromBody] CancelarAgendamentoInputModel input)
         {
@@ -108,7 +116,51 @@ namespace AgendamentoPro.API.Controllers
                 await agendamentos.UpdateAsync(ag);
             }
             await uow.SaveChangesAsync();
+
+            // Alinhado com CancelarAgendamentoUseCase do admin:
+            //   1) notificar primeiro da lista de espera daquela data/serviço
+            //   2) push realtime ao admin
+            await NotificarPrimeiroNaEsperaAsync(esperaRepo, whatsapp, config, logger, uow, ag);
+            _ = realtime.NotificarTenantAsync(ag.R_TenId, "agendamento-cancelado", new
+            {
+                agendamentoId = ag.AgeId,
+                grupoComboId = ag.AgeGrupoComboId,
+                data = ag.AgeData,
+                horaInicio = ag.AgeHoraInicio,
+                motivo,
+                origem = "cliente-self-service"
+            });
             return Ok(new { sucesso = true });
+        }
+
+        private static async Task NotificarPrimeiroNaEsperaAsync(
+            IListaEsperaRepository esperaRepo, INotificadorWhatsApp whatsapp,
+            IConfiguration config, ILogger logger, IUnitOfWork uow,
+            Core.Entities.Agendamentos.Agendamento ag)
+        {
+            try
+            {
+                var primeiro = await esperaRepo.GetPrimeiroNaoNotificadoAsync(ag.R_TenId, ag.R_SerId, ag.AgeData);
+                if (primeiro == null) return;
+
+                var numero = primeiro.LesClienteTelefone;
+                if (!string.IsNullOrWhiteSpace(numero) && whatsapp.Ativo)
+                {
+                    var slug = ag.Tenant?.TenSlug ?? "";
+                    var frontUrl = (Environment.GetEnvironmentVariable("APP_FRONTEND_URL")
+                        ?? config["App:FrontendUrl"] ?? "").TrimEnd('/');
+                    var msg = $"Olá {primeiro.LesClienteNome}! Vagou um horário. Agende em {frontUrl}/t/{slug}/servicos";
+                    await whatsapp.EnviarAsync(numero, msg);
+                }
+                primeiro.MarcarNotificado();
+                await esperaRepo.UpdateAsync(primeiro);
+                await uow.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Falha ao notificar lista de espera após cancelamento self-service {Id}", ag.AgeId);
+            }
         }
 
         [HttpPost("{token:guid}/reagendar")]
