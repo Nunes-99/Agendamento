@@ -1,3 +1,4 @@
+using AgendamentoPro.Core.Common;
 using AgendamentoPro.Core.Interfaces.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -36,7 +37,8 @@ namespace AgendamentoPro.Infrastructure.Middlewares
             using (LogContext.PushProperty("TenantId", tenantContext.TenantId?.ToString() ?? "-"))
             using (LogContext.PushProperty("TenantSlug", tenantContext.Slug ?? "-"))
             using (LogContext.PushProperty("UserId", userId ?? "-"))
-            using (LogContext.PushProperty("UserEmail", userEmail ?? "-"))
+            // Mascarado: logs centralizados não devem acumular emails em texto claro (LGPD).
+            using (LogContext.PushProperty("UserEmail", PiiMask.Email(userEmail)))
             {
                 await _next(context);
             }

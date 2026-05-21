@@ -1,6 +1,7 @@
 using AgendamentoPro.Application.InputModels.Auth;
 using AgendamentoPro.Application.Interfaces.Auth;
 using AgendamentoPro.Application.ViewModels.Auth;
+using AgendamentoPro.Core.Common;
 using AgendamentoPro.Core.Entities.Clientes;
 using AgendamentoPro.Core.Entities.Usuarios;
 using AgendamentoPro.Core.Interfaces.Database.Common;
@@ -63,7 +64,7 @@ namespace AgendamentoPro.Application.UseCases.Auth
             var recentes = await _otps.ContarRecentesAsync(tenantId, telefone, DateTime.UtcNow.AddHours(-1));
             if (recentes >= LimiteHora)
             {
-                _logger.LogWarning("OTP throttled (hora): tenant {Tid} telefone {Tel}", tenantId, telefone);
+                _logger.LogWarning("OTP throttled (hora): tenant {Tid} telefone {Tel}", tenantId, PiiMask.Telefone(telefone));
                 return new SolicitarOtpResultViewModel { Enviado = false };
             }
 
@@ -104,12 +105,13 @@ namespace AgendamentoPro.Application.UseCases.Auth
                 else
                 {
                     _logger.LogWarning("WhatsApp inativo em produção: OTP gerado mas não enviado para {Tel}. " +
-                        "Configure WHATSAPP_ACCESS_TOKEN — cliente não receberá o código.", telefone);
+                        "Configure WHATSAPP_ACCESS_TOKEN — cliente não receberá o código.",
+                        PiiMask.Telefone(telefone));
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Falha ao enviar OTP para {Tel}", telefone);
+                _logger.LogWarning(ex, "Falha ao enviar OTP para {Tel}", PiiMask.Telefone(telefone));
             }
 
             return new SolicitarOtpResultViewModel
