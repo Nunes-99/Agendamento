@@ -101,5 +101,101 @@ namespace AgendamentoPro.Application.UseCases.Relatorios
                         .OrderByDescending(x => x.Count()).First().Key
                 });
         }
+
+        public async Task<IEnumerable<LtvClienteViewModel>> LtvClientesAsync(int tenantId, DateTime inicio, DateTime fim, int top = 20)
+        {
+            if (top <= 0) top = 20;
+            var lista = await _agendamentos.GetByPeriodoAsync(tenantId, inicio, fim);
+            return lista
+                .Where(a => a.AgeStatus == StatusAgendamento.Concluido && a.Cliente != null)
+                .GroupBy(a => new { a.R_CliId, a.Cliente.CliNome, a.Cliente.CliTelefone })
+                .Select(g => new LtvClienteViewModel
+                {
+                    ClienteId = g.Key.R_CliId,
+                    Nome = g.Key.CliNome,
+                    Telefone = g.Key.CliTelefone,
+                    QuantidadeAgendamentos = g.Count(),
+                    ReceitaTotal = g.Sum(x => x.AgeValorTotal),
+                    PrimeiroAgendamento = g.Min(x => x.AgeData),
+                    UltimoAgendamento = g.Max(x => x.AgeData)
+                })
+                .OrderByDescending(x => x.ReceitaTotal)
+                .Take(top)
+                .ToList();
+        }
+
+        private static readonly string[] DiasSemanaPtBr =
+            { "Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado" };
+
+        public async Task<IEnumerable<NoShowViewModel>> NoShowPorDiaSemanaAsync(int tenantId, DateTime inicio, DateTime fim)
+        {
+            var lista = await _agendamentos.GetByPeriodoAsync(tenantId, inicio, fim);
+            var relevantes = lista
+                .Where(a => a.AgeStatus == StatusAgendamento.NoShow || a.AgeStatus == StatusAgendamento.Concluido)
+                .ToList();
+
+            // Retorna todos os 7 dias mesmo quando vazios — facilita o gráfico no front
+            return Enumerable.Range(0, 7).Select(d =>
+            {
+                var doDia = relevantes.Where(a => (int)a.AgeData.DayOfWeek == d).ToList();
+                return new NoShowViewModel
+                {
+                    Bucket = DiasSemanaPtBr[d],
+                    NoShow = doDia.Count(a => a.AgeStatus == StatusAgendamento.NoShow),
+                    Concluidos = doDia.Count(a => a.AgeStatus == StatusAgendamento.Concluido)
+                };
+            }).ToList();
+        }
+
+        public async Task<IEnumerable<NoShowViewModel>> NoShowPorHoraAsync(int tenantId, DateTime inicio, DateTime fim)
+        {
+            var lista = await _agendamentos.GetByPeriodoAsync(tenantId, inicio, fim);
+            var relevantes = lista
+                .Where(a => a.AgeStatus == StatusAgendamento.NoShow || a.AgeStatus == StatusAgendamento.Concluido)
+                .ToList();
+
+            return Enumerable.Range(0, 24).Select(h =>
+            {
+                var noBucket = relevantes.Where(a => a.AgeHoraInicio.Hours == h).ToList();
+                return new NoShowViewModel
+                {
+                    Bucket = $"{h:D2}h",
+                    NoShow = noBucket.Count(a => a.AgeStatus == StatusAgendamento.NoShow),
+                    Concluidos = noBucket.Count(a => a.AgeStatus == StatusAgendamento.Concluido)
+                };
+            })
+            .Where(v => v.Total > 0) // hora sem nenhum agendamento polui o gráfico
+            .ToList();
+        }
+
+        public async Task<IEnumerable<SazonalidadeMesViewModel>> SazonalidadeMensalAsync(int tenantId, int meses = 12)
+        {
+            if (meses <= 0 || meses > 60) meses = 12;
+            var inicio = DateTime.Today.AddMonths(-(meses - 1)).AddDays(-(DateTime.Today.Day - 1));
+            var fim = DateTime.Today;
+            var lista = await _agendamentos.GetByPeriodoAsync(tenantId, inicio, fim);
+
+            var agrupado = lista
+                .Where(a => a.AgeStatus == StatusAgendamento.Concluido)
+                .GroupBy(a => new { a.AgeData.Year, a.AgeData.Month })
+                .ToDictionary(g => (g.Key.Year, g.Key.Month), g => new SazonalidadeMesViewModel
+                {
+                    Ano = g.Key.Year,
+                    Mes = g.Key.Month,
+                    Receita = g.Sum(x => x.AgeValorTotal),
+                    Quantidade = g.Count()
+                });
+
+            // Preenche meses sem agendamento com zeros — gráfico contínuo
+            var resultado = new List<SazonalidadeMesViewModel>(meses);
+            for (var i = 0; i < meses; i++)
+            {
+                var dt = inicio.AddMonths(i);
+                resultado.Add(agrupado.TryGetValue((dt.Year, dt.Month), out var existente)
+                    ? existente
+                    : new SazonalidadeMesViewModel { Ano = dt.Year, Mes = dt.Month });
+            }
+            return resultado;
+        }
     }
 }

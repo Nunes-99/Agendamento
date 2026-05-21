@@ -86,6 +86,18 @@ export class ApiService {
   relTopServicos(inicio: string, fim: string) { return this.http.get(`${this.base}/admin/relatorios/servicos-mais-vendidos?inicio=${inicio}&fim=${fim}`); }
   relOcupacao(inicio: string, fim: string) { return this.http.get(`${this.base}/admin/relatorios/ocupacao?inicio=${inicio}&fim=${fim}`); }
   relCancelamentos(inicio: string, fim: string) { return this.http.get(`${this.base}/admin/relatorios/cancelamentos?inicio=${inicio}&fim=${fim}`); }
+  relLtv(inicio: string, fim: string, top = 20) { return this.http.get(`${this.base}/admin/relatorios/ltv?inicio=${inicio}&fim=${fim}&top=${top}`); }
+  relNoShowDiaSemana(inicio: string, fim: string) { return this.http.get(`${this.base}/admin/relatorios/no-show/dia-semana?inicio=${inicio}&fim=${fim}`); }
+  relNoShowHora(inicio: string, fim: string) { return this.http.get(`${this.base}/admin/relatorios/no-show/hora?inicio=${inicio}&fim=${fim}`); }
+  relSazonalidade(meses = 12) { return this.http.get(`${this.base}/admin/relatorios/sazonalidade?meses=${meses}`); }
+
+  webPushVapidKey() { return this.http.get<{ ativo: boolean; chavePublica: string }>(`${this.base}/admin/web-push/vapid-key`); }
+  webPushSubscribe(body: { endpoint: string; p256dh: string; auth: string; userAgent: string }) {
+    return this.http.post<{ id: number; atualizada: boolean }>(`${this.base}/admin/web-push/subscribe`, body);
+  }
+  webPushUnsubscribe(endpoint: string) {
+    return this.http.delete(`${this.base}/admin/web-push/subscribe?endpoint=${encodeURIComponent(endpoint)}`);
+  }
 
   atualizarTenant(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}`, input); }
   atualizarPersonalizacao(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}/personalizacao`, input); }

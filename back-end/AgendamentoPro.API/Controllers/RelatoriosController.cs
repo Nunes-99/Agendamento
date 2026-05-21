@@ -34,5 +34,29 @@ namespace AgendamentoPro.API.Controllers
             [FromServices] ITenantContext ctx,
             [FromQuery] DateTime inicio, [FromQuery] DateTime fim)
             => Ok(await useCase.CancelamentosAsync(RequireTenantId(ctx), inicio, fim));
+
+        [HttpGet("ltv")]
+        public async Task<IActionResult> Ltv([FromServices] IRelatoriosUseCase useCase,
+            [FromServices] ITenantContext ctx,
+            [FromQuery] DateTime inicio, [FromQuery] DateTime fim, [FromQuery] int top = 20)
+            => Ok(await useCase.LtvClientesAsync(RequireTenantId(ctx), inicio, fim, top));
+
+        [HttpGet("no-show/dia-semana")]
+        public async Task<IActionResult> NoShowDiaSemana([FromServices] IRelatoriosUseCase useCase,
+            [FromServices] ITenantContext ctx,
+            [FromQuery] DateTime inicio, [FromQuery] DateTime fim)
+            => Ok(await useCase.NoShowPorDiaSemanaAsync(RequireTenantId(ctx), inicio, fim));
+
+        [HttpGet("no-show/hora")]
+        public async Task<IActionResult> NoShowHora([FromServices] IRelatoriosUseCase useCase,
+            [FromServices] ITenantContext ctx,
+            [FromQuery] DateTime inicio, [FromQuery] DateTime fim)
+            => Ok(await useCase.NoShowPorHoraAsync(RequireTenantId(ctx), inicio, fim));
+
+        [HttpGet("sazonalidade")]
+        public async Task<IActionResult> Sazonalidade([FromServices] IRelatoriosUseCase useCase,
+            [FromServices] ITenantContext ctx,
+            [FromQuery] int meses = 12)
+            => Ok(await useCase.SazonalidadeMensalAsync(RequireTenantId(ctx), meses));
     }
 }
