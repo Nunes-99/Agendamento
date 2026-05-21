@@ -5,7 +5,10 @@
     "ng": "ng",
     "start": "ng serve --port 4200",
     "build": "ng build",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:install": "playwright install --with-deps chromium"
   },
   "private": true,
   "dependencies": {
@@ -30,6 +33,7 @@
     "@angular-devkit/build-angular": "^17.3.0",
     "@angular/cli": "^17.3.0",
     "@angular/compiler-cli": "^17.3.0",
+    "@playwright/test": "^1.60.0",
     "typescript": "~5.4.0"
   }
 }
