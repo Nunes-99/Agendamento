@@ -29,6 +29,14 @@ namespace AgendamentoPro.Core.Interfaces.Services
     public interface IGatewayPagamento
     {
         string Nome { get; }
+
+        /// <summary>
+        /// Indica se este gateway processa essa forma de pagamento. Usado pelo
+        /// caller para escolher o gateway certo quando há múltiplos registrados
+        /// (ex: PIX só MercadoPago; cartão internacional via Stripe).
+        /// </summary>
+        bool Suporta(FormaPagamento forma);
+
         Task<CobrancaResult> CriarCobrancaAsync(int tenantId, int agendamentoId,
             decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos);
         Task<WebhookEvent> ProcessarWebhookAsync(string payload, string assinatura);

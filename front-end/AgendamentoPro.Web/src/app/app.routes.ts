@@ -31,6 +31,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/public/meu-agendamento/meu-agendamento.component').then(m => m.MeuAgendamentoComponent)
   },
   {
+    path: 'pagamento-stripe-retorno',
+    loadComponent: () => import('./features/public/pagamento/pagamento-stripe-retorno.component').then(m => m.PagamentoStripeRetornoComponent)
+  },
+  {
     path: 'politica-privacidade',
     loadComponent: () => import('./features/public/legal/legal.component').then(m => m.PoliticaPrivacidadeComponent)
   },

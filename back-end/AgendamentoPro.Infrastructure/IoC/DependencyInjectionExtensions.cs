@@ -179,19 +179,20 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<ITenantCache, TenantAwareMemoryCache>();
 
             // Integrações externas com HttpClient nomeado (resiliência via Polly opcional)
-            services.AddHttpClient<IGatewayPagamento, MercadoPagoGateway>(c =>
-            {
-                c.Timeout = TimeSpan.FromSeconds(30);
-            });
+            // ORDEM IMPORTA: Stripe registrado ANTES do MP. Quando o use case faz
+            // FirstOrDefault(g => g.Suporta(forma)), Stripe vence em cartão; PIX só
+            // bate em MP (Stripe.Suporta(Pix) = false), então MP é escolhido.
             // Stripe é opt-in: só registra se STRIPE_SECRET_KEY estiver definido.
-            // Sem isso, o gateway ficaria visível mas falharia no primeiro uso —
-            // melhor manter a lista de IGatewayPagamento limpa.
             if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY")
                 ?? config["Stripe:SecretKey"]))
             {
                 services.AddSingleton<IGatewayPagamento,
                     AgendamentoPro.Infrastructure.Services.Pagamento.StripeGateway>();
             }
+            services.AddHttpClient<IGatewayPagamento, MercadoPagoGateway>(c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(30);
+            });
             services.AddHttpClient<INotificadorWhatsApp, WhatsAppCloudNotificador>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(15);

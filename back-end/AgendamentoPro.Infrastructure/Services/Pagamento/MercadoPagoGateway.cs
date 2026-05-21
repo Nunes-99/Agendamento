@@ -33,6 +33,10 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
         public string Nome => "MercadoPago";
 
+        public bool Suporta(FormaPagamento forma) => forma is
+            FormaPagamento.Pix or FormaPagamento.CartaoCredito
+            or FormaPagamento.CartaoDebito or FormaPagamento.Boleto;
+
         public MercadoPagoGateway(HttpClient http, IConfiguration config, ILogger<MercadoPagoGateway> logger)
         {
             _http = http;

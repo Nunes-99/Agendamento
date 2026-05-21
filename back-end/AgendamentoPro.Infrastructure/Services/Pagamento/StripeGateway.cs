@@ -33,8 +33,12 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
         private readonly string _webhookSecret;
         private readonly string _currency;
         private readonly string _appPublicUrl;
+        private readonly string _frontendUrl;
 
         public string Nome => "Stripe";
+
+        public bool Suporta(FormaPagamento forma) => forma is
+            FormaPagamento.CartaoCredito or FormaPagamento.CartaoDebito;
 
         public StripeGateway(IConfiguration config, ILogger<StripeGateway> logger)
         {
@@ -47,6 +51,10 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 ?? config["Stripe:Currency"] ?? "brl").ToLowerInvariant();
             _appPublicUrl = (Environment.GetEnvironmentVariable("APP_PUBLIC_URL")
                 ?? config["App:PublicUrl"] ?? "http://localhost:5050").TrimEnd('/');
+            // Para onde o navegador volta após checkout. Frontend tem rota
+            // /pagamento-stripe-retorno que confirma e oferece link de volta.
+            _frontendUrl = (Environment.GetEnvironmentVariable("APP_FRONTEND_URL")
+                ?? config["App:FrontendUrl"] ?? _appPublicUrl).TrimEnd('/');
 
             if (!string.IsNullOrEmpty(_secretKey))
                 StripeConfiguration.ApiKey = _secretKey;
@@ -102,17 +110,24 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                     ["tenantId"] = tenantId.ToString(),
                     ["agendamentoId"] = agendamentoId.ToString()
                 },
-                SuccessUrl = $"{_appPublicUrl}/api/v1/webhooks/pagamento/Stripe/return?session_id={{CHECKOUT_SESSION_ID}}&status=ok",
-                CancelUrl = $"{_appPublicUrl}/api/v1/webhooks/pagamento/Stripe/return?session_id={{CHECKOUT_SESSION_ID}}&status=cancelado",
+                SuccessUrl = $"{_frontendUrl}/pagamento-stripe-retorno?session_id={{CHECKOUT_SESSION_ID}}&status=ok&agendamento={agendamentoId}",
+                CancelUrl = $"{_frontendUrl}/pagamento-stripe-retorno?session_id={{CHECKOUT_SESSION_ID}}&status=cancelado&agendamento={agendamentoId}",
                 ExpiresAt = expiracao
             };
 
             var service = new SessionService();
             var session = await service.CreateAsync(options);
 
+            // GatewayId = PaymentIntentId. Em Checkout Sessions mode=payment, o
+            // Stripe cria o PaymentIntent na criação da Session, então o id já vem.
+            // Vantagem: webhooks de checkout.session.completed (session.PaymentIntentId),
+            // payment_intent.succeeded (intent.Id) e charge.refunded (PaymentIntentId)
+            // todos batem com o mesmo identificador.
+            var gatewayId = session.PaymentIntentId ?? session.Id;
+
             return new CobrancaResult
             {
-                GatewayId = session.Id,
+                GatewayId = gatewayId,
                 QrCode = null, // checkout hospedado não usa QR
                 LinkPagamento = session.Url,
                 Expiracao = expiracao,
@@ -169,10 +184,14 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
         private static string ExtrairGatewayId(Event ev)
         {
-            // checkout.session.* → session.Id; payment_intent.* → intent.Id; charge.* → charge.Id
-            if (ev.Data?.Object is Session session) return session.Id;
-            if (ev.Data?.Object is PaymentIntent intent) return intent.Id;
-            if (ev.Data?.Object is Charge charge) return charge.PaymentIntentId ?? charge.Id;
+            // SEMPRE retorna o PaymentIntent.Id (mesmo identificador armazenado em
+            // CriarCobrancaAsync) — qualquer event type bate com o Pagamento no banco.
+            if (ev.Data?.Object is Session session)
+                return session.PaymentIntentId ?? session.Id;
+            if (ev.Data?.Object is PaymentIntent intent)
+                return intent.Id;
+            if (ev.Data?.Object is Charge charge)
+                return charge.PaymentIntentId ?? charge.Id;
             return ev.Id;
         }
     }

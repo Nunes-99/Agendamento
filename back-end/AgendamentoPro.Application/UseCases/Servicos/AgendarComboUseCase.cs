@@ -171,8 +171,9 @@ namespace AgendamentoPro.Application.UseCases.Servicos
                 Pagamento pagamento = null;
                 if (input.FormaPagamento != FormaPagamento.Dinheiro)
                 {
-                    var gateway = _gateways.FirstOrDefault()
-                        ?? throw new DomainException("Nenhum gateway de pagamento configurado.");
+                    var gateway = _gateways.FirstOrDefault(g => g.Suporta(input.FormaPagamento))
+                        ?? throw new DomainException(
+                            $"Nenhum gateway configurado suporta a forma de pagamento '{input.FormaPagamento}'.");
                     var cobranca = await gateway.CriarCobrancaAsync(tenantId, primeiro.AgeId,
                         valorEntrada, input.FormaPagamento,
                         $"Sinal Combo - {combo.ComNome}", 15);

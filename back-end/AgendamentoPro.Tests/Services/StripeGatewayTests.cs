@@ -36,6 +36,17 @@ namespace AgendamentoPro.Tests.Services
         }
 
         [Fact]
+        public void Suporta_ApenasCartoes()
+        {
+            var g = Criar();
+            g.Suporta(FormaPagamento.CartaoCredito).Should().BeTrue();
+            g.Suporta(FormaPagamento.CartaoDebito).Should().BeTrue();
+            g.Suporta(FormaPagamento.Pix).Should().BeFalse();
+            g.Suporta(FormaPagamento.Boleto).Should().BeFalse();
+            g.Suporta(FormaPagamento.Dinheiro).Should().BeFalse();
+        }
+
+        [Fact]
         public async Task CriarCobranca_SemSecretKey_Lanca()
         {
             var g = Criar();
