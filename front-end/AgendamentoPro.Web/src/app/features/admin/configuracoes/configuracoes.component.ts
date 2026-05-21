@@ -10,14 +10,16 @@ import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { WebPushService } from '../../../core/services/web-push.service';
 import { Tenant } from '../../../core/models/tenant.model';
 import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'app-configuracoes',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatTabsModule],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatTabsModule, MatSlideToggleModule],
   template: `
     <h1>Configurações</h1>
     <mat-tab-group>
@@ -61,12 +63,36 @@ import { HttpClient } from '@angular/common/http';
           <button mat-flat-button color="primary" (click)="salvarRegras()">Salvar</button>
         </div>
       </mat-tab>
+
+      <mat-tab label="Notificações">
+        <div class="form-coluna">
+          <h3>Notificações push</h3>
+          <p class="hint" *ngIf="!push.isSupported">
+            Notificações push não estão disponíveis nesta sessão (servir HTTPS + acesso pela versão buildada).
+          </p>
+          <p class="hint" *ngIf="push.isSupported && !push.serverAtivo()">
+            VAPID não está configurado no servidor — defina <code>VAPID_PUBLIC_KEY</code> e <code>VAPID_PRIVATE_KEY</code> em .env e reinicie.
+          </p>
+          <div *ngIf="push.isSupported && push.serverAtivo()" class="toggle-linha">
+            <mat-slide-toggle [checked]="push.isSubscribed()" (change)="alternarPush($event.checked)">
+              Receber notificações de novos agendamentos, pagamentos e cancelamentos neste dispositivo
+            </mat-slide-toggle>
+            <p class="hint" *ngIf="push.isSubscribed()">
+              Você vai receber notificações mesmo com o app fechado.
+            </p>
+          </div>
+        </div>
+      </mat-tab>
     </mat-tab-group>
   `,
   styles: [`
     h1 { margin: 0 0 1rem; }
     .form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 1rem; }
     .form .full { grid-column: 1 / -1; }
+    .form-coluna { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; max-width: 40rem; }
+    .hint { color: var(--cor-texto-secundario); font-size: 0.875rem; }
+    .toggle-linha { display: flex; flex-direction: column; gap: 0.5rem; }
+    code { background: var(--cor-borda); padding: 0.1rem 0.3rem; border-radius: 0.2rem; font-size: 0.85rem; }
     @media (max-width: 36rem) { .form { grid-template-columns: 1fr; } }
   `]
 })
@@ -77,6 +103,7 @@ export class ConfiguracoesComponent implements OnInit {
   private tenantSvc = inject(TenantService);
   private snack = inject(MatSnackBar);
   private http = inject(HttpClient);
+  push = inject(WebPushService);
 
   tenant = signal<Tenant | null>(null);
 
@@ -84,6 +111,17 @@ export class ConfiguracoesComponent implements OnInit {
     const tid = this.auth.user()?.tenantId;
     if (!tid) return;
     this.http.get<Tenant>(`${environment.apiUrl}/tenants/${tid}`).subscribe(t => this.tenant.set(t));
+    this.push.carregarVapidKey().catch(() => {});
+  }
+
+  async alternarPush(ativar: boolean) {
+    try {
+      if (ativar) await this.push.subscribe();
+      else await this.push.unsubscribe();
+      this.snack.open(ativar ? 'Notificações ativadas' : 'Notificações desativadas', 'OK', { duration: 2500 });
+    } catch (e: any) {
+      this.snack.open('Falha: ' + (e?.message ?? 'erro desconhecido'), 'OK', { duration: 4000 });
+    }
   }
 
   salvarEmpresa() {

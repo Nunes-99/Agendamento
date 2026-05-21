@@ -164,6 +164,11 @@ namespace AgendamentoPro.Infrastructure.IoC
             }
             services.AddScoped<IFotoResizeEnqueuer, HangfireFotoResizeEnqueuer>();
             services.AddScoped<FotoResizeJob>();
+
+            // Web Push (VAPID): se VAPID_PUBLIC_KEY/PRIVATE_KEY estão setados, sender ativa.
+            services.AddSingleton<IWebPushSender, AgendamentoPro.Infrastructure.Services.WebPush.WebPushSender>();
+            services.AddScoped<IWebPushSubscriptionRepository,
+                AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories.WebPushSubscriptionRepository>();
             services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
             // Cache em memória com isolamento por tenant (evita bleed-through)

@@ -73,6 +73,14 @@ Todas as rotas estão sob `/api/v1/`. Health checks ficam fora da versão (`/api
 
 O `RealtimeService` no Angular reconecta automaticamente; o `AdminShell` exibe sino com badge das últimas 20 notificações.
 
+Em paralelo, **Web Push (VAPID)** envia notificação ao dispositivo do admin **mesmo com app fechado**, complementando o SignalR (que só funciona com aba aberta). Setup:
+
+1. Em dev, gere o par VAPID uma única vez: `curl -X POST http://localhost:5050/api/v1/admin/web-push/generate-keys`
+2. Cole os valores em `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` no `.env` e reinicie
+3. Admin → Configurações → aba "Notificações" → ativar toggle
+
+Em produção, gere o par via ferramenta externa equivalente (ex: lib `web-push` do npm — `web-push generate-vapid-keys`). **Nunca rotacione** — os browsers cacheiam a chave pública nas subscriptions.
+
 ### PWA
 
 App é instalável (Android/iOS) com service worker (`@angular/service-worker`). Cache offline de assets e endpoints públicos por tenant (1h freshness). Habilitado só no build de produção.

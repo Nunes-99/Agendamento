@@ -305,10 +305,13 @@ try
 
     builder.Services.WireUp(builder.Configuration);
 
-    // SignalR para notificações realtime ao admin (novo agendamento, pagamento aprovado etc)
+    // SignalR para notificações realtime ao admin (aba aberta) + Web Push (aba fechada).
+    // O `NotificacaoRealtimeComposto` dispara os dois em paralelo; Web Push é no-op
+    // se VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY não estão configurados.
     builder.Services.AddSignalR();
+    builder.Services.AddScoped<AgendamentoPro.API.Services.Realtime.SignalRNotificacaoRealtime>();
     builder.Services.AddScoped<AgendamentoPro.Core.Interfaces.Services.INotificacaoRealtime,
-        AgendamentoPro.API.Services.Realtime.SignalRNotificacaoRealtime>();
+        AgendamentoPro.API.Services.Realtime.NotificacaoRealtimeComposto>();
 
     // OutputCache: cacheia respostas de endpoints públicos GET (catálogo, avaliações)
     // por 60s. Reduz hit no banco em landing pages com tráfego.

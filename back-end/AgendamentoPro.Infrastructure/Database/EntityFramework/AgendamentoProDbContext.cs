@@ -44,6 +44,7 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<Notificacao> Notificacoes { get; set; }
         public DbSet<LogAuditoria> LogsAuditoria { get; set; }
         public DbSet<OtpChallenge> OtpChallenges { get; set; }
+        public DbSet<WebPushSubscription> WebPushSubscriptions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -312,6 +313,22 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.Property(x => x.OtpTelefone).HasMaxLength(30).IsRequired();
                 e.Property(x => x.OtpCodigoHash).HasMaxLength(100).IsRequired();
                 e.HasIndex(x => new { x.R_TenId, x.OtpTelefone, x.OtpCriadoEm });
+            });
+
+            mb.Entity<WebPushSubscription>(e =>
+            {
+                e.ToTable("WebPushSubscription");
+                e.HasKey(x => x.PushId);
+                e.Property(x => x.PushEndpoint).HasMaxLength(500).IsRequired();
+                e.Property(x => x.PushP256dh).HasMaxLength(200).IsRequired();
+                e.Property(x => x.PushAuth).HasMaxLength(100).IsRequired();
+                e.Property(x => x.PushUserAgent).HasMaxLength(300);
+                e.HasIndex(x => x.PushEndpoint).IsUnique();
+                e.HasIndex(x => new { x.R_TenId, x.R_UsuId });
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.R_UsuId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             mb.Entity<Cupom>(e =>
