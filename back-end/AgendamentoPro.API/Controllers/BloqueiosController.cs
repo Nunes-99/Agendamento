@@ -2,8 +2,10 @@ using AgendamentoPro.Core.Entities.Horarios;
 using AgendamentoPro.Core.Interfaces.Common;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
+using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AgendamentoPro.API.Controllers
 {
@@ -49,6 +51,7 @@ namespace AgendamentoPro.API.Controllers
         [HttpPost]
         public async Task<IActionResult> Criar(
             [FromServices] IHorarioFuncionamentoRepository horarios,
+            [FromServices] AgendamentoProDbContext db,
             [FromServices] ITenantContext ctx,
             [FromServices] IUnitOfWork uow,
             [FromBody] BloqueioInput input)
@@ -56,6 +59,17 @@ namespace AgendamentoPro.API.Controllers
             var tid = RequireTenantId(ctx);
             if (input.DataFim <= input.DataInicio)
                 return BadRequest(new { message = "Data fim deve ser posterior à data início." });
+
+            // CROSS-TENANT: bloqueio com R_RecId nulo é global ao tenant (todos os
+            // recursos). Quando o admin especifica um RecursoId, validar que o
+            // recurso pertence ao tenant — caso contrário admin do A poderia
+            // bloquear recurso do tenant B.
+            if (input.RecursoId.HasValue)
+            {
+                var existe = await db.Recursos.AnyAsync(r =>
+                    r.RecId == input.RecursoId.Value && r.R_TenId == tid);
+                if (!existe) return BadRequest(new { message = "Recurso inválido." });
+            }
 
             var b = new BloqueioAgenda(tid, input.RecursoId, input.DataInicio, input.DataFim,
                 input.Motivo ?? "Bloqueio");

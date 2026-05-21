@@ -60,11 +60,26 @@ namespace AgendamentoPro.Application.UseCases.Auth
                 ?? _config["App:FrontendUrl"] ?? publicUrl).TrimEnd('/');
             var link = $"{frontUrl}/redefinir-senha?token={Uri.EscapeDataString(token)}";
 
-            _logger.LogWarning("==== LINK DE RESET DE SENHA ===="
-                + "\nUsuário: {Email}"
-                + "\nLink (válido por {Validade}h): {Link}"
-                + "\n================================",
-                usuario.UsuEmail, Validade.TotalHours, link);
+            // SEGURANÇA: NUNCA logar o link completo em produção — qualquer ops
+            // com acesso ao agregador de logs ganharia bypass de senha. Em dev
+            // ainda logamos pra facilitar testes manuais (sem SMTP configurado).
+            var isProd = string.Equals(
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                "Production", StringComparison.OrdinalIgnoreCase);
+            if (isProd)
+            {
+                _logger.LogInformation(
+                    "Reset de senha gerado para {Email} (válido por {Validade}h). Link enviado por email se SMTP ativo.",
+                    usuario.UsuEmail, Validade.TotalHours);
+            }
+            else
+            {
+                _logger.LogWarning("==== LINK DE RESET DE SENHA (dev) ===="
+                    + "\nUsuário: {Email}"
+                    + "\nLink (válido por {Validade}h): {Link}"
+                    + "\n================================",
+                    usuario.UsuEmail, Validade.TotalHours, link);
+            }
 
             // Tenta enviar por e-mail. Se SMTP não estiver configurado, apenas loga
             // (operador entrega o link manualmente).
