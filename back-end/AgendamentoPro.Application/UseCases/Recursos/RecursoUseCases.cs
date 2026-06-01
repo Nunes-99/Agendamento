@@ -1,4 +1,5 @@
 using AgendamentoPro.Application.InputModels.Recursos;
+using AgendamentoPro.Application.Interfaces.Assinaturas;
 using AgendamentoPro.Application.Interfaces.Recursos;
 using AgendamentoPro.Application.ViewModels.Recursos;
 using AgendamentoPro.Core.Entities.Recursos;
@@ -27,9 +28,14 @@ namespace AgendamentoPro.Application.UseCases.Recursos
     {
         private readonly IRecursoRepository _recursos;
         private readonly IUnitOfWork _uow;
-        public CadastrarRecursoUseCase(IRecursoRepository r, IUnitOfWork u) { _recursos = r; _uow = u; }
+        private readonly IPlanoLimiteService _limites;
+        public CadastrarRecursoUseCase(IRecursoRepository r, IUnitOfWork u, IPlanoLimiteService limites)
+        {
+            _recursos = r; _uow = u; _limites = limites;
+        }
         public async Task<RecursoViewModel> ExecuteAsync(int tenantId, RecursoInputModel input)
         {
+            await _limites.GarantirPodeCadastrarProfissionalAsync(tenantId);
             var rec = new Recurso(tenantId, input.Nome, input.Descricao, input.Tipo, input.ImagemUrl, input.Ordem);
             if (!input.Ativo) rec.Inativar();
             await _recursos.CreateAsync(rec);

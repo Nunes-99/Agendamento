@@ -20,6 +20,12 @@ export const routes: Routes = [
     ]
   },
 
+  // Catálogo público de planos SaaS
+  {
+    path: 'planos',
+    loadComponent: () => import('./features/public/planos/planos.component').then(m => m.PlanosComponent)
+  },
+
   // Avaliação pública (cliente final via token enviado por WhatsApp)
   {
     path: 'avaliar/:token',
@@ -65,6 +71,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'empresas', loadComponent: () => import('./features/admin/empresas/empresas.component').then(m => m.EmpresasComponent) },
+      { path: 'planos-catalogo', loadComponent: () => import('./features/admin/planos-catalogo/planos-catalogo.component').then(m => m.PlanosCatalogoComponent) },
       { path: 'dashboard', loadComponent: () => import('./features/admin/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'agenda', loadComponent: () => import('./features/admin/agenda/agenda.component').then(m => m.AgendaComponent) },
       { path: 'servicos', loadComponent: () => import('./features/admin/servicos/servicos-admin.component').then(m => m.ServicosAdminComponent) },
@@ -86,7 +93,8 @@ export const routes: Routes = [
       { path: 'lgpd', loadComponent: () => import('./features/admin/lgpd/lgpd.component').then(m => m.LgpdComponent) },
       { path: 'seguranca/2fa', loadComponent: () => import('./features/admin/seguranca/dois-fatores.component').then(m => m.DoisFatoresComponent) },
       { path: 'relatorios', loadComponent: () => import('./features/admin/relatorios/relatorios.component').then(m => m.RelatoriosComponent) },
-      { path: 'configuracoes', loadComponent: () => import('./features/admin/configuracoes/configuracoes.component').then(m => m.ConfiguracoesComponent) }
+      { path: 'configuracoes', loadComponent: () => import('./features/admin/configuracoes/configuracoes.component').then(m => m.ConfiguracoesComponent) },
+      { path: 'minha-assinatura', loadComponent: () => import('./features/admin/minha-assinatura/minha-assinatura.component').then(m => m.MinhaAssinaturaComponent) }
     ]
   },
 

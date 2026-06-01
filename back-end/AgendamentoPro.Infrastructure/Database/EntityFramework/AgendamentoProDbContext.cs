@@ -1,4 +1,5 @@
 using AgendamentoPro.Core.Entities.Agendamentos;
+using AgendamentoPro.Core.Entities.Assinaturas;
 using AgendamentoPro.Core.Entities.Clientes;
 using AgendamentoPro.Core.Entities.Common;
 using AgendamentoPro.Core.Entities.Horarios;
@@ -45,6 +46,9 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
         public DbSet<LogAuditoria> LogsAuditoria { get; set; }
         public DbSet<OtpChallenge> OtpChallenges { get; set; }
         public DbSet<WebPushSubscription> WebPushSubscriptions { get; set; }
+        public DbSet<Plano> Planos { get; set; }
+        public DbSet<Assinatura> Assinaturas { get; set; }
+        public DbSet<FaturaAssinatura> FaturasAssinatura { get; set; }
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -397,6 +401,79 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.Property(x => x.NotStatus).HasMaxLength(20);
                 e.Property(x => x.NotErro).HasMaxLength(1000);
                 e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+            });
+
+            mb.Entity<Plano>(e =>
+            {
+                e.ToTable("Plano");
+                e.HasKey(x => x.PlnId);
+                e.Property(x => x.PlnId).ValueGeneratedOnAdd();
+                e.Property(x => x.PlnNome).HasMaxLength(100).IsRequired();
+                e.Property(x => x.PlnDescricao).HasMaxLength(1000);
+                e.Property(x => x.PlnPreco).HasPrecision(10, 2);
+                e.HasIndex(x => new { x.PlnAtivo, x.PlnPublico });
+
+                e.HasData(
+                    new
+                    {
+                        PlnId = 1,
+                        PlnNome = "Essencial",
+                        PlnDescricao = "Ideal para 1 unidade. Tudo que você precisa para começar.",
+                        PlnPreco = 29.90m,
+                        PlnLimiteUnidades = 1,
+                        PlnLimiteProfissionais = 10,
+                        PlnLimiteAgendamentosMes = -1,
+                        PlnPublico = true,
+                        PlnAtivo = true,
+                        PlnOrdem = 1,
+                        PlnCriadoEm = new DateTime(2026, 5, 30, 0, 0, 0, DateTimeKind.Utc)
+                    },
+                    new
+                    {
+                        PlnId = 2,
+                        PlnNome = "Multi-unidade",
+                        PlnDescricao = "Para redes e franquias. Unidades ilimitadas, profissionais ilimitados.",
+                        PlnPreco = 79.90m,
+                        PlnLimiteUnidades = -1,
+                        PlnLimiteProfissionais = -1,
+                        PlnLimiteAgendamentosMes = -1,
+                        PlnPublico = true,
+                        PlnAtivo = true,
+                        PlnOrdem = 2,
+                        PlnCriadoEm = new DateTime(2026, 5, 30, 0, 0, 0, DateTimeKind.Utc)
+                    });
+            });
+
+            mb.Entity<Assinatura>(e =>
+            {
+                e.ToTable("Assinatura");
+                e.HasKey(x => x.AssId);
+                e.Property(x => x.AssId).ValueGeneratedOnAdd();
+                e.Property(x => x.AssStatus).HasConversion<int>();
+                e.Property(x => x.AssGateway).HasMaxLength(50).IsRequired();
+                e.Property(x => x.AssGatewayPreapprovalId).HasMaxLength(200);
+                e.Property(x => x.AssPayloadGateway);
+                e.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.R_TenId);
+                e.HasOne(x => x.Plano).WithMany().HasForeignKey(x => x.R_PlnId);
+                // 1 assinatura ativa por tenant: índice único sobre R_TenId + Status (somente status "vivos")
+                e.HasIndex(x => x.R_TenId);
+                e.HasIndex(x => x.AssGatewayPreapprovalId).IsUnique().HasFilter(null);
+                e.HasIndex(x => x.AssStatus);
+            });
+
+            mb.Entity<FaturaAssinatura>(e =>
+            {
+                e.ToTable("FaturaAssinatura");
+                e.HasKey(x => x.FasId);
+                e.Property(x => x.FasId).ValueGeneratedOnAdd();
+                e.Property(x => x.FasValor).HasPrecision(10, 2);
+                e.Property(x => x.FasStatus).HasConversion<int>();
+                e.Property(x => x.FasGatewayPaymentId).HasMaxLength(200);
+                e.Property(x => x.FasPayloadGateway);
+                e.HasOne(x => x.Assinatura).WithMany().HasForeignKey(x => x.R_AssId);
+                e.HasIndex(x => x.R_AssId);
+                e.HasIndex(x => x.FasGatewayPaymentId).IsUnique().HasFilter(null);
+                e.HasIndex(x => new { x.R_TenId, x.FasReferenciaInicio });
             });
 
             mb.Entity<LogAuditoria>(e =>

@@ -7,6 +7,7 @@ import { Agendamento, CriarAgendamentoInput, CriarAgendamentoResult, SlotDisponi
 import { Avaliacao, ResumoAvaliacoes, ResponderAvaliacaoInput } from '../models/avaliacao.model';
 import { Combo, ComboInput } from '../models/combo.model';
 import { FotoAgendamento, TipoFoto } from '../models/foto.model';
+import { AlterarPlanoInput, Assinatura, CriarAssinaturaInput, Plano } from '../models/assinatura.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -320,5 +321,36 @@ export class ApiService {
   }
   minhaFidelidade(slug: string) {
     return this.http.get<{ saldo: number }>(`${this.base}/t/${slug}/minha-conta/fidelidade`);
+  }
+
+  // ----- Assinatura SaaS (mensalidade do tenant) -----
+  listarPlanos(): Observable<Plano[]> {
+    return this.http.get<Plano[]>(`${this.base}/planos`);
+  }
+  minhaAssinatura(): Observable<Assinatura | null> {
+    return this.http.get<Assinatura | null>(`${this.base}/admin/assinatura`);
+  }
+  criarAssinatura(input: CriarAssinaturaInput): Observable<Assinatura> {
+    return this.http.post<Assinatura>(`${this.base}/admin/assinatura`, input);
+  }
+  alterarPlano(input: AlterarPlanoInput): Observable<Assinatura> {
+    return this.http.put<Assinatura>(`${this.base}/admin/assinatura/plano`, input);
+  }
+  cancelarAssinatura(): Observable<Assinatura> {
+    return this.http.delete<Assinatura>(`${this.base}/admin/assinatura`);
+  }
+
+  // ----- SuperAdmin: catálogo de planos -----
+  listarTodosPlanos(): Observable<Plano[]> {
+    return this.http.get<Plano[]>(`${this.base}/superadmin/planos`);
+  }
+  criarPlano(input: Partial<Plano> & { publico?: boolean; ordem?: number }): Observable<Plano> {
+    return this.http.post<Plano>(`${this.base}/superadmin/planos`, input);
+  }
+  atualizarPlano(id: number, input: Partial<Plano> & { publico?: boolean; ordem?: number }): Observable<Plano> {
+    return this.http.put<Plano>(`${this.base}/superadmin/planos/${id}`, input);
+  }
+  alternarStatusPlano(id: number, ativo: boolean): Observable<Plano> {
+    return this.http.post<Plano>(`${this.base}/superadmin/planos/${id}/ativar?ativo=${ativo}`, {});
   }
 }

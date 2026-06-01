@@ -441,6 +441,7 @@ try
     app.UseAuthentication();
     app.UseTenantResolution();
     app.UseLogEnrichment();
+    app.UseAssinaturaGuard();
     app.UseAuthorization();
     app.MapControllers();
     app.MapHub<AgendamentoPro.API.Hubs.NotificacoesHub>("/hubs/notificacoes");
@@ -472,6 +473,14 @@ try
         "backup-diario",
         job => job.ExecutarAsync(CancellationToken.None),
         "0 3 * * *",
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+    // Grace period de assinaturas SaaS: marca Atrasada → ReadOnly → Expirada conforme
+    // janelas de 8 e 22 dias. Roda às 5h UTC pra não competir com backup (3h) e purge (4h).
+    RecurringJob.AddOrUpdate<AgendamentoPro.Infrastructure.Services.Assinaturas.AssinaturaStatusJob>(
+        "assinatura-status",
+        job => job.ExecutarAsync(CancellationToken.None),
+        "0 5 * * *",
         new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
     // /api/health/live - liveness (sempre OK se o processo respondeu)

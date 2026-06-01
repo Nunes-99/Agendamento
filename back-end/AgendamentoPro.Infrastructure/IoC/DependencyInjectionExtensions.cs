@@ -1,4 +1,5 @@
 using AgendamentoPro.Application.Interfaces.Agendamentos;
+using AgendamentoPro.Application.Interfaces.Assinaturas;
 using AgendamentoPro.Application.Interfaces.Auth;
 using AgendamentoPro.Application.Interfaces.Clientes;
 using AgendamentoPro.Application.Interfaces.Dashboard;
@@ -9,6 +10,7 @@ using AgendamentoPro.Application.Interfaces.Relatorios;
 using AgendamentoPro.Application.Interfaces.Servicos;
 using AgendamentoPro.Application.Interfaces.Tenants;
 using AgendamentoPro.Application.UseCases.Agendamentos;
+using AgendamentoPro.Application.UseCases.Assinaturas;
 using AgendamentoPro.Application.UseCases.Auth;
 using AgendamentoPro.Application.UseCases.Clientes;
 using AgendamentoPro.Application.UseCases.Dashboard;
@@ -30,6 +32,7 @@ using AgendamentoPro.Infrastructure.Database.UnitOfWork;
 using AgendamentoPro.Infrastructure.Services.Auth;
 using AgendamentoPro.Infrastructure.Services.Cache;
 using AgendamentoPro.Infrastructure.Services.Email;
+using AgendamentoPro.Infrastructure.Services.Assinaturas;
 using AgendamentoPro.Infrastructure.Services.Pagamento;
 using AgendamentoPro.Infrastructure.Services.Storage;
 using AgendamentoPro.Infrastructure.Services.Tenant;
@@ -119,6 +122,9 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<ISaldoPacoteRepository, SaldoPacoteRepository>();
             services.AddScoped<IHorarioFuncionamentoRepository, HorarioFuncionamentoRepository>();
             services.AddScoped<IOtpChallengeRepository, OtpChallengeRepository>();
+            services.AddScoped<IPlanoRepository, PlanoRepository>();
+            services.AddScoped<IAssinaturaRepository, AssinaturaRepository>();
+            services.AddScoped<IFaturaAssinaturaRepository, FaturaAssinaturaRepository>();
 
             // Serviços de domínio
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
@@ -193,6 +199,10 @@ namespace AgendamentoPro.Infrastructure.IoC
             {
                 c.Timeout = TimeSpan.FromSeconds(30);
             });
+            services.AddHttpClient<IGatewayAssinatura, MercadoPagoAssinaturaService>(c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(30);
+            });
             services.AddHttpClient<INotificadorWhatsApp, WhatsAppCloudNotificador>(c =>
             {
                 c.Timeout = TimeSpan.FromSeconds(15);
@@ -202,6 +212,7 @@ namespace AgendamentoPro.Infrastructure.IoC
             // Para reativar o BackgroundService legado, defina USE_LEGACY_REMINDER=true no env.
             // Job recorrente é registrado em Program.cs após o build.
             services.AddScoped<AgendamentoPro.Infrastructure.Services.WhatsApp.LembreteJob>();
+            services.AddScoped<AgendamentoPro.Infrastructure.Services.Assinaturas.AssinaturaStatusJob>();
             if (string.Equals(Environment.GetEnvironmentVariable("USE_LEGACY_REMINDER"), "true",
                 StringComparison.OrdinalIgnoreCase))
             {
@@ -242,6 +253,22 @@ namespace AgendamentoPro.Infrastructure.IoC
             services.AddScoped<IDashboardUseCase, DashboardUseCase>();
             services.AddScoped<IRelatoriosUseCase, RelatoriosUseCase>();
             services.AddScoped<ILgpdUseCase, LgpdUseCase>();
+            services.AddSingleton<AssinaturaStatusCache>();
+            services.AddSingleton<IAssinaturaCacheInvalidator>(sp => sp.GetRequiredService<AssinaturaStatusCache>());
+            services.AddScoped<IPlanoLimiteService, PlanoLimiteService>();
+            services.AddScoped<IListarPlanosUseCase, ListarPlanosUseCase>();
+            services.AddScoped<IMinhaAssinaturaUseCase, MinhaAssinaturaUseCase>();
+            services.AddScoped<ICriarAssinaturaUseCase, CriarAssinaturaUseCase>();
+            services.AddScoped<IAlterarPlanoUseCase, AlterarPlanoUseCase>();
+            services.AddScoped<ICancelarAssinaturaUseCase, CancelarAssinaturaUseCase>();
+            services.AddScoped<IProcessarWebhookAssinaturaUseCase, ProcessarWebhookAssinaturaUseCase>();
+            services.AddScoped<IListarTodosPlanosUseCase, ListarTodosPlanosUseCase>();
+            services.AddScoped<ICriarPlanoUseCase, CriarPlanoUseCase>();
+            services.AddScoped<IAtualizarPlanoUseCase, AtualizarPlanoUseCase>();
+            services.AddScoped<IAlternarStatusPlanoUseCase, AlternarStatusPlanoUseCase>();
+            services.AddScoped<ISimularPagamentoAssinaturaUseCase, SimularPagamentoAssinaturaUseCase>();
+            services.AddScoped<IForcarStatusAssinaturaUseCase, ForcarStatusAssinaturaUseCase>();
+            services.AddScoped<ISeedAssinaturasDemoUseCase, SeedAssinaturasDemoUseCase>();
 
             return services;
         }

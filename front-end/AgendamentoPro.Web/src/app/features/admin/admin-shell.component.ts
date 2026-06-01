@@ -15,13 +15,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { ThemeModeService } from '../../core/services/theme-mode.service';
 import { RealtimeService } from '../../core/services/realtime.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { BillingBannerComponent } from './minha-assinatura/billing-banner.component';
 
 @Component({
   selector: 'app-admin-shell',
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet,
     MatSidenavModule, MatToolbarModule, MatIconModule, MatButtonModule, MatListModule,
-    MatBadgeModule, MatMenuModule],
+    MatBadgeModule, MatMenuModule, BillingBannerComponent],
   template: `
     <mat-sidenav-container class="shell">
       <mat-sidenav #drawer
@@ -46,6 +47,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
             <a mat-list-item routerLink="/admin/empresas" routerLinkActive="ativo" (click)="aoNavegar(drawer)">
               <mat-icon>apartment</mat-icon> Empresas
             </a>
+            <a mat-list-item routerLink="/admin/planos-catalogo" routerLinkActive="ativo" (click)="aoNavegar(drawer)">
+              <mat-icon>price_change</mat-icon> Planos
+            </a>
           </ng-container>
 
           <ng-container *ngIf="!ehSuperAdmin()">
@@ -69,6 +73,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
             <a mat-list-item routerLink="/admin/lgpd" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>privacy_tip</mat-icon> LGPD</a>
             <a mat-list-item routerLink="/admin/seguranca/2fa" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>shield</mat-icon> 2FA</a>
             <a mat-list-item routerLink="/admin/importar-clientes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>upload_file</mat-icon> Importar CSV</a>
+            <a mat-list-item routerLink="/admin/minha-assinatura" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>card_membership</mat-icon> Minha assinatura</a>
             <a mat-list-item routerLink="/admin/configuracoes" routerLinkActive="ativo" (click)="aoNavegar(drawer)"><mat-icon>settings</mat-icon> Configurações</a>
           </ng-container>
         </mat-nav-list>
@@ -115,6 +120,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
             <mat-icon>logout</mat-icon>
           </button>
         </mat-toolbar>
+        <app-billing-banner *ngIf="!ehSuperAdmin()"></app-billing-banner>
         <main class="conteudo">
           <router-outlet></router-outlet>
         </main>
@@ -272,10 +278,11 @@ export class AdminShellComponent implements OnInit {
 
   private corrigirRota(url: string) {
     if (!this.ehSuperAdmin()) return;
+    if (url.startsWith('/admin/empresas') || url.startsWith('/admin/planos-catalogo')) return;
     if (url === '/admin' || url.startsWith('/admin/dashboard') || url.startsWith('/admin/agenda') ||
         url.startsWith('/admin/servicos') || url.startsWith('/admin/recursos') ||
         url.startsWith('/admin/clientes') || url.startsWith('/admin/relatorios') ||
-        url.startsWith('/admin/configuracoes')) {
+        url.startsWith('/admin/configuracoes') || url.startsWith('/admin/minha-assinatura')) {
       this.router.navigate(['/admin/empresas']);
     }
   }

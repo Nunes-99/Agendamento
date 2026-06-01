@@ -93,7 +93,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 payment_method_id = "pix",
                 date_of_expiration = dataExpiracao.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
                 external_reference = $"{tenantId}:{agendamentoId}",
-                notification_url = $"{_appPublicUrl}/api/webhooks/pagamento/MercadoPago",
+                notification_url = $"{_appPublicUrl}/api/v1/webhooks/pagamento/MercadoPago",
                 payer = new { email = "comprador@agendamentopro.local" }
             };
 
@@ -141,7 +141,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                     }
                 },
                 external_reference = $"{tenantId}:{agendamentoId}",
-                notification_url = $"{_appPublicUrl}/api/webhooks/pagamento/MercadoPago",
+                notification_url = $"{_appPublicUrl}/api/v1/webhooks/pagamento/MercadoPago",
                 expires = true,
                 expiration_date_to = dataExpiracao.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
                 payment_methods = new
