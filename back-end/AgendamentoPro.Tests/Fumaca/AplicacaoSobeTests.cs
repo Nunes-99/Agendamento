@@ -21,7 +21,8 @@ namespace AgendamentoPro.Tests.Fumaca
     /// subisse a aplicação. É exatamente essa lacuna que este teste cobre: se a
     /// aplicação não sobe, ou se um cliente novo não consegue entrar, quebra aqui.
     /// </summary>
-    public class AplicacaoSobeTests : IClassFixture<ApiDeTeste>
+    [Collection(ColecaoApi.Nome)]
+    public class AplicacaoSobeTests
     {
         private readonly ApiDeTeste _api;
 
@@ -165,6 +166,22 @@ namespace AgendamentoPro.Tests.Fumaca
             public string? Perfil { get; set; }
             public string? TenantSlug { get; set; }
         }
+    }
+
+    /// <summary>
+    /// UMA instância do host para todas as classes de fumaça.
+    ///
+    /// Não é economia: o <see cref="ApiDeTeste"/> escreve variáveis de AMBIENTE do
+    /// processo (o código de produção as lê com Environment.GetEnvironmentVariable,
+    /// não por IConfiguration). Com uma instância por classe, o xUnit roda as
+    /// classes em paralelo e elas sobrescrevem as variáveis umas das outras —
+    /// hosts subindo apontados para o banco errado, falhas que mudam a cada
+    /// execução. Uma coleção só, e o problema deixa de existir.
+    /// </summary>
+    [CollectionDefinition(Nome)]
+    public class ColecaoApi : ICollectionFixture<ApiDeTeste>
+    {
+        public const string Nome = "API de fumaça";
     }
 
     /// <summary>

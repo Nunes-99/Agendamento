@@ -69,6 +69,21 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
 
             if (!tenant.TenAtivo) throw new TenantException("Estabelecimento inativo.");
 
+            // Dinheiro é lançamento DA OFICINA, não escolha do cliente.
+            //
+            // Este método atende a rota pública, que é [AllowAnonymous]. Mais abaixo,
+            // FormaPagamento.Dinheiro pula o gateway e já marca o agendamento como
+            // Confirmado — o que, vindo da rua, significa reservar horário sem pagar
+            // nada. O sinal de 20% existe justamente para reduzir falta; sem esta
+            // linha, ele é contornado com um campo no corpo da requisição, e a agenda
+            // inteira pode ser ocupada de graça por qualquer um, em massa.
+            //
+            // O caminho legítimo do dinheiro é o ExecuteAdminAsync, atrás da policy
+            // "Atendente" — lá quem lança é quem vai receber.
+            if (input.FormaPagamento == FormaPagamento.Dinheiro)
+                throw new DomainException(
+                    "Pagamento em dinheiro é registrado pelo estabelecimento, não pelo site.");
+
             var servico = await _servicos.GetByIdAsync(input.ServicoId, tenantId)
                 ?? throw new ServicoException("Serviço não encontrado.");
             if (!servico.SerAtivo) throw new ServicoException("Serviço indisponível.");
