@@ -134,6 +134,23 @@ try
         // SuperAdmin (sem tenantId) é exceção — pode acessar qualquer tenant.
         opt.Events = new JwtBearerEvents
         {
+            // WebSocket não aceita cabeçalho Authorization do navegador — por isso o
+            // cliente do SignalR manda o token em ?access_token=. Sem ler daqui, o
+            // hub responde 401 e o realtime NUNCA conecta (o negotiate passa, o
+            // upgrade não; o sino de notificações fica mudo sem erro no servidor).
+            //
+            // Restrito a /hubs de propósito: aceitar token por query string nas rotas
+            // normais da API o faria vazar em log de acesso, histórico e Referer.
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token)
+                    && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    ctx.Token = token;
+                }
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async ctx =>
             {
                 var claims = ctx.Principal!;
@@ -284,7 +301,12 @@ try
         options.AddPolicy("AppFrontend", p => p
             .WithOrigins(allowedOrigins)
             .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-            .WithHeaders("Authorization", "Content-Type", "X-Tenant-Slug", "X-Correlation-Id", "Accept")
+            // X-Requested-With: o cliente do SignalR manda esse cabeçalho no
+            // negotiate. Sem ele na lista, o preflight falha e o realtime NUNCA
+            // conecta — o sino de notificações fica mudo e o erro só aparece no
+            // console do navegador, nunca no log do servidor.
+            .WithHeaders("Authorization", "Content-Type", "X-Tenant-Slug", "X-Correlation-Id", "Accept",
+                         "X-Requested-With", "X-Signalr-User-Agent")
             .WithExposedHeaders("X-Correlation-Id")
             .AllowCredentials()
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));

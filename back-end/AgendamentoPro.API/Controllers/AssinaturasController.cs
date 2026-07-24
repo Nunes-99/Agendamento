@@ -23,7 +23,12 @@ namespace AgendamentoPro.API.Controllers
         {
             var tid = RequireTenantId(ctx);
             var ass = await useCase.ExecuteAsync(tid);
-            return ass == null ? NotFound() : Ok(ass);
+            // 200 com null, e não 404: "este tenant ainda não assinou" é um estado
+            // normal — todo tenant nasce assim. Devolver 404 pintava de vermelho o
+            // console de TODAS as telas do admin (o shell consulta isto sempre) e,
+            // pior, obrigava o frontend a tratar erro para saber que está tudo bem
+            // — o que faz um 500 de verdade passar por "ainda não assinou".
+            return Ok(ass);
         }
 
         [HttpPost]

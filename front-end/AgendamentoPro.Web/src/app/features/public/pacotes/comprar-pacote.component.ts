@@ -111,7 +111,9 @@ export class ComprarPacoteComponent implements OnInit {
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
-    this.api.listarPacotes().subscribe(p => this.pacotes.set(p));
+    // Com o slug, `listarPacotes` usa a rota pública; sem ele, cai na rota de
+    // admin — que responde 401 e joga o CLIENTE na tela de login do painel.
+    this.api.listarPacotes(this.slug).subscribe(p => this.pacotes.set(p));
   }
 
   selecionar(p: any) { this.selecionado.set(p); }
