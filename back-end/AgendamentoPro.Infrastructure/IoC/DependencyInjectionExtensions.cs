@@ -207,6 +207,10 @@ namespace AgendamentoPro.Infrastructure.IoC
             {
                 c.Timeout = TimeSpan.FromSeconds(15);
             });
+            services.AddHttpClient<IRecaptchaValidator, AgendamentoPro.Infrastructure.Services.Auth.RecaptchaValidator>(c =>
+            {
+                c.Timeout = TimeSpan.FromSeconds(10);
+            });
 
             // Lembretes 24h e 2h: Hangfire por padrão (com retry automático e dashboard).
             // Para reativar o BackgroundService legado, defina USE_LEGACY_REMINDER=true no env.
