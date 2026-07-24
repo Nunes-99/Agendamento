@@ -60,7 +60,10 @@ Todas as rotas estão sob `/api/v1/`. Health checks ficam fora da versão (`/api
   - `/t/:slug/lista-espera-publica` → entrar na fila quando data está cheia
   - `/admin/login` → login do administrador
   - `/admin/{dashboard,agenda,servicos,recursos,clientes,combos,relatorios,configuracoes,avaliacoes}`
-  - `/admin/{recorrencias,pacotes,fidelidade,bloqueios,lista-espera,kpis,caixa,seguranca}`
+  - `/admin/{recorrencias,pacotes,fidelidade,bloqueios,lista-espera,kpis,caixa,cupons,lgpd}`
+  - `/admin/seguranca/2fa` → autenticação em dois fatores (TOTP)
+  - `/admin/importar-clientes` → importação de clientes por CSV
+  - `/admin/empresas` → gestão de tenants (super-admin)
   - `/admin/agendamentos/:id/fotos` → upload e galeria de fotos antes/depois
   - `/esqueci-senha` e `/redefinir-senha?token=...` → fluxo público de reset
 
@@ -90,7 +93,18 @@ App é instalável (Android/iOS) com service worker (`@angular/service-worker`).
 ### Setup inicial
 
 1. Copie `.env.example` para `.env` e preencha os valores (chaves do Mercado Pago, WhatsApp, JWT secret).
-2. Para SQLite local não há mais nada a configurar; para SQL Server ajuste `Database__Provider` e `ConnectionStrings__Default` em `.env`.
+2. Para SQLite local não há mais nada a configurar.
+
+> **SQL Server não é suportado hoje.** O provider existe no código, mas **todas as
+> migrations foram geradas contra o SQLite** — são 333 colunas declaradas como
+> `TEXT`/`INTEGER`, tipos que no SQL Server ou são obsoletos (`TEXT` não aceita
+> índice único) ou têm semântica diferente. Aplicá-las lá produz um schema
+> inválido, e o problema só apareceria com dado de cliente dentro.
+>
+> Por isso o startup **falha imediatamente** com `Database:Provider=SqlServer`.
+> Para habilitar de verdade, o caminho é o padrão do EF: um conjunto de migrations
+> **por provider** (assemblies separados) e a suíte rodando contra uma instância
+> real. Até lá, use SQLite.
 
 ## Documentação adicional
 
@@ -332,12 +346,33 @@ Cobre:
 - **Logs estruturados** (Serilog) com CorrelationId/TenantId/UserId — facilita correlacionar requests no Kibana/Grafana Loki.
 - **Health checks**: `GET /api/health/live` (processo) e `GET /api/health/ready` (banco). Use no orquestrador.
 - **Header `X-Correlation-Id`** ecoado em toda response — frontend pode logar pra debug.
+- **Erros do navegador chegam ao log do servidor** via `POST /api/v1/erros-cliente`.
+  Um `ErrorHandler` global e o interceptor de HTTP reportam o que antes morria no
+  console de quem estivesse com o F12 aberto — foi assim que o SignalR ficou sem
+  conectar sem ninguém perceber. Falha de servidor (5xx) e queda de rede também
+  passaram a avisar o usuário na tela, em vez de deixá-la vazia.
+
+## Testes de fumaça
+
+`AgendamentoPro.Tests/Fumaca` sobe a aplicação DE VERDADE (`WebApplicationFactory`)
+e percorre o caminho crítico: health, login do super-admin, cadastro de um tenant
+novo e login do admin criado. Existe porque dois defeitos graves — a API não subia
+por dependência não registrada, e nenhum tenant podia ser criado — atravessaram
+285 testes verdes, já que todos eles montam seus objetos à mão com Moq.
+
+`AgendamentoPro.Tests/IoC/ContainerTests` faz o que o host faz ao subir:
+`BuildServiceProvider` com validação ligada. Qualquer dependência esquecida
+quebra ali, em segundos.
 
 ## Roadmap
 
 Próximos itens (não implementados ainda):
-- Integração com SMS para fallback do WhatsApp.
-- Gateway Stripe / Pagar.me.
-- Storage S3 nativo (substituir LocalFotoStorage).
-- Relatórios mais ricos (LTV cliente, taxa de no-show).
-- App mobile com push notifications.
+- SQL Server de verdade: migrations por provider (ver aviso em *Setup inicial*).
+- Gateway Pagar.me como alternativa ao Mercado Pago para recorrência.
+- Resize de fotos quando `STORAGE_PROVIDER=s3` (hoje o resize é pulado).
+- i18n (PT-BR / EN / ES).
+- App nativo — hoje coberto por PWA + Web Push.
+
+> Já entregues, apesar de constarem como pendentes em versões anteriores deste
+> arquivo: SMS fallback via Twilio, gateway Stripe, `S3FotoStorage` e os
+> relatórios avançados (LTV, no-show, sazonalidade).

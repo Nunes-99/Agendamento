@@ -3,7 +3,19 @@
 Itens não implementados, com classificação honesta de esforço/impacto.
 Ordenados por prioridade (top = mais valor).
 
-> Última varredura no código: 2026-05-30. Histórico anterior em `git log`.
+> Última varredura no código: 2026-07-24. Histórico anterior em `git log`.
+
+---
+
+## 🔴 SQL Server: migrations por provider
+
+O README prometia SQL Server; não funcionava. As migrations foram todas geradas
+contra o SQLite (333 colunas `TEXT`/`INTEGER`) e produziriam schema inválido lá.
+O startup passou a **barrar** o provider com mensagem explicativa.
+
+Para habilitar de verdade: conjunto de migrations por provider em assemblies
+separados + suíte rodando contra uma instância real. Esforço: ~2-3 dias, e não
+dá para validar sem a instância.
 
 ---
 
@@ -96,8 +108,28 @@ Ver `git log` para histórico. Resumo do que já está em master:
 - Playwright e2e (smoke tests)
 - Relatórios avançados (LTV, no-show por hora/dia, sazonalidade)
 - Auditorias de segurança aplicadas (cross-tenant, 2FA, rate limit, LGPD/PII)
-- 177+ tests backend verdes
+- 294 tests backend verdes
+
+### Correções de 2026-07-24 (passeio pelas 30 telas com a aplicação no ar)
+
+- **A API não subia**: `RecaptchaValidator` implementado de ponta a ponta, sem o
+  registro no contêiner. Em Development o host morria no boot; em Production
+  subiria e quebraria no primeiro login.
+- **Cancelar um horário o bloqueava para sempre**: o índice único de agendamento
+  não excluía cancelados, sendo mais rígido que a regra que o código aplica.
+  O mesmo defeito tornava **impossível criar tenant**.
+- **SignalR nunca conectou**: CORS sem `X-Requested-With` no negotiate e, atrás
+  disso, falta de `OnMessageReceived` para ler o token de `?access_token=` (o
+  navegador não pode mandar `Authorization` em WebSocket).
+- **`/planos` dava 500**: SQLite não ordena por `decimal`.
+- **Tela pública de pacotes chamava rota de admin**, jogando o cliente final na
+  tela de login do painel.
+- **Dados fictícios na criação de tenant** viraram opt-in — antes todo cliente
+  pagante nascia com ~95 agendamentos inventados na conta dele.
+- **Teste de fumaça e teste de contêiner** criados: os dois defeitos graves acima
+  eram invisíveis para teste de unidade.
+- **Erro de navegador** passou a chegar ao log do servidor.
 
 ---
 
-Última atualização: 2026-05-30.
+Última atualização: 2026-07-24.
