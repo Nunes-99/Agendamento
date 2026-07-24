@@ -73,9 +73,20 @@ namespace AgendamentoPro.API.Controllers
         {
             var tid = RequireTenantId(tenant);
             var cid = RequireClienteId(User);
-            var lista = await ctx.Agendamentos.AsNoTracking()
+            // O desempate por hora é feito EM MEMÓRIA: o SQLite não ordena por
+            // TimeSpan e a consulta inteira estourava 500 — o cliente entrava na
+            // conta dele e não via agendamento nenhum. Mesmo motivo do comentário
+            // em AgendamentoRepository.GetPorPeriodoAsync.
+            //
+            // O Take(50) fica DEPOIS da ordenação completa, senão o corte poderia
+            // pegar as 50 linhas erradas dentro de um mesmo dia.
+            var doCliente = await ctx.Agendamentos.AsNoTracking()
                 .Include(a => a.Servico)
                 .Where(a => a.R_TenId == tid && a.R_CliId == cid)
+                .OrderByDescending(a => a.AgeData)
+                .ToListAsync();
+
+            var lista = doCliente
                 .OrderByDescending(a => a.AgeData).ThenByDescending(a => a.AgeHoraInicio)
                 .Take(50)
                 .Select(a => new
@@ -90,7 +101,7 @@ namespace AgendamentoPro.API.Controllers
                     valorTotal = a.AgeValorTotal,
                     tokenSelfService = a.AgeAcessoToken
                 })
-                .ToListAsync();
+                .ToList();
             return Ok(lista);
         }
 

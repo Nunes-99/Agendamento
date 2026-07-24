@@ -203,6 +203,13 @@ namespace AgendamentoPro.Tests.Fumaca
         {
             // Lidas com Environment.GetEnvironmentVariable no código de produção,
             // então precisam existir no processo — não basta IConfiguration.
+            //
+            // ASPNETCORE_ENVIRONMENT entra aqui, e não só via UseEnvironment, porque
+            // partes do código leem a VARIÁVEL direto (o OtpUseCase decide num
+            // `static readonly` se devolve o código de verificação; o gateway do
+            // Mercado Pago decide se está em produção). UseEnvironment configura o
+            // host, não o processo — e essas leituras não enxergariam.
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
             Environment.SetEnvironmentVariable("ConnectionStrings__Default", $"Data Source={_banco}");
             Environment.SetEnvironmentVariable("HANGFIRE_STORAGE", "Memory");
             Environment.SetEnvironmentVariable("SUPERADMIN_EMAIL", SuperEmail);
