@@ -197,9 +197,18 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
                 e.HasOne(x => x.Cliente).WithMany().HasForeignKey(x => x.R_CliId);
                 e.HasOne(x => x.Servico).WithMany().HasForeignKey(x => x.R_SerId);
                 e.HasOne(x => x.Recurso).WithMany().HasForeignKey(x => x.R_RecId);
-                // Índice único por recurso/data/hora — proteção contra concorrência
+                // Índice único por recurso/data/hora — proteção contra concorrência.
+                //
+                // O filtro EXCLUI os cancelados, e isso não é detalhe: sem ele o
+                // índice fica mais rígido que a regra de negócio. `ExisteConflitoAsync`
+                // ignora cancelados (horário desmarcado volta a ficar livre), então a
+                // checagem prévia liberava a venda e o banco recusava o INSERT — o
+                // horário desmarcado nunca mais podia ser vendido.
+                //
+                // NoShow continua bloqueando de propósito: o cliente não apareceu, mas
+                // o horário foi consumido. É a mesma linha que `ExisteConflitoAsync` usa.
                 e.HasIndex(x => new { x.R_RecId, x.AgeData, x.AgeHoraInicio }).IsUnique()
-                    .HasFilter(null);
+                    .HasFilter(FiltroIgnorandoCancelados());
                 e.HasIndex(x => new { x.R_TenId, x.AgeData });
                 e.HasIndex(x => x.AgeGrupoComboId);
                 e.HasIndex(x => x.AgeAcessoToken).IsUnique();
@@ -503,6 +512,23 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
             {
                 throw new ConcorrenciaException("Conflito de unicidade no banco.");
             }
+        }
+
+        /// <summary>
+        /// Filtro do índice único de agendamentos, na sintaxe do provider em uso.
+        /// SQLite chama de índice parcial, SQL Server de índice filtrado; a única
+        /// diferença que interessa aqui é como cada um cita o nome da coluna.
+        /// </summary>
+        private string FiltroIgnorandoCancelados()
+        {
+            var cancelado = (int)Core.Enums.StatusAgendamento.Cancelado;
+            var coluna = (Database.ProviderName ?? string.Empty).Contains(
+                "Sqlite",
+                StringComparison.OrdinalIgnoreCase
+            )
+                ? "\"AgeStatus\""
+                : "[AgeStatus]";
+            return $"{coluna} <> {cancelado}";
         }
 
         private static bool EhViolacaoUnicidade(DbUpdateException ex)
