@@ -571,3 +571,10 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+/// <summary>
+/// Torna o Program visível para o WebApplicationFactory dos testes. Com
+/// top-level statements a classe gerada é internal; sem isto, não há como
+/// subir a aplicação de verdade dentro de um teste.
+/// </summary>
+public partial class Program { }

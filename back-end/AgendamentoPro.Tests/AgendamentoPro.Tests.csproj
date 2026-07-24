@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.11" />
@@ -23,6 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Referência à API: necessária para o teste de fumaça subir a aplicação
+         de verdade (WebApplicationFactory<Program>). -->
+    <ProjectReference Include="..\AgendamentoPro.API\AgendamentoPro.API.csproj" />
     <ProjectReference Include="..\AgendamentoPro.Core\AgendamentoPro.Core.csproj" />
     <ProjectReference Include="..\AgendamentoPro.Application\AgendamentoPro.Application.csproj" />
     <ProjectReference Include="..\AgendamentoPro.Infrastructure\AgendamentoPro.Infrastructure.csproj" />
