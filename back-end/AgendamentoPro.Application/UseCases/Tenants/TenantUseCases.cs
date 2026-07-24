@@ -10,6 +10,7 @@ using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
+using Microsoft.Extensions.Logging;
 
 namespace AgendamentoPro.Application.UseCases.Tenants
 {
@@ -22,10 +23,12 @@ namespace AgendamentoPro.Application.UseCases.Tenants
         private readonly IPasswordHasher _hasher;
         private readonly IUnitOfWork _uow;
         private readonly ITenantSeeder _seeder;
+        private readonly Microsoft.Extensions.Logging.ILogger<CriarTenantUseCase> _logger;
 
         public CriarTenantUseCase(ITenantRepository tenants, IUsuarioRepository usuarios,
             IHorarioFuncionamentoRepository horarios, IRecursoRepository recursos,
-            IPasswordHasher hasher, IUnitOfWork uow, ITenantSeeder seeder)
+            IPasswordHasher hasher, IUnitOfWork uow, ITenantSeeder seeder,
+            Microsoft.Extensions.Logging.ILogger<CriarTenantUseCase> logger)
         {
             _tenants = tenants;
             _usuarios = usuarios;
@@ -34,6 +37,7 @@ namespace AgendamentoPro.Application.UseCases.Tenants
             _hasher = hasher;
             _uow = uow;
             _seeder = seeder;
+            _logger = logger;
         }
 
         public async Task<TenantViewModel> ExecuteAsync(CriarTenantInputModel input)
@@ -41,11 +45,14 @@ namespace AgendamentoPro.Application.UseCases.Tenants
             if (!await _tenants.SlugDisponivelAsync(input.Slug))
                 throw new TenantException($"Slug '{input.Slug}' já está em uso.");
 
+            Tenant tenant;
+            int tenantId;
+
             await _uow.BeginTransactionAsync();
             try
             {
-                var tenant = new Tenant(input.Nome, input.Slug, input.Segmento, input.Email, input.Telefone);
-                var tenantId = await _tenants.CreateAsync(tenant);
+                tenant = new Tenant(input.Nome, input.Slug, input.Segmento, input.Email, input.Telefone);
+                tenantId = await _tenants.CreateAsync(tenant);
 
                 var senhaHash = _hasher.Hash(input.AdminSenha);
                 var admin = new Usuario(tenantId, input.AdminNome, input.AdminEmail, senhaHash,
@@ -66,17 +73,34 @@ namespace AgendamentoPro.Application.UseCases.Tenants
                     await _horarios.CreateAsync(horario);
                 }
 
-                // Popula com dados-exemplo (serviços, clientes, agendamentos plausíveis)
-                await _seeder.PopularAsync(tenantId);
-
                 await _uow.CommitAsync();
-                return MapearTenant(tenant);
             }
             catch
             {
                 await _uow.RollbackAsync();
                 throw;
             }
+
+            // Dados de demonstração ficam FORA da transação do cadastro, e só quando
+            // pedidos. O motivo é concreto: este seed já derrubou a criação de tenant
+            // inteira uma vez, ao sortear dois agendamentos no mesmo horário. Dado
+            // fictício não pode impedir o cadastro de um cliente de verdade — se
+            // falhar, o tenant continua criado e utilizável, e o log conta o que houve.
+            if (input.ComDadosDeExemplo)
+            {
+                try
+                {
+                    await _seeder.PopularAsync(tenantId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Tenant {TenantId} foi criado, mas os dados de exemplo falharam.",
+                        tenantId);
+                }
+            }
+
+            return MapearTenant(tenant);
         }
 
         public static TenantViewModel MapearTenant(Tenant t) => new()

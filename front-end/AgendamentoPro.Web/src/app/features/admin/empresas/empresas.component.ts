@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCardModule } from '@angular/material/card';
@@ -21,13 +22,14 @@ interface CriarEmpresaInput {
   adminNome: string;
   adminEmail: string;
   adminSenha: string;
+  comDadosDeExemplo: boolean;
 }
 
 @Component({
   selector: 'app-criar-empresa-dialog',
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule,
-    MatInputModule, MatDialogModule, MatIconModule],
+    MatInputModule, MatDialogModule, MatIconModule, MatCheckboxModule],
   template: `
     <h2 mat-dialog-title>
       <mat-icon>add_business</mat-icon>
@@ -77,6 +79,14 @@ interface CriarEmpresaInput {
           <input matInput type="password" [(ngModel)]="form.adminSenha" required minlength="6" />
         </mat-form-field>
       </div>
+
+      <mat-checkbox [(ngModel)]="form.comDadosDeExemplo" class="exemplo">
+        Preencher com dados fictícios (demonstração)
+      </mat-checkbox>
+      <p class="aviso-exemplo">
+        Cria clientes, agendamentos e avaliações inventados. Use só em demonstração —
+        num cliente de verdade ele não conseguiria distinguir o que é real.
+      </p>
     </mat-dialog-content>
     <div class="problemas" *ngIf="problemas().length">
       <mat-icon>info</mat-icon>
@@ -102,6 +112,8 @@ interface CriarEmpresaInput {
     .ajuda code { background: #f5f3ff; color: #4f46e5; padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
     .grid .full { grid-column: 1 / -1; }
+    .exemplo { margin-top: 1rem; }
+    .aviso-exemplo { margin: 0.25rem 0 0 2rem; font-size: 0.8125rem; color: #71717a; }
     @media (max-width: 36rem) { .grid { grid-template-columns: 1fr; } }
     .problemas {
       display: flex; gap: 0.625rem; align-items: flex-start;
@@ -117,7 +129,7 @@ export class CriarEmpresaDialogComponent {
   form: CriarEmpresaInput = {
     nome: '', slug: '', segmento: '',
     email: '', telefone: '',
-    adminNome: '', adminEmail: '', adminSenha: ''
+    adminNome: '', adminEmail: '', adminSenha: '', comDadosDeExemplo: false
   };
 
   problemas(): string[] {

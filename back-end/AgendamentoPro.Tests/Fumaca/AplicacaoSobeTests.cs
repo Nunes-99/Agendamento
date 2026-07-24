@@ -101,6 +101,35 @@ namespace AgendamentoPro.Tests.Fumaca
         }
 
         [Fact]
+        public async Task Cliente_novo_nasce_SEM_dado_ficticio()
+        {
+            // Um cliente pagante não pode receber a conta dele com agendamentos e
+            // clientes inventados dentro — ele não tem como saber o que é real.
+            var cliente = _api.CreateClient();
+            var slug = await _api.CriarTenantAsync(cliente, comDadosDeExemplo: false);
+
+            var anonimo = _api.CreateClient();
+            var servicos = await anonimo.GetFromJsonAsync<List<object>>($"/api/v1/t/{slug}/servicos");
+
+            servicos.Should().BeEmpty("o catálogo de um cliente novo começa vazio");
+        }
+
+        [Fact]
+        public async Task Com_dados_de_exemplo_o_seeder_roda_inteiro()
+        {
+            // Este é o teste que pega o defeito do índice único: o seeder cancela
+            // parte dos agendamentos e depois sorteia os mesmos horários. Se o
+            // índice voltar a ser mais rígido que a regra de negócio, quebra aqui.
+            var cliente = _api.CreateClient();
+            var slug = await _api.CriarTenantAsync(cliente, comDadosDeExemplo: true);
+
+            var anonimo = _api.CreateClient();
+            var servicos = await anonimo.GetFromJsonAsync<List<object>>($"/api/v1/t/{slug}/servicos");
+
+            servicos.Should().NotBeEmpty("com a flag ligada, o catálogo de demonstração é semeado");
+        }
+
+        [Fact]
         public async Task A_home_publica_do_tenant_abre_sem_login()
         {
             var cliente = _api.CreateClient();
@@ -166,15 +195,53 @@ namespace AgendamentoPro.Tests.Fumaca
         protected override void ConfigureWebHost(IWebHostBuilder builder) =>
             builder.UseEnvironment("Development");
 
+        /// <summary>Cria um tenant e devolve o slug dele.</summary>
+        public async Task<string> CriarTenantAsync(HttpClient cliente, bool comDadosDeExemplo)
+        {
+            var token = await TokenDoSuperAdminAsync(cliente);
+            cliente.DefaultRequestHeaders.Authorization = new("Bearer", token);
+
+            var slug = (comDadosDeExemplo ? "demo-" : "limpo-") + Guid.NewGuid().ToString("N")[..8];
+            var r = await cliente.PostAsJsonAsync(
+                "/api/v1/tenants",
+                new
+                {
+                    nome = "Oficina " + slug,
+                    slug,
+                    segmento = "Lava-rápido",
+                    email = $"{slug}@teste.local",
+                    telefone = "11999990000",
+                    adminNome = "Dono",
+                    adminEmail = $"dono-{slug}@teste.local",
+                    adminSenha = "Fumaca!2026",
+                    comDadosDeExemplo,
+                }
+            );
+            r.EnsureSuccessStatusCode();
+            return slug;
+        }
+
+        private string? _tokenSuper;
+
+        /// <summary>
+        /// Token do super-admin, obtido UMA vez e reaproveitado.
+        ///
+        /// Não é otimização: o rate limit de autenticação é de 5 por minuto por IP,
+        /// e no host de teste todas as requisições saem do mesmo IP. Um login por
+        /// teste estoura a cota e faz os testes falharem em conjunto enquanto
+        /// passam isoladamente — do tipo de falha que se perde horas perseguindo.
+        /// </summary>
         public async Task<string> TokenDoSuperAdminAsync(HttpClient cliente)
         {
+            if (_tokenSuper != null) return _tokenSuper;
+
             var r = await cliente.PostAsJsonAsync(
                 "/api/v1/auth/login",
                 new { email = SuperEmail, senha = SuperSenha }
             );
             r.EnsureSuccessStatusCode();
             var doc = await r.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
-            return doc!.RootElement.GetProperty("accessToken").GetString()!;
+            return _tokenSuper = doc!.RootElement.GetProperty("accessToken").GetString()!;
         }
 
         protected override void Dispose(bool disposing)
