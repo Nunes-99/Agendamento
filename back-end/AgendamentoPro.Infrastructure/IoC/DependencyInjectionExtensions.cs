@@ -54,6 +54,34 @@ namespace AgendamentoPro.Infrastructure.IoC
             var provider = config["Database:Provider"] ?? "Sqlite";
             var conn = config.GetConnectionString("Default") ?? "Data Source=agendamento.db";
 
+            // SQL Server está documentado, mas NÃO é utilizável hoje — e falhar
+            // aqui, alto e cedo, é muito melhor que descobrir depois.
+            //
+            // O motivo é objetivo: as migrations do projeto foram todas geradas
+            // contra o SQLite. São 333 colunas declaradas como TEXT/INTEGER, que
+            // são tipos do SQLite. No SQL Server, TEXT é tipo obsoleto e sequer
+            // aceita índice único — ou seja, subir com SqlServer aplicaria
+            // migrations que produzem um schema quebrado, e o estrago só
+            // apareceria com dado de cliente dentro.
+            //
+            // Para valer de verdade, o caminho é o padrão do EF: um conjunto de
+            // migrations POR PROVIDER (assemblies separados, `--context` próprio),
+            // e rodar a suíte contra uma instância real. Enquanto isso não
+            // acontecer, é mais honesto barrar do que prometer.
+            if (provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(
+                    Environment.GetEnvironmentVariable("DATABASE_SQLSERVER_EXPERIMENTAL"),
+                    "true", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Database:Provider=SqlServer não é suportado nesta versão: as migrations "
+                    + "existentes foram geradas para SQLite (colunas TEXT/INTEGER) e produziriam "
+                    + "um schema inválido no SQL Server. Use SQLite, ou gere um conjunto de "
+                    + "migrations específico para SQL Server antes. "
+                    + "Para assumir o risco conscientemente em um ambiente descartável, "
+                    + "defina DATABASE_SQLSERVER_EXPERIMENTAL=true.");
+            }
+
             // Multi-tenancy: modo padrão é "Shared" (todos no mesmo banco). Modo
             // "PerTenant" cria um arquivo .db por tenant (apenas SQLite hoje).
             // Trocar via env DATABASE_MULTITENANCY=PerTenant ou config Database:Multitenancy.
