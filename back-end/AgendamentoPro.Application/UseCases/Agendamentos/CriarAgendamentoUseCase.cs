@@ -10,6 +10,7 @@ using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
+using Microsoft.Extensions.Logging;
 
 namespace AgendamentoPro.Application.UseCases.Agendamentos
 {
@@ -27,13 +28,15 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
         private readonly IDisponibilidadeService _disponibilidade;
         private readonly INotificacaoRealtime _realtime;
         private readonly IUnitOfWork _uow;
+        private readonly Microsoft.Extensions.Logging.ILogger<CriarAgendamentoUseCase> _logger;
 
         public CriarAgendamentoUseCase(
             IAgendamentoRepository agendamentos, IServicoRepository servicos, IRecursoRepository recursos,
             IClienteRepository clientes, ITenantRepository tenants, IPagamentoRepository pagamentos,
             ICupomRepository cupons, ISaldoPacoteRepository saldosPacote,
             IEnumerable<IGatewayPagamento> gateways, IDisponibilidadeService disponibilidade,
-            INotificacaoRealtime realtime, IUnitOfWork uow)
+            INotificacaoRealtime realtime, IUnitOfWork uow,
+            Microsoft.Extensions.Logging.ILogger<CriarAgendamentoUseCase> logger)
         {
             _agendamentos = agendamentos;
             _servicos = servicos;
@@ -47,6 +50,7 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             _disponibilidade = disponibilidade;
             _realtime = realtime;
             _uow = uow;
+            _logger = logger;
         }
 
         /// <summary>Aplica cupom ao valor total se válido. Retorna (novoValor, cupomAplicado).</summary>
@@ -114,6 +118,13 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 recursoId = slot.RecursoId;
             }
 
+            // ---------------------------------------------------------------
+            // FASE 1 — só banco, transação curta.
+            // ---------------------------------------------------------------
+            Cliente clienteCriado;
+            Agendamento agendamentoCriado;
+            var precisaCobrar = true;
+
             await _uow.BeginTransactionAsync();
             try
             {
@@ -160,64 +171,18 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
 
                 await _agendamentos.CreateAsync(agendamento);
 
-                Pagamento pagamento = null;
                 if (saldoPacote != null && saldoPacote.Debitar())
                 {
                     // Cliente tem pacote pré-pago válido — sem cobrança nova.
                     await _saldosPacote.UpdateAsync(saldoPacote);
                     agendamento.ConfirmarPagamento();
                     await _agendamentos.UpdateAsync(agendamento);
-                }
-                else if (input.FormaPagamento != FormaPagamento.Dinheiro)
-                {
-                    var gateway = _gateways.FirstOrDefault(g => g.Suporta(input.FormaPagamento))
-                        ?? throw new DomainException(
-                            $"Nenhum gateway configurado suporta a forma de pagamento '{input.FormaPagamento}'.");
-
-                    var cobranca = await gateway.CriarCobrancaAsync(tenantId, agendamento.AgeId,
-                        agendamento.AgeValorEntrada, input.FormaPagamento,
-                        $"Sinal - {servico.SerNome}", 15);
-
-                    pagamento = new Pagamento(tenantId, agendamento.AgeId, input.FormaPagamento,
-                        agendamento.AgeValorEntrada, gateway.Nome, cobranca.Expiracao);
-                    pagamento.DefinirDadosGateway(cobranca.GatewayId, cobranca.QrCode,
-                        cobranca.LinkPagamento, cobranca.PayloadBruto);
-                    await _pagamentos.CreateAsync(pagamento);
-                }
-                else
-                {
-                    // Dinheiro só admin: agendamento já confirmado
-                    agendamento.ConfirmarPagamento();
-                    await _agendamentos.UpdateAsync(agendamento);
+                    precisaCobrar = false;
                 }
 
                 await _uow.CommitAsync();
-
-                // Notifica admins do tenant em tempo real
-                _ = _realtime.NotificarTenantAsync(tenantId, "novo-agendamento", new
-                {
-                    agendamentoId = agendamento.AgeId,
-                    clienteNome = cliente.CliNome,
-                    servicoNome = servico.SerNome,
-                    data = agendamento.AgeData,
-                    horaInicio = agendamento.AgeHoraInicio,
-                    statusPagamento = agendamento.AgePagamentoStatus.ToString()
-                });
-
-                return new CriarAgendamentoResultViewModel
-                {
-                    Agendamento = AgendamentoMapper.Map(agendamento),
-                    Pagamento = pagamento == null ? null : new PagamentoViewModel
-                    {
-                        Id = pagamento.PagId,
-                        Forma = pagamento.PagForma,
-                        Status = pagamento.PagStatus,
-                        Valor = pagamento.PagValor,
-                        QrCode = pagamento.PagQrCode,
-                        LinkPagamento = pagamento.PagLinkPagamento,
-                        Expiracao = pagamento.PagExpiracao
-                    }
-                };
+                clienteCriado = cliente;
+                agendamentoCriado = agendamento;
             }
             catch (ConcorrenciaException)
             {
@@ -228,6 +193,120 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
             {
                 await _uow.RollbackAsync();
                 throw;
+            }
+
+            // ---------------------------------------------------------------
+            // FASE 2 — a cobrança, FORA da transação
+            //
+            // A chamada ao gateway é uma ida e volta pela internet: pode levar
+            // segundos, pode pendurar até o timeout. Enquanto ela estava dentro
+            // da transação, cada agendamento segurava o lock de escrita do banco
+            // por todo esse tempo — e no SQLite, que é o provider deste sistema,
+            // só existe UM escritor por vez. Ou seja: um Mercado Pago lento
+            // travava o sistema inteiro, e o sintoma ("database is locked")
+            // não teria relação óbvia com a causa.
+            // ---------------------------------------------------------------
+            Pagamento pagamento = null;
+            if (precisaCobrar)
+            {
+                var gateway = _gateways.FirstOrDefault(g => g.Suporta(input.FormaPagamento));
+                if (gateway == null)
+                {
+                    await DesfazerPorFalhaDeCobrancaAsync(agendamentoCriado,
+                        "Nenhum meio de pagamento disponível");
+                    throw new DomainException(
+                        "O pagamento online está indisponível neste estabelecimento no momento. "
+                        + "Entre em contato para agendar.");
+                }
+
+                CobrancaResult cobranca;
+                try
+                {
+                    cobranca = await gateway.CriarCobrancaAsync(tenantId, agendamentoCriado.AgeId,
+                        agendamentoCriado.AgeValorEntrada, input.FormaPagamento,
+                        $"Sinal - {servico.SerNome}", 15);
+                }
+                catch (Exception ex)
+                {
+                    // O horário não pode ficar preso por uma cobrança que não
+                    // nasceu: desfaz o agendamento e devolve o slot para venda.
+                    await DesfazerPorFalhaDeCobrancaAsync(agendamentoCriado,
+                        "Falha ao iniciar a cobrança");
+                    _logger.LogError(ex,
+                        "Gateway {Gateway} falhou ao criar cobrança do tenant {TenantId}. "
+                        + "Nenhum cliente consegue agendar enquanto isto durar.",
+                        gateway.Nome, tenantId);
+                    throw new DomainException(
+                        "Não foi possível iniciar o pagamento agora. Tente de novo em instantes.");
+                }
+
+                // FASE 3 — grava o pagamento, de novo numa transação curta.
+                await _uow.BeginTransactionAsync();
+                try
+                {
+                    pagamento = new Pagamento(tenantId, agendamentoCriado.AgeId, input.FormaPagamento,
+                        agendamentoCriado.AgeValorEntrada, gateway.Nome, cobranca.Expiracao);
+                    pagamento.DefinirDadosGateway(cobranca.GatewayId, cobranca.QrCode,
+                        cobranca.LinkPagamento, cobranca.PayloadBruto);
+                    await _pagamentos.CreateAsync(pagamento);
+                    await _uow.CommitAsync();
+                }
+                catch
+                {
+                    await _uow.RollbackAsync();
+                    throw;
+                }
+            }
+
+            // Notifica admins do tenant em tempo real
+            _ = _realtime.NotificarTenantAsync(tenantId, "novo-agendamento", new
+            {
+                agendamentoId = agendamentoCriado.AgeId,
+                clienteNome = clienteCriado.CliNome,
+                servicoNome = servico.SerNome,
+                data = agendamentoCriado.AgeData,
+                horaInicio = agendamentoCriado.AgeHoraInicio,
+                statusPagamento = agendamentoCriado.AgePagamentoStatus.ToString()
+            });
+
+            return new CriarAgendamentoResultViewModel
+            {
+                Agendamento = AgendamentoMapper.Map(agendamentoCriado),
+                Pagamento = pagamento == null ? null : new PagamentoViewModel
+                {
+                    Id = pagamento.PagId,
+                    Forma = pagamento.PagForma,
+                    Status = pagamento.PagStatus,
+                    Valor = pagamento.PagValor,
+                    QrCode = pagamento.PagQrCode,
+                    LinkPagamento = pagamento.PagLinkPagamento,
+                    Expiracao = pagamento.PagExpiracao
+                }
+            };
+        }
+
+        /// <summary>
+        /// Cancela um agendamento cuja cobrança não vingou, devolvendo o horário
+        /// para venda. Best-effort de propósito: já estamos num caminho de falha e
+        /// um erro aqui não pode mascarar o erro original, que é o que interessa a
+        /// quem for investigar.
+        /// </summary>
+        private async Task DesfazerPorFalhaDeCobrancaAsync(Agendamento agendamento, string motivo)
+        {
+            try
+            {
+                await _uow.BeginTransactionAsync();
+                agendamento.Cancelar(motivo);
+                await _agendamentos.UpdateAsync(agendamento);
+                await _uow.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Agendamento {AgendamentoId} ficou pendente sem cobrança e não pôde ser "
+                    + "cancelado. O horário pode estar bloqueado indevidamente.",
+                    agendamento.AgeId);
+                try { await _uow.RollbackAsync(); } catch { /* nada mais a fazer */ }
             }
         }
 

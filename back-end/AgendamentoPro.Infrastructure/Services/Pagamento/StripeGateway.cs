@@ -37,8 +37,14 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
         public string Nome => "Stripe";
 
-        public bool Suporta(FormaPagamento forma) => forma is
-            FormaPagamento.CartaoCredito or FormaPagamento.CartaoDebito;
+        /// <summary>
+        /// Sem chave secreta, indisponível — mesma razão do Mercado Pago: melhor a
+        /// escolha do gateway falhar antes, com erro de domínio, do que aceitar a
+        /// forma de pagamento e estourar 500 na hora de cobrar.
+        /// </summary>
+        public bool Suporta(FormaPagamento forma) =>
+            !string.IsNullOrEmpty(_secretKey)
+            && forma is FormaPagamento.CartaoCredito or FormaPagamento.CartaoDebito;
 
         public StripeGateway(IConfiguration config, ILogger<StripeGateway> logger)
         {

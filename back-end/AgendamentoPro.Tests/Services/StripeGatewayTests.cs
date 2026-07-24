@@ -29,6 +29,16 @@ namespace AgendamentoPro.Tests.Services
             new ConfigurationBuilder().AddInMemoryCollection().Build(),
             new NullLogger<StripeGateway>());
 
+        /// <summary>Gateway com credencial — é o que existe num tenant que cobra.</summary>
+        private static StripeGateway CriarConfigurado() => new(
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["Stripe:SecretKey"] = "sk_test_chave_de_teste"
+                })
+                .Build(),
+            new NullLogger<StripeGateway>());
+
         [Fact]
         public void Nome_RetornaStripe()
         {
@@ -36,14 +46,26 @@ namespace AgendamentoPro.Tests.Services
         }
 
         [Fact]
-        public void Suporta_ApenasCartoes()
+        public void Suporta_ComChave_ApenasCartoes()
         {
-            var g = Criar();
+            var g = CriarConfigurado();
             g.Suporta(FormaPagamento.CartaoCredito).Should().BeTrue();
             g.Suporta(FormaPagamento.CartaoDebito).Should().BeTrue();
             g.Suporta(FormaPagamento.Pix).Should().BeFalse();
             g.Suporta(FormaPagamento.Boleto).Should().BeFalse();
             g.Suporta(FormaPagamento.Dinheiro).Should().BeFalse();
+        }
+
+        [Fact]
+        public void Suporta_SemChave_NaoSeOferece_Para_Nada()
+        {
+            // Um gateway sem credencial que diz "suporto cartão" faz o pedido
+            // chegar até ele e estourar 500 na hora de cobrar. Declarando-se
+            // indisponível, a escolha do meio de pagamento falha antes, com erro
+            // que o cliente entende.
+            var g = Criar();
+            g.Suporta(FormaPagamento.CartaoCredito).Should().BeFalse();
+            g.Suporta(FormaPagamento.CartaoDebito).Should().BeFalse();
         }
 
         [Fact]

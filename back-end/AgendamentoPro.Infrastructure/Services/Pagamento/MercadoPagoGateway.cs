@@ -34,9 +34,20 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
         public string Nome => "MercadoPago";
 
-        public bool Suporta(FormaPagamento forma) => forma is
-            FormaPagamento.Pix or FormaPagamento.CartaoCredito
-            or FormaPagamento.CartaoDebito or FormaPagamento.Boleto;
+        /// <summary>
+        /// Sem access token, este gateway se declara INDISPONÍVEL em vez de aceitar
+        /// a forma e estourar na hora de cobrar.
+        ///
+        /// A diferença aparece na tela do cliente: dizendo "suporto" e falhando
+        /// depois, ele recebia um 500 e "Erro interno do servidor" — sem pista do
+        /// que houve, e sem nada no radar do dono da oficina. Declarando-se
+        /// indisponível, a escolha do gateway falha antes, com mensagem que o
+        /// cliente entende e um erro de domínio (400) em vez de falha de servidor.
+        /// </summary>
+        public bool Suporta(FormaPagamento forma) =>
+            !string.IsNullOrEmpty(_accessToken)
+            && forma is FormaPagamento.Pix or FormaPagamento.CartaoCredito
+                or FormaPagamento.CartaoDebito or FormaPagamento.Boleto;
 
         public MercadoPagoGateway(HttpClient http, IConfiguration config, ILogger<MercadoPagoGateway> logger)
         {

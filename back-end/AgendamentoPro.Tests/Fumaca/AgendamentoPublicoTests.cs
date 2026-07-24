@@ -49,6 +49,22 @@ namespace AgendamentoPro.Tests.Fumaca
             return (slug, servico.Id, data, slot.HoraInicio, slot.RecursoId);
         }
 
+        /// <summary>
+        /// Mensagem de erro da resposta, já desescapada.
+        ///
+        /// Ler o corpo como texto puro não serve: o serializador escapa
+        /// não-ASCII, e "indisponível" chega como "indisponível". Procurar a
+        /// palavra no texto cru falha por um motivo que nada tem a ver com o
+        /// comportamento sob teste.
+        /// </summary>
+        private static async Task<string> MensagemDe(HttpResponseMessage r)
+        {
+            var doc = await r.Content.ReadFromJsonAsync<System.Text.Json.JsonDocument>();
+            return doc!.RootElement.TryGetProperty("message", out var m)
+                ? m.GetString() ?? ""
+                : doc.RootElement.GetProperty("detail").GetString() ?? "";
+        }
+
         private static object Corpo(int servicoId, int recursoId, string data, string hora, int forma) =>
             new
             {
@@ -80,18 +96,18 @@ namespace AgendamentoPro.Tests.Fumaca
                 .Be(HttpStatusCode.BadRequest,
                     "dinheiro é lançamento da oficina; pela rua, isso seria reservar sem pagar");
 
-            var corpo = await r.Content.ReadAsStringAsync();
-            corpo.Should()
+            (await MensagemDe(r))
+                .Should()
                 .Contain("dinheiro", "a mensagem precisa explicar o motivo a quem chamou");
         }
 
         [Fact]
-        public async Task A_forma_legitima_continua_passando_pelo_caminho_do_gateway()
+        public async Task Sem_gateway_o_cliente_recebe_explicacao_e_nao_erro_de_servidor()
         {
-            // Sem gateway configurado no ambiente de teste, PIX falha ao criar a
-            // cobrança — e é isso mesmo que se quer provar: a forma legítima VAI
-            // ao gateway, em vez de ser confirmada de graça. O que não pode é
-            // devolver 200 sem cobrança nenhuma.
+            // Sem gateway configurado, PIX não pode virar agendamento confirmado.
+            // O que se cobra aqui é COMO isso é dito: erro de domínio (400) com
+            // texto que o cliente entende, e não um 500 "Erro interno do servidor"
+            // que não ajuda ninguém — nem quem tentou agendar, nem quem dá suporte.
             var (slug, servicoId, data, hora, recursoId) = await PrepararAsync();
             var anonimo = _api.CreateClient();
 
@@ -100,8 +116,41 @@ namespace AgendamentoPro.Tests.Fumaca
                 Corpo(servicoId, recursoId, data, hora, Pix)
             );
 
-            r.StatusCode.Should().NotBe(HttpStatusCode.OK,
-                "sem gateway não há cobrança, e sem cobrança não pode haver agendamento confirmado");
+            r.StatusCode.Should()
+                .Be(HttpStatusCode.BadRequest,
+                    "faltar configuração de pagamento não é falha de servidor");
+            (await MensagemDe(r))
+                .Should()
+                .Contain("indisponível", "o cliente precisa entender o que fazer");
+        }
+
+        [Fact]
+        public async Task Falha_na_cobranca_NAO_deixa_o_horario_bloqueado()
+        {
+            // O horário é o estoque desta oficina. Se uma cobrança que não
+            // completou deixar um agendamento para trás, aquele horário fica
+            // reservado para alguém que nunca pagou — e o cliente seguinte, que
+            // pagaria, encontra a agenda cheia.
+            //
+            // Este teste guarda o comportamento durante a mudança que tirou a
+            // chamada ao gateway de dentro da transação do banco.
+            var (slug, servicoId, data, hora, recursoId) = await PrepararAsync();
+            var anonimo = _api.CreateClient();
+
+            var r = await anonimo.PostAsJsonAsync(
+                $"/api/v1/t/{slug}/agendamentos",
+                Corpo(servicoId, recursoId, data, hora, Pix)
+            );
+            r.IsSuccessStatusCode.Should().BeFalse("não há gateway configurado no teste");
+
+            var slotsDepois = await anonimo.GetFromJsonAsync<List<SlotResumo>>(
+                $"/api/v1/t/{slug}/slots?servicoId={servicoId}&data={data}"
+            );
+
+            slotsDepois!
+                .Should()
+                .Contain(s => s.HoraInicio == hora,
+                    "a cobrança falhou, então o horário tem que continuar à venda");
         }
 
         private class ServicoResumo
