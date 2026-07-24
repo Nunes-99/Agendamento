@@ -270,9 +270,18 @@ export class ApiService {
   }
 
   // ----- Pacotes pré-pagos -----
-  listarPacotes(slug?: string) {
-    const url = slug ? `${this.base}/t/${slug}/pacotes` : `${this.base}/admin/pacotes`;
-    return this.http.get<any[]>(url);
+  // Duas rotas diferentes, dois métodos diferentes — de propósito.
+  //
+  // Isto já foi um método só, com o slug opcional decidindo o destino. Quando a
+  // tela pública esqueceu de passar o slug, ela caiu silenciosamente na rota de
+  // ADMIN, tomou 401 e o interceptor mandou o CLIENTE FINAL para a tela de login
+  // do painel. Assinatura que aceita o esquecimento não protege ninguém: agora o
+  // slug é obrigatório onde é obrigatório, e o compilador cobra.
+  listarPacotesPublicos(slug: string) {
+    return this.http.get<any[]>(`${this.base}/t/${slug}/pacotes`);
+  }
+  listarPacotesAdmin() {
+    return this.http.get<any[]>(`${this.base}/admin/pacotes`);
   }
   criarPacote(input: any) {
     return this.http.post<any>(`${this.base}/admin/pacotes`, input);

@@ -283,17 +283,29 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst
                 }));
 
-        // Default geral: 120 req/min por (tenant, IP)
+        // Default geral: 120 req/min por (tenant, IP).
+        //
+        // O SignalR fica num BALDE À PARTE, e a razão é prática: ele tem cadência
+        // própria (reconexão automática com retry) e cada tentativa gasta um
+        // negotiate + um connect. No balde comum, uma reconexão em rajada — rede
+        // instável, notebook saindo do sleep — consome a cota das chamadas de tela
+        // e o usuário perde a APLICAÇÃO por causa do sino de notificações. Foi o
+        // que aconteceu no passeio pelas telas: 429 depois de treze páginas.
+        //
+        // Continua limitado, só que sem roubar cota de quem está trabalhando.
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpCtx =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: ResolverPartitionKey(httpCtx),
+        {
+            var ehHub = httpCtx.Request.Path.StartsWithSegments("/hubs");
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: (ehHub ? "hub|" : "api|") + ResolverPartitionKey(httpCtx),
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
                     Window = TimeSpan.FromMinutes(1),
-                    PermitLimit = 120,
+                    PermitLimit = ehHub ? 60 : 120,
                     QueueLimit = 0,
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-                }));
+                });
+        });
     });
 
     builder.Services.AddCors(options =>

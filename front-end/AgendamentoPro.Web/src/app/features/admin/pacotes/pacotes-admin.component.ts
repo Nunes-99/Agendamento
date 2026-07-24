@@ -124,7 +124,7 @@ export class PacotesAdminComponent implements OnInit {
   itens = signal<any[]>([]);
 
   ngOnInit() { this.carregar(); }
-  carregar() { this.api.listarPacotes().subscribe(list => this.itens.set(list)); }
+  carregar() { this.api.listarPacotesAdmin().subscribe(list => this.itens.set(list)); }
 
   novo() {
     this.dialog.open(PacoteFormComponent, { width: '32rem' }).afterClosed().subscribe(r => {
