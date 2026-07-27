@@ -81,10 +81,16 @@ Lambda (AWS) ou pipeline externo que baixa-redimensiona-sobe. Esforço: depende 
 
 ---
 
-## Decisões pendentes do SaaS Billing
+## Decisões do SaaS Billing (resolvidas 2026-07-27)
 
-1. **Trial?** Cartão obrigatório no signup OU X dias grátis sem cartão? — definir ao implementar signup.
-2. **Comissão sobre transações do cliente final?** Hoje só cobramos a mensalidade. Reavaliar quando MRR estabilizar.
+1. **Trial** — ✅ **decidido e implementado**: cartão obrigatório no cadastro,
+   primeiro mês grátis e cancelável, cobra a partir do segundo. Feito com o
+   `free_trial` do preapproval do Mercado Pago + status `Trial` na assinatura.
+   Falta só validar ponta a ponta com a credencial real do MP (ver
+   `docs/O-QUE-FALTA.md`, item 1).
+2. **Comissão sobre transações do cliente final?** — ✅ **decidido: não.** Só
+   mensalidade. Era o comportamento atual; nada a implementar. Reavaliar um dia
+   se fizer sentido, mas por ora o modelo é mensalidade limpa.
 
 ---
 

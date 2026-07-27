@@ -40,17 +40,16 @@ depende de uma credencial do Mercado Pago, que é sua.
 
 ---
 
-## 2. Decidir o modelo de assinatura  ·  🟡 decisão sua, não código
+## 2. Modelo de assinatura  ·  ✅ decidido e implementado
 
-Duas perguntas em aberto no [`BACKLOG.md`](../BACKLOG.md), ambas de negócio:
+As duas decisões de negócio foram tomadas e o código já as reflete:
 
-1. **Trial**: cartão obrigatório no cadastro, ou X dias grátis sem cartão? Isso
-   muda o fluxo de signup do SaaS — precisa estar decidido antes de implementá-lo.
-2. **Comissão sobre as transações do cliente final?** Hoje só se cobra a
-   mensalidade do tenant. Reavaliar quando o faturamento recorrente estabilizar.
-
-Não há o que programar até você responder. Quando responder, o
-`CriarAssinatura`/webhook de assinatura já existem como base.
+1. **Trial**: cartão obrigatório no cadastro, **primeiro mês grátis e
+   cancelável**, cobra a partir do segundo. Implementado com o `free_trial` do
+   Mercado Pago. **A validação ponta a ponta cai no item 1 acima** — o cartão
+   autorizado sem cobrança no mês 1 só se confirma contra a conta real do MP.
+2. **Comissão sobre transações do cliente final**: **não** — só mensalidade.
+   Era o comportamento atual; nada a fazer.
 
 ---
 
