@@ -1,19 +1,29 @@
 #nullable enable
 using System.Net;
-using System.Net.Http.Json;
+using AgendamentoPro.Core.Interfaces.Services;
+using AgendamentoPro.Infrastructure.Database.EntityFramework;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AgendamentoPro.Tests.Fumaca
 {
     /// <summary>
-    /// "Minha Conta" é a área do cliente final: ele entra com código por WhatsApp
-    /// (sem senha, sem cadastro) e vê os próprios agendamentos, pacotes e pontos.
+    /// "Minha Conta" é a área do cliente final — os próprios agendamentos, pacotes
+    /// e pontos, atrás de um token de cliente.
     ///
     /// A listagem de agendamentos devolvia 500. A causa era a mesma que já tinha
     /// derrubado a página de planos: <c>ORDER BY</c> em tipo que o SQLite não
     /// ordena — lá <c>decimal</c>, aqui <c>TimeSpan</c>. É um erro que só aparece
     /// em tempo de execução, no provider padrão, e some de qualquer revisão de
     /// código: a consulta parece perfeitamente razoável.
+    ///
+    /// O token é cunhado direto pelo <see cref="ITokenService"/>, e não obtido pelo
+    /// fluxo de OTP. É de propósito: o que este teste guarda são os ENDPOINTS da
+    /// área do cliente, não o login. O OTP tem cobertura própria em OtpUseCaseTests,
+    /// e amarrá-lo aqui só acrescentava uma dependência do ambiente (o código de
+    /// verificação só volta em Development) que tornava o teste intermitente sob
+    /// paralelismo — sem nada a ver com o que se quer verificar.
     /// </summary>
     [Collection(ColecaoApi.Nome)]
     public class MinhaContaTests
@@ -23,32 +33,30 @@ namespace AgendamentoPro.Tests.Fumaca
         public MinhaContaTests(ApiDeTeste api) => _api = api;
 
         [Fact]
-        public async Task O_cliente_entra_por_codigo_e_ve_a_propria_conta()
+        public async Task As_telas_da_conta_do_cliente_abrem()
         {
             var admin = _api.CreateClient();
             var slug = await _api.CriarTenantAsync(admin, comDadosDeExemplo: true);
 
-            var cliente = _api.CreateClient();
-            const string telefone = "11933332222";
+            // Cunha um token de cliente para este tenant, direto pelo serviço de
+            // token — sem passar pelo OTP. O tenant e ao menos um cliente já existem
+            // (o seed de exemplo os criou); pego-os do banco, ignorando os filtros
+            // de tenant/soft-delete porque aqui é uma consulta de infraestrutura,
+            // fora de qualquer requisição.
+            using var scope = _api.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AgendamentoProDbContext>();
+            var tokens = scope.ServiceProvider.GetRequiredService<ITokenService>();
 
-            // Em desenvolvimento o código volta na resposta (não há WhatsApp).
-            var pedido = await cliente.PostAsJsonAsync(
-                $"/api/v1/t/{slug}/otp/solicitar", new { telefone });
-            pedido.StatusCode.Should().Be(HttpStatusCode.OK);
-            var desafio = await pedido.Content.ReadFromJsonAsync<RespostaOtp>();
-            desafio!.CodigoDev.Should().NotBeNullOrWhiteSpace(
-                "sem WhatsApp configurado, o código precisa voltar aqui para dar para testar");
+            var tenant = await db.Tenants.IgnoreQueryFilters()
+                .FirstAsync(t => t.TenSlug == slug);
+            var cliente = await db.Clientes.IgnoreQueryFilters()
+                .FirstAsync(c => c.R_TenId == tenant.TenId);
 
-            var validacao = await cliente.PostAsJsonAsync(
-                $"/api/v1/t/{slug}/otp/validar",
-                new { telefone, codigo = desafio.CodigoDev });
-            validacao.StatusCode.Should().Be(HttpStatusCode.OK);
-            var sessao = await validacao.Content.ReadFromJsonAsync<RespostaOtp>();
-            sessao!.Token.Should().NotBeNullOrWhiteSpace();
+            var (token, _) = tokens.GerarTokenCliente(cliente.CliId, tenant.TenId, slug);
 
-            cliente.DefaultRequestHeaders.Authorization = new("Bearer", sessao.Token);
+            var cli = _api.CreateClient();
+            cli.DefaultRequestHeaders.Authorization = new("Bearer", token);
 
-            // As quatro telas da área do cliente precisam abrir.
             foreach (var rota in new[]
                      {
                          "minha-conta",
@@ -57,17 +65,11 @@ namespace AgendamentoPro.Tests.Fumaca
                          "minha-conta/fidelidade",
                      })
             {
-                var r = await cliente.GetAsync($"/api/v1/t/{slug}/{rota}");
+                var r = await cli.GetAsync($"/api/v1/t/{slug}/{rota}");
                 r.StatusCode.Should()
                     .Be(HttpStatusCode.OK,
                         $"'{rota}' é uma das telas da conta do cliente e precisa abrir");
             }
-        }
-
-        private class RespostaOtp
-        {
-            public string? CodigoDev { get; set; }
-            public string? Token { get; set; }
         }
     }
 }
