@@ -14,6 +14,12 @@ namespace AgendamentoPro.Application.UseCases.Assinaturas
 {
     public class CriarAssinaturaUseCase : ICriarAssinaturaUseCase
     {
+        // Modelo de cobrança decidido: cartão obrigatório no cadastro, mas o PRIMEIRO
+        // mês é grátis e cancelável. A cobrança começa no segundo mês. Um mês só,
+        // numa constante, porque é a mesma verdade para o entity (status Trial) e para
+        // o gateway (free_trial do preapproval) — mudar aqui muda os dois de uma vez.
+        private const int TrialMeses = 1;
+
         private readonly IAssinaturaRepository _assinaturas;
         private readonly IPlanoRepository _planos;
         private readonly IGatewayAssinatura _gateway;
@@ -48,8 +54,11 @@ namespace AgendamentoPro.Application.UseCases.Assinaturas
                               && atual.AssStatus != StatusAssinatura.Expirada)
                 throw new DomainException("Tenant já possui assinatura ativa. Use alterar plano ou cancele a atual.");
 
-            // Cria entity (status inicial = Ativa; será atualizado quando MP confirmar autorização do cartão)
-            var assinatura = new Assinatura(tenantId, plano.PlnId, _gateway.Nome);
+            // Nasce em Trial: o cartão vai ser autorizado, mas a oficina tem o primeiro mês
+            // grátis, com acesso total, e pode cancelar sem ser cobrada. Quando o MP fizer a
+            // primeira cobrança (fim do trial), o webhook de PagamentoAprovado vira Ativa.
+            var trialAte = DateTime.UtcNow.AddMonths(TrialMeses);
+            var assinatura = new Assinatura(tenantId, plano.PlnId, _gateway.Nome, trialAte);
             await _assinaturas.CreateAsync(assinatura);
 
             // Cria preapproval no gateway
@@ -59,7 +68,7 @@ namespace AgendamentoPro.Application.UseCases.Assinaturas
 
             var gwResult = await _gateway.CriarPreapprovalAsync(
                 tenantId, assinatura.AssId, plano.PlnPreco,
-                $"AgendamentoPro - {plano.PlnNome}", input.PayerEmail, backUrl);
+                $"AgendamentoPro - {plano.PlnNome}", input.PayerEmail, backUrl, TrialMeses);
 
             var proxVenc = gwResult.ProximoVencimento ?? DateTime.UtcNow.AddDays(30);
             assinatura.DefinirPreapproval(gwResult.PreapprovalId, proxVenc, gwResult.PayloadBruto);

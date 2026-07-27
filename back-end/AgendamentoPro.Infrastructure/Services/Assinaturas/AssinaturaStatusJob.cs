@@ -49,6 +49,26 @@ namespace AgendamentoPro.Infrastructure.Services.Assinaturas
                 ct.ThrowIfCancellationRequested();
 
                 // 1. Ativa com vencimento ultrapassado e sem pagamento recente → Atrasada (backstop)
+                // Backstop do TRIAL: o normal é o webhook do Mercado Pago virar a
+                // assinatura em Ativa (primeira cobrança) ou Atrasada (cobrança recusada)
+                // no fim do mês grátis. Se esse aviso se perder, sem esta rede a oficina
+                // ficaria em Trial — acesso total, sem nunca pagar. Passado o prazo com
+                // tolerância, marca Atrasada e o grace period assume daqui.
+                if (ass.AssStatus == StatusAssinatura.Trial
+                    && ass.AssTrialAteEm.HasValue
+                    && ass.AssTrialAteEm.Value.AddDays(DiasToleranciaPosVencimento) < agora)
+                {
+                    if (ass.MarcarAtrasada(agora))
+                    {
+                        await assinaturas.UpdateAsync(ass);
+                        cache.Invalidar(ass.R_TenId);
+                        marcadasAtrasadas++;
+                        _logger.LogWarning("Assinatura {Ass} (tenant {Tid}) saiu do trial sem cobrança confirmada; marcada Atrasada (backstop).",
+                            ass.AssId, ass.R_TenId);
+                    }
+                    continue;
+                }
+
                 if (ass.AssStatus == StatusAssinatura.Ativa
                     && ass.AssProximoVencimento.HasValue
                     && ass.AssProximoVencimento.Value.AddDays(DiasToleranciaPosVencimento) < agora)

@@ -52,10 +52,15 @@ namespace AgendamentoPro.Core.Interfaces.Services
         /// <summary>
         /// Cria um preapproval (subscription) no gateway. O usuário deve ser redirecionado para
         /// InitPointUrl para autorizar o débito recorrente (cadastrar cartão).
+        ///
+        /// <paramref name="trialMeses"/> é o período grátis: o cartão é autorizado, mas a
+        /// primeira cobrança só acontece depois desse número de meses. Zero = cobra já no
+        /// primeiro ciclo. O mesmo valor governa o status Trial local, para os dois lados
+        /// concordarem sobre quando a cobrança começa.
         /// </summary>
         Task<CriarAssinaturaGatewayResult> CriarPreapprovalAsync(
             int tenantId, int assinaturaId, decimal valor, string descricao,
-            string payerEmail, string backUrl);
+            string payerEmail, string backUrl, int trialMeses);
 
         /// <summary>Cancela um preapproval ativo. Idempotente.</summary>
         Task<bool> CancelarAsync(string preapprovalId);

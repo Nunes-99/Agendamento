@@ -59,9 +59,30 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
         public async Task<CriarAssinaturaGatewayResult> CriarPreapprovalAsync(
             int tenantId, int assinaturaId, decimal valor, string descricao,
-            string payerEmail, string backUrl)
+            string payerEmail, string backUrl, int trialMeses)
         {
             GarantirConfigurado();
+
+            // free_trial adia a PRIMEIRA cobrança: o cartão é autorizado agora, mas o Mercado
+            // Pago só debita depois de `trialMeses`. Se a oficina cancelar dentro do período,
+            // nenhuma cobrança acontece. Só entra no payload quando há trial — mandar
+            // free_trial de zero mês faz o MP recusar.
+            object autoRecurring = trialMeses > 0
+                ? new
+                {
+                    frequency = 1,
+                    frequency_type = "months",
+                    free_trial = new { frequency = trialMeses, frequency_type = "months" },
+                    transaction_amount = (double)valor,
+                    currency_id = "BRL"
+                }
+                : new
+                {
+                    frequency = 1,
+                    frequency_type = "months",
+                    transaction_amount = (double)valor,
+                    currency_id = "BRL"
+                };
 
             var payload = new
             {
@@ -69,13 +90,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 external_reference = $"tenant:{tenantId}:assinatura:{assinaturaId}",
                 payer_email = payerEmail,
                 back_url = backUrl,
-                auto_recurring = new
-                {
-                    frequency = 1,
-                    frequency_type = "months",
-                    transaction_amount = (double)valor,
-                    currency_id = "BRL"
-                },
+                auto_recurring = autoRecurring,
                 notification_url = $"{_appPublicUrl}/api/v1/webhooks/assinatura/MercadoPago",
                 status = "pending"
             };

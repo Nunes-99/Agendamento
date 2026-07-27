@@ -26,6 +26,30 @@ namespace AgendamentoPro.Tests.Entities
         }
 
         [Fact]
+        public void Trial_PodeVirarAtrasada()
+        {
+            // O backstop do job depende disto: se o mês grátis vence sem a cobrança
+            // confirmada, a assinatura precisa poder cair para Atrasada — senão a
+            // oficina ficaria em Trial (acesso total) sem nunca pagar.
+            var a = Nova(DateTime.UtcNow.AddMonths(1));
+            a.AssStatus.Should().Be(StatusAssinatura.Trial);
+
+            a.MarcarAtrasada(DateTime.UtcNow).Should().BeTrue();
+            a.AssStatus.Should().Be(StatusAssinatura.Atrasada);
+        }
+
+        [Fact]
+        public void Trial_ComPrimeiroPagamento_ViraAtiva()
+        {
+            // O caminho feliz: no fim do mês grátis o Mercado Pago cobra, o webhook
+            // registra o pagamento e a assinatura deixa de ser trial.
+            var a = Nova(DateTime.UtcNow.AddMonths(1));
+
+            a.RegistrarPagamento(DateTime.UtcNow, DateTime.UtcNow.AddMonths(1)).Should().BeTrue();
+            a.AssStatus.Should().Be(StatusAssinatura.Ativa);
+        }
+
+        [Fact]
         public void Construtor_ParametrosInvalidos_Lanca()
         {
             ((Action)(() => new Assinatura(0, 1, "MP"))).Should().Throw<DomainException>();
