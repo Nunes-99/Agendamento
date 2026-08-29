@@ -9,6 +9,7 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { ApiService } from '../../../core/services/api.service';
 import { Tenant } from '../../../core/models/tenant.model';
 import { ResumoAvaliacoes } from '../../../core/models/avaliacao.model';
+import { Servico } from '../../../core/models/servico.model';
 import { TenantNaoEncontradoComponent } from '../tenant-nao-encontrado.component';
 
 type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
@@ -69,6 +70,28 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
           </div>
         </section>
 
+        <section class="servicos" *ngIf="servicos().length">
+          <h2><mat-icon>list_alt</mat-icon> Nossos serviços</h2>
+          <div class="grid-servicos">
+            <article class="card-servico" *ngFor="let s of servicos()">
+              <div class="corpo">
+                <h3>{{ s.nome }}</h3>
+                <p *ngIf="s.descricao">{{ s.descricao }}</p>
+                <div class="meta">
+                  <span><mat-icon>schedule</mat-icon> {{ s.duracaoMinutos }} min</span>
+                  <strong>R$ {{ s.preco | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+              <a mat-flat-button color="primary" [routerLink]="['/t', slug, 'agendar', s.id]">
+                Agendar
+              </a>
+            </article>
+          </div>
+          <a mat-stroked-button [routerLink]="['/t', slug, 'servicos']" class="ver-todos">
+            Ver catálogo completo <mat-icon>arrow_forward</mat-icon>
+          </a>
+        </section>
+
         <section class="avaliacoes" *ngIf="resumo()?.total">
           <h2><mat-icon>star</mat-icon> O que dizem nossos clientes</h2>
           <div class="resumo">
@@ -102,6 +125,21 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
   styles: [`
     .cta { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
     .cta .entrar { background: rgba(255,255,255,0.85); }
+    .servicos { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
+    .servicos h2 { display: flex; align-items: center; gap: 0.5rem; }
+    .grid-servicos { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+    .card-servico {
+      background: #fff; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .card-servico .corpo { flex: 1; }
+    .card-servico h3 { margin: 0 0 0.25rem; font-size: 1.125rem; }
+    .card-servico p { margin: 0 0 0.5rem; color: #666; font-size: 0.875rem; }
+    .card-servico .meta { display: flex; justify-content: space-between; align-items: center; }
+    .card-servico .meta span { display: flex; align-items: center; gap: 0.25rem; color: #666; font-size: 0.875rem; }
+    .card-servico .meta mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
+    .card-servico .meta strong { color: var(--cor-primaria); font-size: 1.125rem; }
+    .ver-todos { margin-top: 1.5rem; }
     .avaliacoes { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
     .avaliacoes h2 { display: flex; align-items: center; gap: 0.5rem; }
     .resumo { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
@@ -127,6 +165,7 @@ export class HomeComponent implements OnInit {
   tenant = signal<Tenant | null>(null);
   estado = signal<EstadoCarga>('carregando');
   resumo = signal<ResumoAvaliacoes | null>(null);
+  servicos = signal<Servico[]>([]);
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
@@ -141,10 +180,14 @@ export class HomeComponent implements OnInit {
         this.tenant.set(t);
         this.theme.aplicarPersonalizacao(t.personalizacao);
         this.estado.set('ok');
-        // Carrega avaliações públicas em paralelo (silenciosamente — falha não bloqueia a home)
+        // Carrega avaliações e catálogo em paralelo (silenciosamente — falha não bloqueia a home)
         this.api.resumoAvaliacoes(this.slug).subscribe({
           next: r => this.resumo.set(r),
           error: () => { /* sem avaliações ou erro: simplesmente não exibe a seção */ }
+        });
+        this.api.servicosPublicos(this.slug).subscribe({
+          next: list => this.servicos.set(list || []),
+          error: () => { /* sem serviços: a home fica só com hero + contato */ }
         });
       },
       error: () => this.estado.set('naoEncontrado')

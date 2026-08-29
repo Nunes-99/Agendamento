@@ -87,14 +87,15 @@ import { ThemeService } from '../../../core/services/theme.service';
     }
     .voltar { position: absolute; top: 0.5rem; left: 0.5rem; color: #fff !important; }
     .logo { max-height: 4rem; max-width: 8rem; margin-bottom: 0.5rem; }
-    h1 { margin: 0; font-size: 1.75rem; }
-    .subtitulo { margin: 0.25rem 0 1rem; opacity: 0.9; }
+    /* cor explícita: o h1 global usa --cor-texto e venceria a herança do branco */
+    .hero-overlay h1 { margin: 0; font-size: 1.75rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+    .subtitulo { margin: 0.25rem 0 1rem; opacity: 0.9; color: #fff; }
     .contato { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; font-size: 0.9rem; }
     .contato span { display: flex; align-items: center; gap: 0.25rem; }
     .contato mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
     @media (min-width: 30rem) {
       .hero, .hero-overlay { min-height: 20rem; }
-      h1 { font-size: 2.25rem; }
+      .hero-overlay h1 { font-size: 2.25rem; }
     }
   `]
 })

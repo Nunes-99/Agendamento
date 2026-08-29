@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../../core/services/api.service';
+import { TenantService } from '../../../core/services/tenant.service';
 import { FormaPagamento, SlotDisponivel } from '../../../core/models/agendamento.model';
 import { Servico } from '../../../core/models/servico.model';
 
@@ -25,6 +26,7 @@ export class AgendarComponent implements OnInit {
   private router = inject(Router);
   private api = inject(ApiService);
   private snack = inject(MatSnackBar);
+  private tenantSvc = inject(TenantService);
 
   slug = '';
   servicoId = 0;
@@ -44,13 +46,39 @@ export class AgendarComponent implements OnInit {
   passo: 1 | 2 | 3 = 1;
   carregando = false;
 
+  // % de entrada do tenant (default 20 enquanto carrega / se falhar)
+  percentualEntrada = signal(20);
+
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
     this.servicoId = +(this.route.snapshot.paramMap.get('servicoId') || 0);
     this.api.servicosPublicos(this.slug).subscribe(list => {
       this.servico.set(list.find(s => s.id === this.servicoId) || null);
     });
+    // O sinal é uma regra do tenant (percentualEntrada) — não é fixo em 20%.
+    const atual = this.tenantSvc.current();
+    if (atual?.regras?.percentualEntrada != null) {
+      this.percentualEntrada.set(atual.regras.percentualEntrada);
+    } else {
+      this.tenantSvc.carregarTenant(this.slug).subscribe({
+        next: t => {
+          if (t?.regras?.percentualEntrada != null) this.percentualEntrada.set(t.regras.percentualEntrada);
+        },
+        error: () => { /* mantém default */ }
+      });
+    }
     this.buscarSlots();
+  }
+
+  valorSinal(): number {
+    return (this.servico()?.preco || 0) * this.percentualEntrada() / 100;
+  }
+
+  // 'YYYY-MM-DD' → 'DD/MM/YYYY' sem passar por Date (o DatePipe interpreta a
+  // string como UTC e mostraria o dia anterior no fuso do Brasil).
+  dataFormatada(): string {
+    const [a, m, d] = this.data.split('-');
+    return `${d}/${m}/${a}`;
   }
 
   buscarSlots() {

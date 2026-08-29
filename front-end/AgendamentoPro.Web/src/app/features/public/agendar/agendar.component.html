@@ -57,10 +57,10 @@
     <div class="resumo">
       <h3>Resumo</h3>
       <p><strong>Serviço:</strong> {{ servico()?.nome }}</p>
-      <p><strong>Data:</strong> {{ data }} às {{ slotEscolhido()?.horaInicio?.substring(0,5) }}</p>
+      <p><strong>Data:</strong> {{ dataFormatada() }} às {{ slotEscolhido()?.horaInicio?.substring(0,5) }}</p>
       <p><strong>Valor total:</strong> R$ {{ servico()?.preco | number:'1.2-2' }}</p>
-      <p class="entrada"><strong>Sinal (20%):</strong>
-        R$ {{ ((servico()?.preco || 0) * 0.2) | number:'1.2-2' }}
+      <p class="entrada"><strong>Sinal ({{ percentualEntrada() | number:'1.0-0' }}%):</strong>
+        R$ {{ valorSinal() | number:'1.2-2' }}
       </p>
     </div>
 
