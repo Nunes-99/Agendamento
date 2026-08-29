@@ -159,7 +159,7 @@ export class RecorrenciaFormComponent {
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { margin: 0; color: #666; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.75rem; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 4px solid #6366f1; }
+    .card { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 4px solid #6366f1; }
     .card.inativo { opacity: 0.6; border-left-color: #aaa; }
     .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
     .badge { background: #ffcdd2; color: #c62828; padding: 0.1rem 0.5rem; border-radius: 0.4rem; font-size: 0.75rem; }

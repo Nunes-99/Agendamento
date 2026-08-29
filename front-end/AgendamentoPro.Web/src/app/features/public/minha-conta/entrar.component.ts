@@ -67,11 +67,11 @@ type Etapa = 'telefone' | 'codigo';
   styles: [`
     .container { max-width: 28rem; margin: 1rem auto; padding: 1rem; }
     h1 { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
-    .card { background: #fff; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; }
+    .card { background: var(--cor-fundo-card); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; }
     .full { width: 100%; }
     .acoes { display: flex; gap: 0.5rem; justify-content: space-between; }
-    .dev-aviso { background: #fffde7; padding: 0.5rem 0.75rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
-    .dev-aviso code { background: #fff; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
+    .dev-aviso { background: var(--cor-fundo-card)de7; padding: 0.5rem 0.75rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+    .dev-aviso code { background: var(--cor-fundo-card); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
   `]
 })
 export class EntrarClienteComponent implements OnInit {

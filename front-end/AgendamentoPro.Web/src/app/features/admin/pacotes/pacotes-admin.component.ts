@@ -107,7 +107,7 @@ export class PacoteFormComponent {
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { margin: 0; color: #666; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; border-left: 4px solid #2e7d32; }
+    .card { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; border-left: 4px solid #2e7d32; }
     .card h3 { margin: 0; }
     .info { display: flex; flex-direction: column; gap: 0.25rem; }
     .info span { display: flex; align-items: center; gap: 0.25rem; color: #666; font-size: 0.9rem; }

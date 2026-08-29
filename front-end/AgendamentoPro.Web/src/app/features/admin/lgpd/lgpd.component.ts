@@ -54,7 +54,7 @@ import { ApiService } from '../../../core/services/api.service';
   styles: [`
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { color: #666; margin-top: 0.25rem; }
-    .card { background: #fff; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card { background: var(--cor-fundo-card); border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
     mat-form-field { width: 12rem; }
     .resultado { background: #e8f5e9; padding: 0.5rem 0.75rem; border-radius: 0.5rem; margin-top: 0.5rem; }

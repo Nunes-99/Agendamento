@@ -1,6 +1,6 @@
 h2 { margin-bottom: 1rem; }
 .info, .qr, .status {
-  background: #fff;
+  background: var(--cor-fundo-card);
   border-radius: var(--raio-medio);
   padding: 1rem;
   margin-bottom: 1rem;

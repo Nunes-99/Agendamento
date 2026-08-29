@@ -82,7 +82,7 @@ import { Servico } from '../../../core/models/servico.model';
   styles: [`
     .container { max-width: 32rem; margin: 1rem auto; padding: 1rem; }
     h1 { display: flex; align-items: center; gap: 0.5rem; }
-    .card { background: #fff; padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem; }
+    .card { background: var(--cor-fundo-card); padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem; }
     .full { width: 100%; }
     .sucesso { text-align: center; padding: 2rem; }
     .sucesso mat-icon { font-size: 4rem; width: 4rem; height: 4rem; color: #2e7d32; }

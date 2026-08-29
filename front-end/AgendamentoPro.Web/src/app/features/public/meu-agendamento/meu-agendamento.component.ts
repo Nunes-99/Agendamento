@@ -92,7 +92,7 @@ import { ApiService } from '../../../core/services/api.service';
     .ok { font-size: 3rem; width: 3rem; height: 3rem; color: #2e7d32; }
     .topo { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
     .topo h1 { margin: 0; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     .linha { padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     .linha:last-child { border-bottom: none; }
     .status { background: #e3f2fd; color: #1565c0; padding: 0.15rem 0.5rem; border-radius: 0.4rem; font-size: 0.85rem; }

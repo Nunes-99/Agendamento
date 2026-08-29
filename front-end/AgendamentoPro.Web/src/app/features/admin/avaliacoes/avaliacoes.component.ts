@@ -67,7 +67,7 @@ import { Avaliacao } from '../../../core/models/avaliacao.model';
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .sub { margin: 0; color: #666; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-    .card { background: #fff; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 0.5rem; }
+    .card { background: var(--cor-fundo-card); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 0.5rem; }
     .cabecalho { display: flex; justify-content: space-between; }
     .data { color: #888; font-size: 0.85rem; }
     .estrelas { display: flex; align-items: center; gap: 0.1rem; }
@@ -75,7 +75,7 @@ import { Avaliacao } from '../../../core/models/avaliacao.model';
     .estrelas mat-icon.ativa { color: #fbc02d; }
     .estrelas .nota { margin-left: 0.5rem; font-weight: 600; }
     .comentario { font-style: italic; color: #444; margin: 0; }
-    .pendente { background: #fff3e0; color: #e65100; }
+    .pendente { background: var(--cor-fundo-card)3e0; color: #e65100; }
     .rodape { border-top: 1px solid #eee; padding-top: 0.5rem; }
     .vazio { text-align: center; color: #888; padding: 3rem; }
     .vazio mat-icon { font-size: 3rem; width: 3rem; height: 3rem; }

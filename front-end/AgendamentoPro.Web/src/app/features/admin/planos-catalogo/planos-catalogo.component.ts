@@ -118,7 +118,7 @@ interface PlanoForm {
     .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
     .full { width: 100%; }
     .acoes { display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .tabela { width: 100%; background: #fff; border-radius: 0.5rem; }
+    .tabela { width: 100%; background: var(--cor-fundo-card); border-radius: 0.5rem; }
     .acoes-cell { text-align: right; }
     .vazio { text-align: center; color: #888; padding: 2rem; }
     @media (max-width: 48rem) { .row { grid-template-columns: 1fr; } }

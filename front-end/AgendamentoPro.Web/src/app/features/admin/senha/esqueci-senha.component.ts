@@ -57,7 +57,7 @@ import { environment } from '../../../../environments/environment';
   `,
   styles: [`
     .container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #f5f5f5; }
-    .card { background: #fff; padding: 2rem; border-radius: 0.75rem; max-width: 24rem; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .card { background: var(--cor-fundo-card); padding: 2rem; border-radius: 0.75rem; max-width: 24rem; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
     header { text-align: center; margin-bottom: 1.5rem; }
     header mat-icon { font-size: 3rem; width: 3rem; height: 3rem; color: #6366f1; }
     header h1 { margin: 0.5rem 0 0; font-size: 1.5rem; }

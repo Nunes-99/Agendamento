@@ -128,10 +128,10 @@ import { ClienteAuthService } from '../../../core/services/cliente-auth.service'
     h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { margin: 0; color: #666; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.75rem; padding: 1rem 0; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem; border-left: 4px solid #6366f1; }
+    .card { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem; border-left: 4px solid #6366f1; }
     .card header { display: flex; justify-content: space-between; align-items: center; }
     .badge { background: #e0e7ff; color: #3730a3; padding: 0.15rem 0.5rem; border-radius: 0.4rem; font-size: 0.75rem; text-transform: capitalize; }
-    .badge.st-pendente { background: #fff7ed; color: #c2410c; }
+    .badge.st-pendente { background: var(--cor-fundo-card)7ed; color: #c2410c; }
     .badge.st-ativo { background: #e8f5e9; color: #2e7d32; }
     .badge.st-cancelado { background: #ffebee; color: #c62828; }
     .saldo { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.5rem 0; }

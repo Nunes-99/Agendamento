@@ -32,7 +32,7 @@ import { ApiService } from '../../../core/services/api.service';
   styles: [`
     h1 { margin: 0 0 1rem; }
     .busca { width: 100%; max-width: 24rem; }
-    .tabela { width: 100%; margin-top: 1rem; background: #fff; }
+    .tabela { width: 100%; margin-top: 1rem; background: var(--cor-fundo-card); }
   `]
 })
 export class ClientesAdminComponent implements OnInit {

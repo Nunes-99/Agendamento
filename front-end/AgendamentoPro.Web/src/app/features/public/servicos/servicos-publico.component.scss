@@ -5,7 +5,7 @@ h2 { margin: 0; font-size: 1.5rem; }
 @media (min-width: 36rem) { .grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 60rem) { .grid { grid-template-columns: repeat(3, 1fr); } }
 .card {
-  background: #fff;
+  background: var(--cor-fundo-card);
   border-radius: var(--raio-medio);
   overflow: hidden;
   box-shadow: var(--sombra-suave);

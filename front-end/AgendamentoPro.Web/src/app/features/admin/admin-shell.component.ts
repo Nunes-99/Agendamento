@@ -190,9 +190,9 @@ import { BillingBannerComponent } from './minha-assinatura/billing-banner.compon
       text-overflow: ellipsis;
       max-width: 10rem;
     }
-    .topbar { background: #fff; border-bottom: 1px solid #e4e4e7; position: sticky; top: 0; z-index: 5; }
+    .topbar { background: var(--cor-fundo-card); border-bottom: 1px solid var(--cor-borda); position: sticky; top: 0; z-index: 5; }
     .spacer { flex: 1; }
-    .conteudo { padding: 1.5rem; background: #f9fafb; min-height: calc(100vh - 4rem); }
+    .conteudo { padding: 1.5rem; background: var(--cor-fundo); min-height: calc(100vh - 4rem); }
     @media (max-width: 48rem) { .conteudo { padding: 1rem; } }
   `]
 })

@@ -248,7 +248,7 @@ export interface AgendamentoDialogData {
     .slots small { color: #6b7280; font-size: 0.75rem; }
     .chips { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.375rem; }
     .chip {
-      padding: 0.375rem 0.75rem; border: 1px solid #e5e7eb; background: #fff;
+      padding: 0.375rem 0.75rem; border: 1px solid #e5e7eb; background: var(--cor-fundo-card);
       border-radius: 1rem; cursor: pointer; font-size: 0.8125rem;
       font-family: inherit;
     }

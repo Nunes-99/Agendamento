@@ -103,7 +103,7 @@ import { Combo } from '../../../core/models/combo.model';
   styles: [`
     .container { max-width: 36rem; margin: 0 auto; padding: 1rem; }
     .centro { display: flex; justify-content: center; padding: 4rem; }
-    .topo { background: #fff; padding: 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .topo { background: var(--cor-fundo-card); padding: 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .resumo { display: flex; gap: 0.5rem; align-items: baseline; margin: 0.75rem 0; }
     .resumo .orig { text-decoration: line-through; color: #999; }
@@ -113,7 +113,7 @@ import { Combo } from '../../../core/models/combo.model';
     .servicos li { display: flex; align-items: center; gap: 0.5rem; }
     .servicos mat-icon { color: #2e7d32; font-size: 1rem; width: 1rem; height: 1rem; }
     .duracao-total { display: flex; align-items: center; gap: 0.25rem; color: #555; margin: 0.75rem 0 0; font-size: 0.9rem; }
-    .form { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .form { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .form h3 { margin: 0.5rem 0 0.25rem; font-size: 1rem; color: #555; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
     .full { width: 100%; }

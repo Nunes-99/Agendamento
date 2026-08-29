@@ -129,7 +129,7 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
     .servicos h2 { display: flex; align-items: center; gap: 0.5rem; }
     .grid-servicos { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
     .card-servico {
-      background: #fff; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      background: var(--cor-fundo-card); border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
     }
     .card-servico .corpo { flex: 1; }
@@ -150,7 +150,7 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
     .estrelas.pequenas mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
     .resumo .total { color: #666; }
     .recentes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
-    .aval { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .aval { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     .aval .cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
     .aval p { margin: 0; font-style: italic; color: #444; }
   `]

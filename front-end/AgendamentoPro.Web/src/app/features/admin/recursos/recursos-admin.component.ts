@@ -45,9 +45,9 @@ import { ApiService } from '../../../core/services/api.service';
   `,
   styles: [`
     .cab { margin-bottom: 1rem; } h1 { margin: 0; }
-    .form { display: grid; gap: 0.5rem; background: #fff; padding: 1rem; border-radius: var(--raio-medio); margin-bottom: 1rem; }
+    .form { display: grid; gap: 0.5rem; background: var(--cor-fundo-card); padding: 1rem; border-radius: var(--raio-medio); margin-bottom: 1rem; }
     .acoes { display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .tabela { width: 100%; margin-top: 1rem; background: #fff; border-radius: var(--raio-medio); }
+    .tabela { width: 100%; margin-top: 1rem; background: var(--cor-fundo-card); border-radius: var(--raio-medio); }
   `]
 })
 export class RecursosAdminComponent implements OnInit {

@@ -46,7 +46,7 @@ h1 {
 }
 
 .metrica {
-  background: #fff;
+  background: var(--cor-fundo-card);
   border-radius: 0.875rem;
   padding: 1.25rem;
   display: flex;
@@ -88,7 +88,7 @@ h1 {
 }
 
 .empresa {
-  background: #fff;
+  background: var(--cor-fundo-card);
   border-radius: 1rem;
   overflow: hidden;
   box-shadow: 0 0.125rem 0.625rem rgba(0,0,0,0.06);

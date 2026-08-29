@@ -6,7 +6,7 @@
 .login-page {
   display: flex;
   min-height: 100vh;
-  background: #fff;
+  background: var(--cor-fundo-card);
 }
 
 // ============== LADO ESQUERDO (FORMULÁRIO) ==============
@@ -422,7 +422,7 @@
 
     &.ativo {
       width: 3rem;
-      background: #fff;
+      background: var(--cor-fundo-card);
     }
   }
 }

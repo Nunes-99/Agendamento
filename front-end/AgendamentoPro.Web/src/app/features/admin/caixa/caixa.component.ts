@@ -75,7 +75,7 @@ import { ApiService } from '../../../core/services/api.service';
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .filtros { display: flex; gap: 0.5rem; align-items: center; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; border-left: 4px solid #888; }
+    .card { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.5rem; border-left: 4px solid #888; }
     .card.receita { border-left-color: #2e7d32; }
     .card.sucesso { border-left-color: #43a047; }
     .card.pendente { border-left-color: #ff9800; }

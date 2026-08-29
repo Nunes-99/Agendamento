@@ -49,7 +49,7 @@
 }
 @media (min-width: 48rem) { .info { grid-template-columns: repeat(3, 1fr); } }
 .card {
-  background: #fff;
+  background: var(--cor-fundo-card);
   border-radius: var(--raio-medio);
   box-shadow: var(--sombra-suave);
   padding: 1.25rem;

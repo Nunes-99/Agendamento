@@ -141,7 +141,7 @@ export class ComboFormComponent {
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { margin: 0; color: #666; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem; }
-    .card { background: #fff; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 0.5rem; }
+    .card { background: var(--cor-fundo-card); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 0.5rem; }
     .card.inativo { opacity: 0.6; }
     .card header { display: flex; justify-content: space-between; align-items: center; }
     .badge { background: #ffcdd2; color: #c62828; padding: 0.1rem 0.5rem; border-radius: 0.5rem; font-size: 0.75rem; }

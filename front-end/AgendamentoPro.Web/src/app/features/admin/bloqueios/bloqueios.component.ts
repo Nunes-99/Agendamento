@@ -132,7 +132,7 @@ export class BloqueioFormComponent {
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { margin: 0; color: #666; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: 0.75rem; }
-    .card { background: #fff; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; gap: 1rem; align-items: center; border-left: 4px solid #c62828; }
+    .card { background: var(--cor-fundo-card); padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; gap: 1rem; align-items: center; border-left: 4px solid #c62828; }
     .bloco-data, .bloco-motivo { display: flex; flex-direction: column; }
     .bloco-data strong { color: #c62828; }
     .bloco-motivo small { color: #888; }

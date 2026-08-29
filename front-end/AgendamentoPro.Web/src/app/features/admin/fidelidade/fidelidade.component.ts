@@ -57,13 +57,13 @@ import { ApiService } from '../../../core/services/api.service';
   `,
   styles: [`
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
-    .card { background: #fff; padding: 1rem 1.25rem; margin-top: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card { background: var(--cor-fundo-card); padding: 1rem 1.25rem; margin-top: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
     mat-form-field { width: 14rem; }
     .saldo { background: #e8f5e9; padding: 0.5rem 0.75rem; border-radius: 0.5rem; }
     .saldo strong { font-size: 1.5rem; color: #2e7d32; }
     .cupom { background: #ede9fe; padding: 0.75rem; border-radius: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.5rem; }
-    .cupom code { background: #fff; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; width: fit-content; }
+    .cupom code { background: var(--cor-fundo-card); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: monospace; width: fit-content; }
   `]
 })
 export class FidelidadeComponent {

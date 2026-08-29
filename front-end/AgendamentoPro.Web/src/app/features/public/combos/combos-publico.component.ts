@@ -61,7 +61,7 @@ import { Combo } from '../../../core/models/combo.model';
     .topo { padding: 1.5rem 1rem; text-align: center; }
     .topo h1 { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; }
     .grid { display: grid; gap: 1rem; padding: 0 1rem; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); }
-    .combo { background: #fff; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
+    .combo { background: var(--cor-fundo-card); border-radius: 0.75rem; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
     .imagem { height: 10rem; background-size: cover; background-position: center; }
     .conteudo { padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
     .conteudo h2 { margin: 0; }

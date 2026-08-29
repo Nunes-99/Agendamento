@@ -70,7 +70,7 @@ import { ApiService } from '../../../core/services/api.service';
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .centro { text-align: center; padding: 4rem; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1rem; margin-top: 1rem; }
-    .card { background: #fff; padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem; border-left: 4px solid #6366f1; }
+    .card { background: var(--cor-fundo-card); padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem; border-left: 4px solid #6366f1; }
     .card.alerta { border-left-color: #f57c00; }
     .label { color: #888; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
     .valor { font-size: 1.75rem; }

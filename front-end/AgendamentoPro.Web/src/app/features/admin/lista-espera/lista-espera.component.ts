@@ -61,7 +61,7 @@ import { ApiService } from '../../../core/services/api.service';
     .topo h1 { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
     .topo p { margin: 0; color: #666; }
     .lista { display: grid; gap: 0.75rem; }
-    .card { background: #fff; padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: center; border-left: 4px solid #ff9800; }
+    .card { background: var(--cor-fundo-card); padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: center; border-left: 4px solid #ff9800; }
     .bloco { display: flex; flex-direction: column; min-width: 0; }
     .bloco small { color: #888; font-size: 0.85rem; }
     .obs { font-style: italic; }
