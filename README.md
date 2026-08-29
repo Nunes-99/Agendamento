@@ -26,7 +26,7 @@ front-end/
 Cada **Tenant** (empresa cliente do SaaS) tem:
 
 - Slug único (`acme-lava-rapido`) — usado em rotas `/t/:slug/...`
-- Personalização visual (logo, banner, cores primária/secundária/acento, fonte, favicon)
+- Vitrine própria: logo, banner, favicon, cores, fonte, anúncios e galeria de fotos (ver *Vitrine do lojista*)
 - Regras próprias (% de entrada, buffer entre atendimentos, antecedências mínima/máxima, prazo de cancelamento)
 - Horários de funcionamento por dia da semana
 - Recursos (boxes, salas, profissionais — termo genérico)
@@ -40,15 +40,62 @@ A resolução do tenant em cada request acontece em três níveis (em ordem):
 
 ## API Versioning
 
-Todas as rotas estão sob `/api/v1/`. Health checks ficam fora da versão (`/api/health/live`, `/api/health/ready`) por convenção. Webhooks externos: `/api/v1/webhooks/pagamento/{gateway}`.
+Todas as rotas estão sob `/api/v1/`. Health checks ficam fora da versão (`/api/health/live`, `/api/health/ready`) por convenção. Webhooks externos: `/api/v1/webhooks/pagamento/{gateway}` (transacional) e `/api/v1/webhooks/assinatura/{gateway}` (mensalidade SaaS).
+
+## SaaS Billing (mensalidade por tenant)
+
+Todo tenant paga mensalidade — não há plano gratuito, e não há comissão sobre as
+transações do cliente final.
+
+| Plano | Preço | Limite |
+|---|---|---|
+| Essencial | R$ 29,90/mês | 1 unidade |
+| Multi-unidade | R$ 79,90/mês | unidades ilimitadas |
+
+- **Trial**: cartão obrigatório no cadastro, **primeiro mês grátis e cancelável**,
+  cobra a partir do segundo (via `free_trial` do preapproval do Mercado Pago).
+- **Grace period** (`AssinaturaStatusJob`, diário): D+0 a D+7 `Atrasada` (acesso
+  total, banner amarelo) → D+8 a D+30 `ReadOnly` (escrita no admin retorna **402**,
+  área pública do tenant retorna **503**) → D+30 soft delete com 90 dias de retenção.
+- **Telas**: `/planos` (pública) e `/admin/minha-assinatura` (faturas, trocar
+  plano, cancelar). Webhook próprio em `/api/v1/webhooks/assinatura/{gateway}`,
+  separado do transacional.
+- Sem gateway configurado, criar assinatura responde **400 com mensagem
+  acionável** e não deixa rascunho órfão travando novas tentativas.
+
+## Vitrine do lojista (página pública personalizável)
+
+O admin controla como a loja aparece para o cliente final na aba
+**Configurações → "Minha página"**, sem tocar em código:
+
+| O que | Como funciona |
+|---|---|
+| **Cores** | Primária (botões e preços), secundária (fundo do banner) e acento (promoções em destaque). Aplicadas via CSS Custom Properties — inclusive nos botões do Angular Material. |
+| **Fonte** | Select com fontes populares; o `ThemeService` baixa a escolhida do Google Fonts e aplica no `body`. |
+| **Logo / banner / favicon** | Upload direto com **seletor visual de corte** (`ngx-image-cropper`): banner trava em 3:1, favicon em 1:1, logo livre. |
+| **Anúncios e promoções** | Até 8, com título, texto, "visível" e "destaque" (usa a cor de acento). Aparecem em faixa no topo da home pública. |
+| **Galeria de fotos** | Até 12 fotos do espaço com legenda; na home viram a seção "Nosso espaço", com grid e lightbox. |
+
+**Processamento de imagem no upload** (`VitrineImagemProcessor`, síncrono e em
+memória — funciona igual em disco local e S3): logo cabe em 512², banner é
+cortado ao centro em 3:1 com largura máx. 1920, favicon vira PNG 128², foto de
+galeria cabe em 1600². Nunca amplia imagem pequena, GIF passa intocado, e o
+conteúdo precisa decodificar como imagem de verdade — arquivo com extensão certa
+e bytes de outra coisa é recusado com 400.
+
+Anúncios e galeria são persistidos como JSON em `ConfiguracaoTenant`
+(`vitrine.anuncios` / `vitrine.galeria`) — sem migration nova. Imagens
+substituídas ou removidas que eram uploads da vitrine são apagadas do storage;
+URL externa que o lojista tenha colado nunca é tocada.
 
 ## Frontend
 
 - Angular 17 standalone, mobile-first
 - Todos os tamanhos em **REM**
-- Theming dinâmico via CSS Custom Properties — o `ThemeService` injeta as cores do tenant em tempo de carregamento, permitindo total personalização do site público sem alterar código.
+- Theming dinâmico via CSS Custom Properties — o `ThemeService` injeta cores e fonte do tenant em tempo de carregamento (ver *Vitrine do lojista* acima).
+- **Dark mode** em todo o app (`ThemeModeService` + `prefers-color-scheme`): superfícies e bordas saem de variáveis, não de cores fixas.
 - Rotas:
-  - `/t/:slug` → home pública do estabelecimento (com banner, logo, cores, avaliações públicas)
+  - `/t/:slug` → home pública: hero (banner + logo), anúncios/promoções, catálogo de serviços, galeria "Nosso espaço" e avaliações
   - `/t/:slug/servicos` → catálogo
   - `/t/:slug/combos` → combos promocionais
   - `/t/:slug/agendar/:servicoId` → fluxo passo-a-passo (horário → dados → pagamento)
@@ -60,7 +107,8 @@ Todas as rotas estão sob `/api/v1/`. Health checks ficam fora da versão (`/api
   - `/t/:slug/lista-espera-publica` → entrar na fila quando data está cheia
   - `/admin/login` → login do administrador
   - `/admin/{dashboard,agenda,servicos,recursos,clientes,combos,relatorios,configuracoes,avaliacoes}`
-  - `/admin/{recorrencias,pacotes,fidelidade,bloqueios,lista-espera,kpis,caixa,cupons,lgpd}`
+  - `/admin/{recorrencias,pacotes,fidelidade,bloqueios,lista-espera,kpis,caixa,cupons,lgpd,auditoria}`
+  - `/planos` (pública) e `/admin/minha-assinatura` → mensalidade do tenant
   - `/admin/seguranca/2fa` → autenticação em dois fatores (TOTP)
   - `/admin/importar-clientes` → importação de clientes por CSV
   - `/admin/empresas` → gestão de tenants (super-admin)
@@ -94,6 +142,16 @@ App é instalável (Android/iOS) com service worker (`@angular/service-worker`).
 
 1. Copie `.env.example` para `.env` e preencha os valores (chaves do Mercado Pago, WhatsApp, JWT secret).
 2. Para SQLite local não há mais nada a configurar.
+
+> **Sem `MERCADOPAGO_ACCESS_TOKEN` o sistema funciona** — só não cobra online: a
+> reserva é desfeita e o cliente vê "pagamento online indisponível, entre em
+> contato" (nada de erro 500 nem agendamento fantasma). O mesmo vale para compra
+> de pacote e assinatura do SaaS.
+
+> **Webhook em dev**: o Mercado Pago não chama `localhost`. Sem URL pública o
+> `notification_url` nem é enviado (o MP recusa a cobrança inteira se for). Para
+> exercitar o callback de verdade, suba um túnel e aponte `APP_PUBLIC_URL` para
+> ele: `cloudflared tunnel --url http://localhost:5050` (ou `ngrok http 5050`).
 
 > **SQL Server não é suportado hoje.** O provider existe no código, mas **todas as
 > migrations foram geradas contra o SQLite** — são 333 colunas declaradas como
@@ -312,6 +370,9 @@ Use `BACKUP DATABASE` do próprio SQL Server agendado via SQL Agent ou cron + `s
 - **Reagendamento**: somente com antecedência ≥ limite do tenant (default 24h), mantém valor pago.
 - **Cancelamento**: registra motivo e data.
 - **Pagamento via gateway**: abstração `IGatewayPagamento`. Mercado Pago (PIX, cartão, checkout) sempre disponível; Stripe ativa quando `STRIPE_SECRET_KEY` está setado (cartão crédito/débito via Checkout Session). PIX no Stripe não é suportado — use MP. Webhook Stripe valida `Stripe-Signature`.
+  O `payer.email` da cobrança é o do cliente (o MP recusa e-mail com TLD inventado), e o `notification_url` só é enviado quando `APP_PUBLIC_URL` é pública — o MP recusa a cobrança inteira se apontar para localhost.
+- **Confirmação do pagamento é do servidor, não do aviso**: o webhook nunca acredita no payload — ele reconsulta o pagamento no gateway antes de aprovar. Aviso forjado não confirma nada; aviso repetido é ignorado por idempotência (`WebhookEvento` com unique `(Gateway, EventoId)`).
+- **Cliente identificado pelo telefone**: `Cliente` grava o número só com dígitos (sem DDI 55 redundante) e a busca compara normalizado dos dois lados — o mesmo cliente chegando pelo agendamento público "(11) 99887-7665" e pelo OTP "11998877665" é uma pessoa só.
 - **WhatsApp Cloud API**: integração via `INotificadorWhatsApp` + `BackgroundService` envia lembretes 24h e 2h antes do agendamento (templates `lembrete_24h` e `lembrete_2h` precisam ser pré-aprovados na Meta). Quando WhatsApp falha (template rejeitado, número sem WhatsApp), o `LembreteJob` faz fallback automático para **SMS via Twilio** se `TWILIO_*` estiver configurado.
 - **Avaliação**: ao concluir agendamento, abre token público; cliente avalia 1-5 estrelas + comentário em `/avaliar/{token}`. Médias e últimas avaliações públicas no perfil do tenant.
 - **Fotos antes/depois**: upload por agendamento (até 10 MB, jpg/png/webp/gif). Servidas estaticamente em `/uploads/...`.
@@ -339,6 +400,10 @@ Cobre:
 - Comportamento idempotente do `Pagamento` (Aprovar/Recusar/Estornar/Expirar).
 - Concorrência de agendamento no mesmo recurso/data/hora (unique-index).
 - Idempotência de `WebhookEvento` (unique `(Gateway, EventoId)`).
+- Guard de assinatura (Trial/Ativa/Atrasada passam; ReadOnly/Cancelada/Expirada bloqueiam).
+- Assinatura: trial de 1 mês e rollback do rascunho quando o gateway falha.
+- Processamento de imagem da vitrine (crop 3:1 do banner, tetos por tipo, recusa de não-imagem).
+- Normalização de telefone do cliente (máscara, DDI, número curto).
 - Validators FluentValidation (login, agendamento, serviço, slug de tenant).
 
 ## Observabilidade
@@ -364,15 +429,33 @@ por dependência não registrada, e nenhum tenant podia ser criado — atravessa
 `BuildServiceProvider` com validação ligada. Qualquer dependência esquecida
 quebra ali, em segundos.
 
+## Estado do caminho do dinheiro
+
+Validado ponta a ponta no sandbox do Mercado Pago (29/08/2026), com a aplicação
+no ar: PIX criado com QR copia-e-cola real → webhook com pagamento **pendente**
+não confirma nada → pagamento **aprovado** confirma o agendamento (visto na
+`/admin/agenda`) → aviso duplicado ignorado → aviso forjado recusado. O callback
+também foi exercitado com o **MP chamando de fora**, via túnel público: ~5s entre
+a aprovação e o agendamento virar `Confirmado`, sem disparo manual.
+
+Detalhes e o que o sandbox não permite (liquidar o QR de um PIX de teste) em
+[`docs/O-QUE-FALTA.md`](docs/O-QUE-FALTA.md).
+
 ## Roadmap
 
 Próximos itens (não implementados ainda):
 - SQL Server de verdade: migrations por provider (ver aviso em *Setup inicial*).
 - Gateway Pagar.me como alternativa ao Mercado Pago para recorrência.
-- Resize de fotos quando `STORAGE_PROVIDER=s3` (hoje o resize é pulado).
-- i18n (PT-BR / EN / ES).
+- Resize de fotos de **agendamento** quando `STORAGE_PROVIDER=s3` (o `FotoResizeJob` precisa de arquivo em disco e é pulado; as imagens da **vitrine** já são processadas em memória e funcionam em S3).
+- i18n (PT-BR / EN / ES) — prioridade baixa dado foco BR.
 - App nativo — hoje coberto por PWA + Web Push.
 
+Antes de publicar: criar uma **aplicação Mercado Pago própria** do AgendamentoPro
+(hoje o dev usa a credencial TEST de outra aplicação da mesma conta) e gerar o
+`MERCADOPAGO_WEBHOOK_SECRET` — passo a passo em
+[`docs/setup-mercado-pago.md`](docs/setup-mercado-pago.md).
+
 > Já entregues, apesar de constarem como pendentes em versões anteriores deste
-> arquivo: SMS fallback via Twilio, gateway Stripe, `S3FotoStorage` e os
-> relatórios avançados (LTV, no-show, sazonalidade).
+> arquivo: SMS fallback via Twilio, gateway Stripe, `S3FotoStorage`, os
+> relatórios avançados (LTV, no-show, sazonalidade), a vitrine personalizável do
+> lojista e o SaaS Billing (mensalidade com trial de 1 mês).
