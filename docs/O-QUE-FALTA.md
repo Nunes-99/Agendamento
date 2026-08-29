@@ -141,6 +141,17 @@ Detalhes e esforço estimado no [`BACKLOG.md`](../BACKLOG.md):
   redimensiona via automação) — vale abrir no celular; push de evento
   SignalR/Web Push e QR PIX real dependem do item 1.
 
+### 2026-08-29 — 4ª rodada: vitrine do lojista + mobile validado
+
+- **Nova feature — vitrine estilizável** (aba "Minha página"): o lojista publica
+  até 8 anúncios/promoções (título, texto, visível, destaque com cor de acento)
+  que aparecem na home pública; a fonte escolhida agora carrega de verdade
+  (Google Fonts + inline no body — antes o campo não fazia nada) com select de
+  fontes populares. Sem migration: JSON em ConfiguracaoTenant via VitrineController.
+- **Mobile validado em 390px** (via iframes, já que a janela maximizada não
+  redimensiona): home/catálogo/agendar em coluna única, admin com hambúrguer e
+  KPIs empilhados, Minha Conta com tabs scrolláveis — tudo correto.
+
 ### Corrigido e testado na rodada anterior (ver `git log`):
 
 - **A API não subia** (RecaptchaValidator fora do contêiner) — corrigido, com
