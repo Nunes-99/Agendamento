@@ -78,13 +78,35 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                     "Mercado Pago não configurado. Defina a variável MERCADOPAGO_ACCESS_TOKEN com seu access token (produção ou TEST-* para desenvolvimento).");
         }
 
+        /// <summary>
+        /// E-mail do pagador aceito pelo MP: o do cliente quando parece válido; senão
+        /// um fallback com domínio real — TLDs inventados (.local) tomam 400.
+        /// </summary>
+        /// <summary>URL alcançável pelo Mercado Pago (não localhost/IP privado).</summary>
+        private static bool UrlPublica(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                return false;
+            var host = uri.Host;
+            return !uri.IsLoopback
+                && !host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                && !host.StartsWith("192.168.") && !host.StartsWith("10.")
+                && !host.EndsWith(".local", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string PayerEmailValido(string payerEmail)
+            => !string.IsNullOrWhiteSpace(payerEmail) && payerEmail.Contains('@') && payerEmail.Contains('.')
+                ? payerEmail.Trim()
+                : "cliente-sem-email@agendamentopro.com.br";
+
         public async Task<CobrancaResult> CriarCobrancaAsync(int tenantId, int agendamentoId,
-            decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos)
+            decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos,
+            string payerEmail = null)
         {
             GarantirConfigurado();
             return forma switch
             {
-                FormaPagamento.Pix => await CriarPixAsync(tenantId, agendamentoId, valor, descricao, expiracaoMinutos),
+                FormaPagamento.Pix => await CriarPixAsync(tenantId, agendamentoId, valor, descricao, expiracaoMinutos, payerEmail),
                 FormaPagamento.CartaoCredito or FormaPagamento.CartaoDebito
                     => await CriarPreferenciaCheckoutAsync(tenantId, agendamentoId, valor, forma, descricao, expiracaoMinutos),
                 _ => throw new InvalidOperationException($"Forma de pagamento '{forma}' não suportada pelo Mercado Pago.")
@@ -92,21 +114,25 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
         }
 
         private async Task<CobrancaResult> CriarPixAsync(int tenantId, int agendamentoId,
-            decimal valor, string descricao, int expiracaoMinutos)
+            decimal valor, string descricao, int expiracaoMinutos, string payerEmail)
         {
             var idempotencyKey = $"agp-{tenantId}-{agendamentoId}-{Guid.NewGuid():N}";
             var dataExpiracao = DateTime.UtcNow.AddMinutes(expiracaoMinutos);
 
-            var payload = new
+            var payload = new Dictionary<string, object>
             {
-                transaction_amount = (double)valor,
-                description = descricao,
-                payment_method_id = "pix",
-                date_of_expiration = dataExpiracao.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
-                external_reference = $"{tenantId}:{agendamentoId}",
-                notification_url = $"{_appPublicUrl}/api/v1/webhooks/pagamento/MercadoPago",
-                payer = new { email = "comprador@agendamentopro.local" }
+                ["transaction_amount"] = (double)valor,
+                ["description"] = descricao,
+                ["payment_method_id"] = "pix",
+                ["date_of_expiration"] = dataExpiracao.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
+                ["external_reference"] = $"{tenantId}:{agendamentoId}",
+                ["payer"] = new { email = PayerEmailValido(payerEmail) }
             };
+            // O MP recusa notification_url que não seja pública ("must be url valid"
+            // para localhost) — e sem ela o PIX nem era criado em dev. Em dev sem
+            // túnel, o webhook simplesmente não é chamado (use ngrok para testá-lo).
+            if (UrlPublica(_appPublicUrl))
+                payload["notification_url"] = $"{_appPublicUrl}/api/v1/webhooks/pagamento/MercadoPago";
 
             using var req = new HttpRequestMessage(HttpMethod.Post, "/v1/payments")
             {

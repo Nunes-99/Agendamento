@@ -74,7 +74,8 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
         }
 
         public async Task<CobrancaResult> CriarCobrancaAsync(int tenantId, int agendamentoId,
-            decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos)
+            decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos,
+            string payerEmail = null)
         {
             GarantirConfigurado();
 
@@ -118,7 +119,9 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 },
                 SuccessUrl = $"{_frontendUrl}/pagamento-stripe-retorno?session_id={{CHECKOUT_SESSION_ID}}&status=ok&agendamento={agendamentoId}",
                 CancelUrl = $"{_frontendUrl}/pagamento-stripe-retorno?session_id={{CHECKOUT_SESSION_ID}}&status=cancelado&agendamento={agendamentoId}",
-                ExpiresAt = expiracao
+                ExpiresAt = expiracao,
+                // Pré-preenche o e-mail no checkout quando o cliente informou.
+                CustomerEmail = string.IsNullOrWhiteSpace(payerEmail) ? null : payerEmail.Trim()
             };
 
             var service = new SessionService();

@@ -37,8 +37,14 @@ namespace AgendamentoPro.Core.Interfaces.Services
         /// </summary>
         bool Suporta(FormaPagamento forma);
 
+        /// <param name="payerEmail">
+        /// E-mail do cliente pagador, quando informado. O Mercado Pago EXIGE um
+        /// payer.email válido no PIX — o placeholder antigo (@agendamentopro.local)
+        /// era rejeitado com 400 e nenhum PIX era criado.
+        /// </param>
         Task<CobrancaResult> CriarCobrancaAsync(int tenantId, int agendamentoId,
-            decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos);
+            decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos,
+            string payerEmail = null);
         Task<WebhookEvent> ProcessarWebhookAsync(string payload, string assinatura);
     }
 }

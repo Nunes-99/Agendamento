@@ -182,7 +182,8 @@ namespace AgendamentoPro.Application.UseCases.Servicos
                             $"Nenhum gateway configurado suporta a forma de pagamento '{input.FormaPagamento}'.");
                     var cobranca = await gateway.CriarCobrancaAsync(tenantId, primeiro.AgeId,
                         valorEntrada, input.FormaPagamento,
-                        $"Sinal Combo - {combo.ComNome}", 15);
+                        $"Sinal Combo - {combo.ComNome}", 15,
+                        payerEmail: cliente.CliEmail);
 
                     pagamento = new Pagamento(tenantId, primeiro.AgeId, input.FormaPagamento,
                         valorEntrada, gateway.Nome, cobranca.Expiracao);

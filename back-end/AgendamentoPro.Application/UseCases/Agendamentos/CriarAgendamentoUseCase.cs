@@ -224,7 +224,8 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
                 {
                     cobranca = await gateway.CriarCobrancaAsync(tenantId, agendamentoCriado.AgeId,
                         agendamentoCriado.AgeValorEntrada, input.FormaPagamento,
-                        $"Sinal - {servico.SerNome}", 15);
+                        $"Sinal - {servico.SerNome}", 15,
+                        payerEmail: clienteCriado.CliEmail);
                 }
                 catch (Exception ex)
                 {

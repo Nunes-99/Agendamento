@@ -130,7 +130,8 @@ namespace AgendamentoPro.API.Controllers
 
             var cobranca = await gateway.CriarCobrancaAsync(tid, agendamentoId: 0,
                 pacote.PctPreco, FormaPagamento.Pix,
-                $"Pacote: {pacote.PctNome}", expiracaoMinutos: 30);
+                $"Pacote: {pacote.PctNome}", expiracaoMinutos: 30,
+                payerEmail: cli.CliEmail);
 
             saldo.DefinirGatewayId(cobranca.GatewayId);
             ctx.SaldosPacote.Update(saldo);

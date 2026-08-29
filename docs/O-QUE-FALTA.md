@@ -8,7 +8,42 @@ A ordem abaixo vai do que trava receita ao que é melhoria.
 
 ---
 
-## 1. Validar o pagamento de ponta a ponta  ·  🔴 o único item crítico
+## 1. Validar o pagamento de ponta a ponta  ·  ✅ VALIDADO em 2026-08-29
+
+Feito com credencial **TEST-** do Mercado Pago (sandbox, conta
+VITORROBERTONUNES — a mesma aplicação usada no ConnectBrinquedos).
+Resultado: **o caminho do dinheiro funciona**, com dois defeitos corrigidos
+no caminho (sem eles, NENHUM PIX era criado — ver `git log`):
+
+1. **`payer.email` inválido**: o gateway mandava um placeholder
+   `@agendamentopro.local`; o MP recusa TLD inventado com 400. Agora usa o
+   e-mail do cliente (fallback com domínio real).
+2. **`notification_url` com localhost**: o MP recusa URL não pública, e o
+   PIX inteiro falhava por causa disso. Agora o campo só é enviado quando a
+   `APP_PUBLIC_URL` é pública (em dev sem túnel, o webhook simplesmente não é
+   chamado pelo MP — use ngrok para exercitá-lo de fora).
+
+O que foi exercitado, nesta ordem:
+
+- **PIX criado de verdade** (payment 1328005216, `pending`): QR copia-e-cola
+  BR Code válido + ticket URL do sandbox; `external_reference` = `6:10`.
+- **Webhook com PIX ainda pendente** → agendamento **continuou pendente**
+  (o serviço reconsulta o MP antes de dar como pago — anti-forjaria OK).
+- **Pagamento aprovado de verdade** (cartão de teste `APRO`, payment
+  1328005252, `approved`) → webhook → **agendamento virou Confirmado** e o
+  pagamento Aprovado; visto na tela `/admin/agenda` ("Bruno Costa — Lavagem
+  Simples — Sinal R$ 8,00 — ✓ Confirmado").
+- **Webhook duplicado** → ignorado por idempotência (log explícito).
+- **Webhook forjado** (payment inexistente) → MP responde 404 e nada é
+  confirmado.
+
+> Ainda **não exercitado com o MP chamando de fora**: em dev o webhook foi
+> disparado localmente (localhost não recebe callback do MP). Para ver o
+> callback real, suba um túnel (ngrok) e aponte `APP_PUBLIC_URL` para ele —
+> o `notification_url` volta a ser enviado automaticamente. O
+> `MERCADOPAGO_WEBHOOK_SECRET` também só é exigível nesse cenário.
+
+### Referência histórica do que faltava aqui
 
 O fluxo do cliente agendando está correto até o pagamento, mas o **pagamento em
 si nunca foi exercitado de verdade** — QR do PIX, webhook de confirmação, o
