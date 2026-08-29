@@ -121,6 +121,26 @@ Detalhes e esforço estimado no [`BACKLOG.md`](../BACKLOG.md):
   bloqueios, recorrências, lista de espera, KPIs, relatórios, 2FA, importar CSV,
   OTP/Minha Conta e esqueci-senha — todos exercitados com a aplicação no ar.
 
+### Corrigido em 2026-08-29 — 3ª rodada (validação completa de usabilidade/layout)
+
+- **Dark mode quebrado em todo o app**: 44 fundos `#fff` fixos em 35 componentes +
+  miolo do admin-shell claro fixo → tudo em CSS vars; modo escuro agora é coeso.
+- **Personalização não atingia os botões Material** (preço na cor do tenant, botão
+  índigo) → vars MDC apontam para `--cor-primaria`.
+- **Comprar pacote sem gateway**: 500 genérico + SaldoPacote órfão → 503 com
+  mensagem acionável, checagem antes de persistir; card de pacote ganhou
+  affordance de seleção.
+- **Ciclo de vida validado ponta a ponta com a aplicação no ar**: agendamento →
+  confirmar pagamento (dinheiro) → iniciar → concluir → 10 pontos de fidelidade →
+  token de avaliação → cliente avalia 5★ → nota e comentário aparecem na home
+  pública. Minha Conta da cliente mostra o histórico (telefone normalizado
+  funcionando no fluxo real). SignalR conectado (evento de novo agendamento só é
+  emitido com pagamento OK — validar com credencial MP). Performance dev: home
+  pública carrega em ~1,6s; APIs públicas respondem em 10–15ms.
+- **Não coberto**: teste visual mobile (janela maximizada do Windows não
+  redimensiona via automação) — vale abrir no celular; push de evento
+  SignalR/Web Push e QR PIX real dependem do item 1.
+
 ### Corrigido e testado na rodada anterior (ver `git log`):
 
 - **A API não subia** (RecaptchaValidator fora do contêiner) — corrigido, com
