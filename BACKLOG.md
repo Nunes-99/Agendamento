@@ -62,8 +62,14 @@ Lambda (AWS) ou pipeline externo que baixa-redimensiona-sobe. Esforço: depende 
 
 ## 🟢 Pequeno
 
-- **Vulnerabilidade `ImageSharp` 3.1.7 (NU1902)** — aguardar patch upstream (hoje
-  3.1.7 é o mais novo da linha 3.1.x).
+- ~~**Vulnerabilidade `ImageSharp` 3.1.7 (NU1902)**~~ — ✅ resolvido 2026-08-29:
+  atualizado para 3.1.12 (patch upstream saiu).
+- **UX da vitrine pública** (anotado no teste de 2026-08-29): título do hero usa a
+  cor primária do tenant sobre banner escuro (ilegível sem banner/cores ajustados);
+  home pública não lista os serviços (só botão "Agendar agora"); data no resumo do
+  agendamento em formato ISO (`2026-08-29`) em vez de `29/08/2026`; "Sinal (20%)"
+  fixo no template do passo de pagamento em vez de usar `percentualEntrada` do
+  tenant; diálogo de novo tenant exige senha ≥6 no front mas o backend exige ≥8.
 - **`LembreteJob` + `DATABASE_MULTITENANCY=PerTenant`**: hoje o job já itera tenants
   ativos via DB shared (vide `LembreteJob.cs`). Vale tests integrados em modo PerTenant
   pra cobrir regressões.

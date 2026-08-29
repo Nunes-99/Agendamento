@@ -85,7 +85,27 @@ Detalhes e esforço estimado no [`BACKLOG.md`](../BACKLOG.md):
 
 ## O que NÃO precisa mais fazer
 
-Corrigido e testado nesta rodada (ver `git log`):
+### Corrigido em 2026-08-29 (teste de bancada com a aplicação no ar)
+
+- **"Criar empresa" e "Salvar serviço" não faziam nada**: o `[mat-dialog-close]="obj"`
+  não entregava o resultado ao `afterClosed` — o botão fechava o diálogo como se
+  fosse "Cancelar", silenciosamente. Trocado pelo padrão do resto do app
+  (`MatDialogRef.close(obj)` explícito).
+- **Tenant Cancelada/Expirada ficava com acesso liberado para sempre**: o guard de
+  assinatura usava `GetByTenantAsync`, que esconde Cancelada/Expirada (para permitir
+  re-assinar) — o tenant parecia "sem assinatura" e passava livre. Novo
+  `GetUltimaByTenantAsync` sem filtro de status alimenta o guard; agora
+  `demo-cancelada`/`demo-expirada` retornam 503 na área pública como documentado.
+- **Criar assinatura sem MP configurado dava 500 e travava o tenant**: a exceção do
+  gateway estourava como erro de servidor e deixava uma assinatura órfã (Trial sem
+  preapproval) que bloqueava novas tentativas com "já possui assinatura ativa".
+  Agora vira 400 com mensagem amigável e o rascunho é desfeito (306 testes verdes,
+  com teste novo cobrindo o caso).
+- **ImageSharp atualizado 3.1.7 → 3.1.12** — o patch upstream do NU1902 saiu.
+- **/planos e /admin/minha-assinatura agora anunciam o primeiro mês grátis** — o
+  trial estava implementado mas invisível para o cliente.
+
+### Corrigido e testado na rodada anterior (ver `git log`):
 
 - **A API não subia** (RecaptchaValidator fora do contêiner) — corrigido, com
   teste de fumaça que sobe a aplicação de verdade.
