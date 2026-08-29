@@ -69,10 +69,10 @@ Lambda (AWS) ou pipeline externo que baixa-redimensiona-sobe. Esforço: depende 
   serviços com preço + CTA, data do resumo em `dd/MM/yyyy` (sem passar por Date —
   DatePipe mostraria o dia anterior no fuso BR), sinal usa `percentualEntrada` do
   tenant, senha do admin ≥8 no front.
-- **Fidelidade: consulta por "Cliente ID"** — pedir ID numérico é hostil; trocar
-  por busca por nome/telefone (autocomplete como no diálogo de agendamento).
-- **Normalizar telefone também na GRAVAÇÃO** — a busca já normaliza (correção de
-  2026-08-29); gravar só dígitos deixaria o dado canônico e a query mais simples.
+- ~~**Fidelidade: consulta por "Cliente ID"**~~ e ~~**normalizar telefone na
+  gravação**~~ — ✅ resolvidos 2026-08-29: a tela busca por nome/telefone/e-mail
+  (mesmo padrão do diálogo de agendamento), `Cliente` grava telefone só com
+  dígitos e a busca paginada acha cadastro antigo com máscara.
 - **`LembreteJob` + `DATABASE_MULTITENANCY=PerTenant`**: hoje o job já itera tenants
   ativos via DB shared (vide `LembreteJob.cs`). Vale tests integrados em modo PerTenant
   pra cobrir regressões.

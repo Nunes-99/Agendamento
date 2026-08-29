@@ -36,6 +36,17 @@ Tempo estimado: ~1 hora (desconsiderando aprovação da conta MP, que pode levar
    - **URL do site**: a URL pública do AgendamentoPro (Ex: https://app.agendamentopro.com.br)
 5. Clique em **Criar aplicação**
 
+> **O MP pede 2FA aqui.** Ao clicar em "Criar aplicação" aparece um QR de
+> verificação de segurança — escaneie com o app do Mercado Pago (ou use "outro
+> método") e **aguarde a própria página avançar**. Cada clique gera uma
+> verificação nova e ela expira rápido: não abra o formulário em outra aba nem
+> deixe para aprovar depois.
+
+> **Enquanto não houver aplicação própria**, o `.env` local usa a credencial
+> **TEST** da aplicação do ConnectBrinquedos (mesma conta MP). Serve para
+> desenvolvimento, mas em produção crie a aplicação do AgendamentoPro: métricas,
+> webhooks e credenciais ficam separados por produto.
+
 ---
 
 ## Passo 2 — Pegar o Access Token

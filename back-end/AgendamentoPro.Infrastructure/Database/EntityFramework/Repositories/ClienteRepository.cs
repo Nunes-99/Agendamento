@@ -48,10 +48,22 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
             if (!string.IsNullOrWhiteSpace(busca))
             {
                 var b = busca.ToLower();
+                // Quando o termo é um número, compara também contra o telefone SEM
+                // máscara: digitar "11976543210" precisa achar quem foi gravado como
+                // "(11) 97654-3210" (cadastros anteriores à normalização na gravação).
+                var digitos = new string(busca.Where(char.IsDigit).ToArray());
+                var buscaPorNumero = digitos.Length >= 4;
+
                 q = q.Where(c => c.CliNome.ToLower().Contains(b)
                     || (c.CliEmail != null && c.CliEmail.ToLower().Contains(b))
                     || (c.CliTelefone != null && c.CliTelefone.Contains(b))
-                    || (c.CliWhatsApp != null && c.CliWhatsApp.Contains(b)));
+                    || (c.CliWhatsApp != null && c.CliWhatsApp.Contains(b))
+                    || (buscaPorNumero && c.CliTelefone != null
+                        && c.CliTelefone.Replace("(", "").Replace(")", "").Replace(" ", "")
+                            .Replace("-", "").Replace("+", "").Contains(digitos))
+                    || (buscaPorNumero && c.CliWhatsApp != null
+                        && c.CliWhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "")
+                            .Replace("-", "").Replace("+", "").Contains(digitos)));
             }
             var total = await q.CountAsync();
             var items = await q.OrderBy(c => c.CliNome)

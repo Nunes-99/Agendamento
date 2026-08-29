@@ -26,8 +26,8 @@ namespace AgendamentoPro.Core.Entities.Clientes
             R_TenId = rTenId;
             CliNome = nome;
             CliEmail = email;
-            CliTelefone = telefone;
-            CliWhatsApp = whatsapp;
+            CliTelefone = NormalizarTelefone(telefone);
+            CliWhatsApp = NormalizarTelefone(whatsapp);
             CliCpf = cpf;
             CliObservacao = observacao;
             CliCriadoEm = DateTime.UtcNow;
@@ -38,11 +38,28 @@ namespace AgendamentoPro.Core.Entities.Clientes
         {
             CliNome = nome;
             CliEmail = email;
-            CliTelefone = telefone;
-            CliWhatsApp = whatsapp;
+            CliTelefone = NormalizarTelefone(telefone);
+            CliWhatsApp = NormalizarTelefone(whatsapp);
             CliCpf = cpf;
             CliObservacao = observacao;
             Validate();
+        }
+
+        /// <summary>
+        /// Guarda o telefone só com dígitos (sem DDI 55 quando redundante). Cada
+        /// fluxo mandava uma máscara diferente — "(11) 99887-7665" no agendamento,
+        /// "11998877665" no OTP — e o mesmo cliente virava dois cadastros. A busca
+        /// já normaliza os dois lados; gravar canônico deixa o dado consistente
+        /// daqui pra frente e simplifica futuras integrações (WhatsApp/SMS).
+        /// </summary>
+        public static string NormalizarTelefone(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor)) return valor;
+            var digitos = new string(valor.Where(char.IsDigit).ToArray());
+            if (digitos.Length == 0) return valor.Trim();
+            // 5511999998888 -> 11999998888 (DDI só atrapalha a comparação local)
+            if (digitos.Length > 11 && digitos.StartsWith("55")) digitos = digitos[2..];
+            return digitos;
         }
 
         private void Validate()
