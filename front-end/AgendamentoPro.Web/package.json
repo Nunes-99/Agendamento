@@ -25,6 +25,7 @@
     "@angular/service-worker": "^17.3.0",
     "@microsoft/signalr": "^8.0.0",
     "angularx-qrcode": "^17.0.0",
+    "ngx-image-cropper": "^8.1.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"

@@ -18,6 +18,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { urlUpload } from '../../../core/utils/url.util';
+import { MatDialog } from '@angular/material/dialog';
+import { CropImagemDialogComponent, CropImagemData } from './crop-imagem-dialog.component';
 
 @Component({
   selector: 'app-configuracoes',
@@ -193,6 +195,7 @@ export class ConfiguracoesComponent implements OnInit {
   private snack = inject(MatSnackBar);
   private http = inject(HttpClient);
   push = inject(WebPushService);
+  private dialog = inject(MatDialog);
 
   tenant = signal<Tenant | null>(null);
   anuncios = signal<AnuncioVitrine[]>([]);
@@ -246,6 +249,27 @@ export class ConfiguracoesComponent implements OnInit {
       this.snack.open('Imagem grande demais (máximo 10 MB).', 'OK', { duration: 4000 });
       return;
     }
+
+    // GIF (possivelmente animado) não passa pelo cropper — o corte descartaria a
+    // animação; o servidor também o deixa intocado.
+    if (arquivo.type === 'image/gif') {
+      this.fazerUpload(tipo, arquivo);
+      return;
+    }
+
+    const ref = this.dialog.open(CropImagemDialogComponent, {
+      width: '48rem',
+      maxWidth: '95vw',
+      data: { arquivo, tipo } satisfies CropImagemData
+    });
+    ref.afterClosed().subscribe((cortado: Blob | null) => {
+      if (!cortado) return; // cancelou
+      const ext = cortado.type === 'image/jpeg' ? '.jpg' : '.png';
+      this.fazerUpload(tipo, new File([cortado], `${tipo}${ext}`, { type: cortado.type }));
+    });
+  }
+
+  private fazerUpload(tipo: 'logo' | 'banner' | 'favicon', arquivo: File) {
     this.enviandoImagem.set(tipo);
     this.api.uploadImagemVitrine(tipo, arquivo).subscribe({
       next: r => {
