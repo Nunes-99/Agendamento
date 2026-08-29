@@ -35,11 +35,27 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
             Directory.CreateDirectory(_basePath);
         }
 
-        public async Task<FotoSalvaResult> SalvarAsync(int tenantId, int agendamentoId,
+        public Task<FotoSalvaResult> SalvarAsync(int tenantId, int agendamentoId,
             string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default)
         {
             if (tenantId <= 0 || agendamentoId <= 0)
                 throw new ArgumentException("Tenant e Agendamento são obrigatórios.");
+            return SalvarEmSubpastaAsync(tenantId, agendamentoId.ToString(), prefixoNome: null,
+                nomeOriginal, contentType, conteudo, ct);
+        }
+
+        public Task<FotoSalvaResult> SalvarVitrineAsync(int tenantId, string tipo,
+            string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default)
+        {
+            if (tenantId <= 0) throw new ArgumentException("Tenant é obrigatório.");
+            if (string.IsNullOrWhiteSpace(tipo)) throw new ArgumentException("Tipo é obrigatório.");
+            return SalvarEmSubpastaAsync(tenantId, "vitrine", prefixoNome: tipo,
+                nomeOriginal, contentType, conteudo, ct);
+        }
+
+        private async Task<FotoSalvaResult> SalvarEmSubpastaAsync(int tenantId, string subpasta,
+            string prefixoNome, string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct)
+        {
             if (!ContentTypesPermitidos.Contains(contentType ?? string.Empty))
                 throw new InvalidOperationException($"Content-type '{contentType}' não permitido.");
 
@@ -47,10 +63,12 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
             if (!ExtensoesPermitidas.Contains(ext))
                 throw new InvalidOperationException($"Extensão '{ext}' não permitida.");
 
-            var dir = Path.Combine(_basePath, tenantId.ToString(), agendamentoId.ToString());
+            var dir = Path.Combine(_basePath, tenantId.ToString(), subpasta);
             Directory.CreateDirectory(dir);
 
-            var nome = $"{Guid.NewGuid():N}{ext}";
+            var nome = string.IsNullOrEmpty(prefixoNome)
+                ? $"{Guid.NewGuid():N}{ext}"
+                : $"{prefixoNome}-{Guid.NewGuid():N}{ext}";
             var caminho = Path.Combine(dir, nome);
 
             long totalGravado;
@@ -77,7 +95,7 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
                 throw;
             }
 
-            var url = $"/uploads/{tenantId}/{agendamentoId}/{nome}";
+            var url = $"/uploads/{tenantId}/{subpasta}/{nome}";
             return new FotoSalvaResult(url, totalGravado);
         }
 

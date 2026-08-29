@@ -11,6 +11,7 @@ import { AnuncioVitrine, Tenant } from '../../../core/models/tenant.model';
 import { ResumoAvaliacoes } from '../../../core/models/avaliacao.model';
 import { Servico } from '../../../core/models/servico.model';
 import { TenantNaoEncontradoComponent } from '../tenant-nao-encontrado.component';
+import { urlUpload } from '../../../core/utils/url.util';
 
 type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
 
@@ -28,9 +29,9 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
       <app-tenant-nao-encontrado *ngSwitchCase="'naoEncontrado'"></app-tenant-nao-encontrado>
 
       <ng-container *ngSwitchCase="'ok'">
-        <header class="hero" [style.background-image]="'url(' + (tenant()?.personalizacao?.bannerUrl || '') + ')'">
+        <header class="hero" [style.background-image]="bannerStyle()">
           <div class="hero-overlay">
-            <img *ngIf="tenant()?.personalizacao?.logoUrl as logo" [src]="logo" alt="logo" class="logo" />
+            <img *ngIf="logoUrl()" [src]="logoUrl()" alt="logo" class="logo" />
             <h1>{{ tenant()?.nome }}</h1>
             <p *ngIf="tenant()?.descricao as desc">{{ desc }}</p>
             <div class="cta">
@@ -188,6 +189,13 @@ export class HomeComponent implements OnInit {
   slug = '';
   tenant = signal<Tenant | null>(null);
   estado = signal<EstadoCarga>('carregando');
+
+  // Uploads são servidos pela API — URL relativa precisa virar absoluta.
+  logoUrl(): string { return urlUpload(this.tenant()?.personalizacao?.logoUrl); }
+  bannerStyle(): string {
+    const url = urlUpload(this.tenant()?.personalizacao?.bannerUrl);
+    return url ? `url('${url}')` : 'none';
+  }
   resumo = signal<ResumoAvaliacoes | null>(null);
   servicos = signal<Servico[]>([]);
   anuncios = signal<AnuncioVitrine[]>([]);

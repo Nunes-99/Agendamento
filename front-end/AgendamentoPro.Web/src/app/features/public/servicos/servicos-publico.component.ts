@@ -8,6 +8,7 @@ import { Servico } from '../../../core/models/servico.model';
 import { Tenant } from '../../../core/models/tenant.model';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { urlUpload } from '../../../core/utils/url.util';
 
 @Component({
   selector: 'app-servicos-publico',
@@ -20,7 +21,7 @@ import { ThemeService } from '../../../core/services/theme.service';
           <a [routerLink]="['/t', slug]" class="voltar" mat-icon-button>
             <mat-icon>arrow_back</mat-icon>
           </a>
-          <img *ngIf="tenant()?.personalizacao?.logoUrl as logo" [src]="logo" alt="logo" class="logo" />
+          <img *ngIf="logoUrl()" [src]="logoUrl()" alt="logo" class="logo" />
           <h1>{{ tenant()?.nome || 'Catálogo' }}</h1>
           <p class="subtitulo">Escolha um serviço para agendar</p>
 
@@ -110,9 +111,12 @@ export class ServicosPublicoComponent implements OnInit {
   tenant = signal<Tenant | null>(null);
 
   bannerStyle() {
-    const url = this.tenant()?.personalizacao?.bannerUrl;
+    // Uploads são servidos pela API — URL relativa precisa virar absoluta.
+    const url = urlUpload(this.tenant()?.personalizacao?.bannerUrl);
     return url ? `url('${url}')` : 'none';
   }
+
+  logoUrl(): string { return urlUpload(this.tenant()?.personalizacao?.logoUrl); }
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';

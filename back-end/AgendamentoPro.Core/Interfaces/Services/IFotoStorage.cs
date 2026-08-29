@@ -16,6 +16,13 @@ namespace AgendamentoPro.Core.Interfaces.Services
         Task<FotoSalvaResult> SalvarAsync(int tenantId, int agendamentoId,
             string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default);
 
+        /// <summary>
+        /// Salva uma imagem da vitrine do tenant (logo/banner/favicon) — fora do
+        /// escopo de agendamento, em {tenantId}/vitrine/{tipo}-{guid}.{ext}.
+        /// </summary>
+        Task<FotoSalvaResult> SalvarVitrineAsync(int tenantId, string tipo,
+            string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default);
+
         /// <summary>Remove o arquivo identificado pela URL retornada por SalvarAsync.</summary>
         Task RemoverAsync(string urlRelativa, CancellationToken ct = default);
 

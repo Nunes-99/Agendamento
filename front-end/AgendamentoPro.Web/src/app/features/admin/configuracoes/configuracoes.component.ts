@@ -17,6 +17,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { urlUpload } from '../../../core/utils/url.util';
 
 @Component({
   selector: 'app-configuracoes',
@@ -51,9 +52,24 @@ import { MatSelectModule } from '@angular/material/select';
           </p>
 
           <h3 class="full secao">Identidade visual</h3>
-          <mat-form-field appearance="outline" class="full"><mat-label>Logo URL</mat-label><input matInput [(ngModel)]="t.personalizacao.logoUrl" /></mat-form-field>
-          <mat-form-field appearance="outline" class="full"><mat-label>Banner URL (imagem de capa)</mat-label><input matInput [(ngModel)]="t.personalizacao.bannerUrl" /></mat-form-field>
-          <mat-form-field appearance="outline" class="full"><mat-label>Favicon URL</mat-label><input matInput [(ngModel)]="t.personalizacao.faviconUrl" /></mat-form-field>
+
+          <div class="img-linha full" *ngFor="let campo of camposImagem">
+            <div class="img-preview" [class.banner]="campo.tipo === 'banner'">
+              <img *ngIf="previewImagem(t, campo.tipo) as url; else semImg" [src]="url" [alt]="campo.rotulo" />
+              <ng-template #semImg><mat-icon>image</mat-icon></ng-template>
+            </div>
+            <mat-form-field appearance="outline" class="img-url">
+              <mat-label>{{ campo.rotulo }} (URL)</mat-label>
+              <input matInput [ngModel]="valorImagem(t, campo.tipo)"
+                (ngModelChange)="definirImagem(t, campo.tipo, $event)" placeholder="https://... ou envie um arquivo" />
+            </mat-form-field>
+            <button mat-stroked-button (click)="inputArquivo.click()" [disabled]="enviandoImagem() === campo.tipo">
+              <mat-icon>upload</mat-icon>
+              {{ enviandoImagem() === campo.tipo ? 'Enviando...' : 'Enviar imagem' }}
+            </button>
+            <input #inputArquivo type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden
+              (change)="enviarImagem(campo.tipo, $event)" />
+          </div>
           <mat-form-field appearance="outline"><mat-label>Cor primária</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corPrimaria" /><mat-hint>Botões e preços</mat-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Cor secundária</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corSecundaria" /><mat-hint>Fundo do banner sem imagem</mat-hint></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Cor acento</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corAcento" /><mat-hint>Promoções em destaque</mat-hint></mat-form-field>
@@ -152,6 +168,17 @@ import { MatSelectModule } from '@angular/material/select';
     .anuncio-campos { flex: 1; display: flex; flex-direction: column; }
     .anuncio-acoes { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.5rem; }
     .anuncio-botoes { display: flex; gap: 0.75rem; }
+    .img-linha { display: flex; gap: 0.75rem; align-items: center; }
+    .img-linha .img-url { flex: 1; }
+    .img-preview {
+      width: 3.5rem; height: 3.5rem; flex-shrink: 0; border-radius: 0.5rem;
+      border: 1px solid var(--cor-borda); background: var(--cor-fundo);
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .img-preview.banner { width: 6rem; }
+    .img-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .img-preview mat-icon { color: var(--cor-texto-suave); }
+    @media (max-width: 36rem) { .img-linha { flex-wrap: wrap; } }
     @media (max-width: 36rem) { .anuncio { flex-direction: column; } .anuncio-acoes { flex-direction: row; align-items: center; } }
     .toggle-linha { display: flex; flex-direction: column; gap: 0.5rem; }
     code { background: var(--cor-borda); padding: 0.1rem 0.3rem; border-radius: 0.2rem; font-size: 0.85rem; }
@@ -184,6 +211,59 @@ export class ConfiguracoesComponent implements OnInit {
       error: () => { /* sem anúncios ainda */ }
     });
     this.push.carregarVapidKey().catch(() => {});
+  }
+
+  tiposImagem = ['logo', 'banner', 'favicon'] as const;
+  camposImagem = [
+    { tipo: 'logo' as const, rotulo: 'Logo' },
+    { tipo: 'banner' as const, rotulo: 'Banner (imagem de capa)' },
+    { tipo: 'favicon' as const, rotulo: 'Favicon' }
+  ];
+  enviandoImagem = signal<'logo' | 'banner' | 'favicon' | null>(null);
+
+  previewImagem(t: Tenant, tipo: 'logo' | 'banner' | 'favicon'): string {
+    return urlUpload(this.valorImagem(t, tipo));
+  }
+
+  valorImagem(t: Tenant, tipo: 'logo' | 'banner' | 'favicon'): string | undefined {
+    return tipo === 'logo' ? t.personalizacao.logoUrl
+      : tipo === 'banner' ? t.personalizacao.bannerUrl
+      : t.personalizacao.faviconUrl;
+  }
+
+  definirImagem(t: Tenant, tipo: 'logo' | 'banner' | 'favicon', url: string) {
+    if (tipo === 'logo') t.personalizacao.logoUrl = url;
+    else if (tipo === 'banner') t.personalizacao.bannerUrl = url;
+    else t.personalizacao.faviconUrl = url;
+  }
+
+  enviarImagem(tipo: 'logo' | 'banner' | 'favicon', evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    const arquivo = input.files?.[0];
+    input.value = ''; // permite reenviar o mesmo arquivo depois
+    if (!arquivo) return;
+    if (arquivo.size > 10 * 1024 * 1024) {
+      this.snack.open('Imagem grande demais (máximo 10 MB).', 'OK', { duration: 4000 });
+      return;
+    }
+    this.enviandoImagem.set(tipo);
+    this.api.uploadImagemVitrine(tipo, arquivo).subscribe({
+      next: r => {
+        // O backend já persistiu na personalização — aqui só refletimos na tela.
+        const t = this.tenant();
+        if (t) {
+          this.definirImagem(t, tipo, r.url);
+          this.theme.aplicarPersonalizacao(t.personalizacao);
+        }
+        this.enviandoImagem.set(null);
+        this.snack.open('Imagem publicada na sua página!', 'OK', { duration: 3000 });
+      },
+      error: e => {
+        this.enviandoImagem.set(null);
+        this.snack.open(e.error?.message || 'Falha ao enviar a imagem.', 'OK',
+          { duration: 5000, panelClass: 'snack-erro' });
+      }
+    });
   }
 
   adicionarAnuncio() {

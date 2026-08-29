@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Personalizacao } from '../models/tenant.model';
+import { urlUpload } from '../utils/url.util';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -49,7 +50,7 @@ export class ThemeService {
     if (p.faviconUrl) {
       const link: HTMLLinkElement = document.querySelector("link[rel*='icon']") || document.createElement('link');
       link.rel = 'icon';
-      link.href = p.faviconUrl;
+      link.href = urlUpload(p.faviconUrl); // upload relativo é servido pela API
       document.head.appendChild(link);
     }
   }

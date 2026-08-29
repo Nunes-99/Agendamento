@@ -71,11 +71,27 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
             }
         }
 
-        public async Task<FotoSalvaResult> SalvarAsync(int tenantId, int agendamentoId,
+        public Task<FotoSalvaResult> SalvarAsync(int tenantId, int agendamentoId,
             string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default)
         {
             if (tenantId <= 0 || agendamentoId <= 0)
                 throw new ArgumentException("Tenant e Agendamento são obrigatórios.");
+            return SalvarComKeyAsync($"{tenantId}/{agendamentoId}", prefixoNome: null,
+                nomeOriginal, contentType, conteudo, ct);
+        }
+
+        public Task<FotoSalvaResult> SalvarVitrineAsync(int tenantId, string tipo,
+            string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct = default)
+        {
+            if (tenantId <= 0) throw new ArgumentException("Tenant é obrigatório.");
+            if (string.IsNullOrWhiteSpace(tipo)) throw new ArgumentException("Tipo é obrigatório.");
+            return SalvarComKeyAsync($"{tenantId}/vitrine", prefixoNome: tipo,
+                nomeOriginal, contentType, conteudo, ct);
+        }
+
+        private async Task<FotoSalvaResult> SalvarComKeyAsync(string keyPrefixo, string prefixoNome,
+            string nomeOriginal, string contentType, Stream conteudo, CancellationToken ct)
+        {
             if (!ContentTypesPermitidos.Contains(contentType ?? string.Empty))
                 throw new InvalidOperationException($"Content-type '{contentType}' não permitido.");
 
@@ -97,8 +113,10 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
             }
             ms.Position = 0;
 
-            var nome = $"{Guid.NewGuid():N}{ext}";
-            var key = $"{tenantId}/{agendamentoId}/{nome}";
+            var nome = string.IsNullOrEmpty(prefixoNome)
+                ? $"{Guid.NewGuid():N}{ext}"
+                : $"{prefixoNome}-{Guid.NewGuid():N}{ext}";
+            var key = $"{keyPrefixo}/{nome}";
 
             await _s3.PutObjectAsync(new PutObjectRequest
             {

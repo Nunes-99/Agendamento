@@ -7,7 +7,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../../core/services/api.service';
 import { FotoAgendamento, TipoFoto, TipoFotoLabel } from '../../../core/models/foto.model';
-import { environment } from '../../../../environments/environment';
+import { urlUpload } from '../../../core/utils/url.util';
 
 @Component({
   selector: 'app-fotos-agendamento',
@@ -112,10 +112,9 @@ export class FotosAgendamentoComponent implements OnInit {
     });
   }
 
+  // A regex antiga só removia "/api" — com apiUrl terminando em "/api/v1" a URL
+  // saía errada (…/api/v1/uploads/…). O util compartilhado cobre os dois formatos.
   urlAbsoluta(url: string): string {
-    if (url.startsWith('http')) return url;
-    // environment.apiUrl é tipo http://localhost:5050/api -> precisamos da raiz
-    const raiz = environment.apiUrl.replace(/\/api\/?$/, '');
-    return raiz + url;
+    return urlUpload(url);
   }
 }

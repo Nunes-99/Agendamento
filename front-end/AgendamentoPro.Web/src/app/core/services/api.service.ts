@@ -115,6 +115,12 @@ export class ApiService {
   anunciosPublicos(slug: string): Observable<AnuncioVitrine[]> {
     return this.http.get<AnuncioVitrine[]>(`${this.base}/t/${slug}/anuncios`);
   }
+  /** Upload de logo/banner/favicon — o backend já aplica na personalização. */
+  uploadImagemVitrine(tipo: 'logo' | 'banner' | 'favicon', arquivo: File): Observable<{ url: string }> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return this.http.post<{ url: string }>(`${this.base}/admin/vitrine/imagem?tipo=${tipo}`, form);
+  }
 
   // ----- Avaliações -----
   buscarAvaliacaoPorToken(token: string): Observable<Avaliacao> {

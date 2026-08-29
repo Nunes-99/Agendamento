@@ -85,6 +85,71 @@ namespace AgendamentoPro.API.Controllers
             return Ok(anuncios);
         }
 
+        /// <summary>
+        /// Upload de imagem da vitrine (logo, banner ou favicon). Salva no storage de
+        /// fotos e JÁ APLICA na personalização do tenant — upload = publicado, sem
+        /// depender de um "salvar" separado. A imagem anterior, se era um upload da
+        /// vitrine, é removida (best-effort).
+        /// </summary>
+        [HttpPost("api/v1/admin/vitrine/imagem")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> UploadImagem(
+            [FromServices] Core.Interfaces.Services.IFotoStorage storage,
+            [FromServices] ITenantRepository tenants,
+            [FromServices] IUnitOfWork uow,
+            [FromServices] ITenantContext ctx,
+            [FromQuery] string tipo,
+            IFormFile arquivo)
+        {
+            var tid = RequireTenantId(ctx);
+
+            tipo = (tipo ?? string.Empty).Trim().ToLowerInvariant();
+            if (tipo is not ("logo" or "banner" or "favicon"))
+                return BadRequest(new { message = "Tipo deve ser logo, banner ou favicon." });
+            if (arquivo == null || arquivo.Length == 0)
+                return BadRequest(new { message = "Envie um arquivo de imagem (jpg, png, webp ou gif)." });
+
+            var tenant = await tenants.GetByIdAsync(tid);
+            if (tenant == null) return NotFound();
+
+            string urlAntiga = tipo switch
+            {
+                "logo" => tenant.TenLogoUrl,
+                "banner" => tenant.TenBannerUrl,
+                _ => tenant.TenFaviconUrl
+            };
+
+            Core.Interfaces.Services.FotoSalvaResult salvo;
+            try
+            {
+                await using var stream = arquivo.OpenReadStream();
+                salvo = await storage.SalvarVitrineAsync(tid, tipo, arquivo.FileName, arquivo.ContentType, stream);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Tipo/extensão não permitidos ou arquivo grande demais — culpa do input.
+                return BadRequest(new { message = ex.Message });
+            }
+
+            tenant.AtualizarPersonalizacao(
+                tipo == "logo" ? salvo.Url : tenant.TenLogoUrl,
+                tipo == "banner" ? salvo.Url : tenant.TenBannerUrl,
+                tipo == "favicon" ? salvo.Url : tenant.TenFaviconUrl,
+                tenant.TenCorPrimaria, tenant.TenCorSecundaria, tenant.TenCorAcento, tenant.TenFonte);
+            await tenants.UpdateAsync(tenant);
+            await uow.SaveChangesAsync();
+
+            // Só apaga a antiga depois do novo estado persistido, e só se ela era um
+            // upload da vitrine DESTE tenant (URL externa do lojista fica intocada).
+            if (!string.IsNullOrWhiteSpace(urlAntiga)
+                && urlAntiga.Contains($"/{tid}/vitrine/", StringComparison.OrdinalIgnoreCase))
+            {
+                await storage.RemoverAsync(urlAntiga);
+            }
+
+            return Ok(new { url = salvo.Url });
+        }
+
         /// <summary>Área pública: só os anúncios ativos, na ordem em que o lojista os deixou.</summary>
         [HttpGet("api/v1/t/{slug}/anuncios")]
         [AllowAnonymous]
