@@ -8,7 +8,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
 import { Tenant } from '../../../core/models/tenant.model';
@@ -72,11 +72,11 @@ interface CriarEmpresaInput {
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>E-mail do admin</mat-label>
-          <input matInput type="email" [(ngModel)]="form.adminEmail" required />
+          <input matInput type="email" [(ngModel)]="form.adminEmail" required autocomplete="off" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Senha do admin</mat-label>
-          <input matInput type="password" [(ngModel)]="form.adminSenha" required minlength="6" />
+          <input matInput type="password" [(ngModel)]="form.adminSenha" required minlength="8" autocomplete="new-password" />
         </mat-form-field>
       </div>
 
@@ -100,7 +100,7 @@ interface CriarEmpresaInput {
 
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" [mat-dialog-close]="form" [disabled]="!valido()">
+      <button mat-flat-button color="primary" (click)="criar()" [disabled]="!valido()">
         <mat-icon>check</mat-icon> Criar empresa
       </button>
     </mat-dialog-actions>
@@ -126,6 +126,8 @@ interface CriarEmpresaInput {
   `]
 })
 export class CriarEmpresaDialogComponent {
+  private ref = inject(MatDialogRef<CriarEmpresaDialogComponent>);
+
   form: CriarEmpresaInput = {
     nome: '', slug: '', segmento: '',
     email: '', telefone: '',
@@ -142,13 +144,17 @@ export class CriarEmpresaDialogComponent {
     if (!this.form.adminNome) p.push('Nome do admin');
     if (!this.form.adminEmail) p.push('E-mail do admin');
     if (!this.form.adminSenha) p.push('Senha do admin');
-    else if (this.form.adminSenha.length < 6) p.push('Senha do admin (mín. 6 caracteres)');
+    else if (this.form.adminSenha.length < 8) p.push('Senha do admin (mín. 8 caracteres)'); // backend exige 8
     return p;
   }
 
   valido(): boolean {
     return this.problemas().length === 0;
   }
+
+  // [mat-dialog-close]="form" não entregava o resultado ao afterClosed neste
+  // build (o botão fechava como cancelar) — fechamos explicitamente via ref.
+  criar() { this.ref.close(this.form); }
 }
 
 @Component({
@@ -256,8 +262,13 @@ export class EmpresasComponent implements OnInit {
           this.carregar();
         },
         error: err => {
-          this.snack.open(err.error?.message || 'Falha ao criar empresa.', 'OK',
-            { duration: 5000, panelClass: 'snack-erro' });
+          // ProblemDetails de validação vem como { errors: { Campo: [msgs] } } — sem
+          // mostrar isso o operador não sabe o que corrigir.
+          const detalhes = err.error?.errors
+            ? Object.values(err.error.errors as Record<string, string[]>).flat().join(' ')
+            : null;
+          this.snack.open(detalhes || err.error?.message || err.error?.detail || 'Falha ao criar empresa.', 'OK',
+            { duration: 8000, panelClass: 'snack-erro' });
         }
       });
     });

@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -63,7 +63,7 @@ import { Servico } from '../../../core/models/servico.model';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button color="primary" [mat-dialog-close]="servico"
+      <button mat-flat-button color="primary" (click)="salvar()"
         [disabled]="!servico.nome || !servico.preco || !servico.duracaoMinutos">
         <mat-icon>check</mat-icon> Salvar
       </button>
@@ -78,9 +78,14 @@ import { Servico } from '../../../core/models/servico.model';
 })
 export class ServicoFormComponent {
   private data = inject<{ servico?: Servico } | null>(MAT_DIALOG_DATA, { optional: true });
+  private ref = inject(MatDialogRef<ServicoFormComponent>);
   servico: Partial<Servico> = this.data?.servico
     ? { ...this.data.servico }
     : { ativo: true, ordem: 0, duracaoMinutos: 30, preco: 0 };
+
+  // [mat-dialog-close]="obj" não entregava o resultado ao afterClosed neste
+  // build (o botão fechava como cancelar) — fechamos explicitamente via ref.
+  salvar() { this.ref.close(this.servico); }
 }
 
 @Component({
