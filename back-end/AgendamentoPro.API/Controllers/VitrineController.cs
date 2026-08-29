@@ -95,6 +95,7 @@ namespace AgendamentoPro.API.Controllers
         [Authorize(Policy = "AdminTenant")]
         public async Task<IActionResult> UploadImagem(
             [FromServices] Core.Interfaces.Services.IFotoStorage storage,
+            [FromServices] Core.Interfaces.Services.IVitrineImagemProcessor processador,
             [FromServices] ITenantRepository tenants,
             [FromServices] IUnitOfWork uow,
             [FromServices] ITenantContext ctx,
@@ -122,12 +123,22 @@ namespace AgendamentoPro.API.Controllers
             Core.Interfaces.Services.FotoSalvaResult salvo;
             try
             {
+                // Crop/resize por tipo ANTES do storage: logo cabe em 512², banner é
+                // cortado para capa 3:1 e favicon vira PNG 128². Também valida que o
+                // conteúdo decodifica como imagem — extensão certa com bytes errados
+                // não passa. O formato/extensão finais vêm do processador (favicon
+                // sempre sai .png, independente do que o lojista mandou).
                 await using var stream = arquivo.OpenReadStream();
-                salvo = await storage.SalvarVitrineAsync(tid, tipo, arquivo.FileName, arquivo.ContentType, stream);
+                var processada = await processador.ProcessarAsync(tipo, stream);
+                await using var conteudo = processada.Conteudo;
+                var nomeFinal = Path.ChangeExtension(
+                    string.IsNullOrWhiteSpace(arquivo.FileName) ? tipo : arquivo.FileName,
+                    processada.Extensao);
+                salvo = await storage.SalvarVitrineAsync(tid, tipo, nomeFinal, processada.ContentType, conteudo);
             }
             catch (InvalidOperationException ex)
             {
-                // Tipo/extensão não permitidos ou arquivo grande demais — culpa do input.
+                // Imagem inválida/corrompida, tipo não permitido ou arquivo grande demais.
                 return BadRequest(new { message = ex.Message });
             }
 

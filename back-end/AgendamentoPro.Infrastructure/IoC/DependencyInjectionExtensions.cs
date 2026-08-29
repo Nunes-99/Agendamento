@@ -198,6 +198,8 @@ namespace AgendamentoPro.Infrastructure.IoC
             }
             services.AddScoped<IFotoResizeEnqueuer, HangfireFotoResizeEnqueuer>();
             services.AddScoped<FotoResizeJob>();
+            // Crop/resize síncrono das imagens da vitrine (logo/banner/favicon)
+            services.AddSingleton<IVitrineImagemProcessor, VitrineImagemProcessor>();
 
             // Web Push (VAPID): se VAPID_PUBLIC_KEY/PRIVATE_KEY estão setados, sender ativa.
             services.AddSingleton<IWebPushSender, AgendamentoPro.Infrastructure.Services.WebPush.WebPushSender>();
