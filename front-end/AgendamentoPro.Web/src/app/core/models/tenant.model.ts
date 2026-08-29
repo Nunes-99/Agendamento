@@ -8,6 +8,15 @@ export interface Personalizacao {
   fonte: string;
 }
 
+/** Anúncio/promoção que o lojista publica na vitrine (home pública). */
+export interface AnuncioVitrine {
+  titulo: string;
+  texto?: string;
+  /** Destaque usa a cor de acento do tenant. */
+  destaque: boolean;
+  ativo: boolean;
+}
+
 export interface RegrasNegocio {
   percentualEntrada: number;
   bufferMinutos: number;

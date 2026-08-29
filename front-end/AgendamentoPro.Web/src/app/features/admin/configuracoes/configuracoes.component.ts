@@ -11,15 +11,18 @@ import { AuthService } from '../../../core/services/auth.service';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { WebPushService } from '../../../core/services/web-push.service';
-import { Tenant } from '../../../core/models/tenant.model';
+import { AnuncioVitrine, Tenant } from '../../../core/models/tenant.model';
 import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 
 @Component({
   selector: 'app-configuracoes',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatTabsModule, MatSlideToggleModule],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule,
+    MatTabsModule, MatSlideToggleModule, MatIconModule, MatSelectModule],
   template: `
     <h1>Configurações</h1>
     <mat-tab-group>
@@ -40,16 +43,62 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
         </div>
       </mat-tab>
 
-      <mat-tab label="Personalização">
+      <mat-tab label="Minha página">
         <div class="form" *ngIf="tenant() as t">
+          <p class="hint full">
+            É assim que sua loja aparece para o cliente.
+            <a [href]="'/t/' + t.slug" target="_blank">Ver minha página <mat-icon class="inline-icon">open_in_new</mat-icon></a>
+          </p>
+
+          <h3 class="full secao">Identidade visual</h3>
           <mat-form-field appearance="outline" class="full"><mat-label>Logo URL</mat-label><input matInput [(ngModel)]="t.personalizacao.logoUrl" /></mat-form-field>
-          <mat-form-field appearance="outline" class="full"><mat-label>Banner URL</mat-label><input matInput [(ngModel)]="t.personalizacao.bannerUrl" /></mat-form-field>
+          <mat-form-field appearance="outline" class="full"><mat-label>Banner URL (imagem de capa)</mat-label><input matInput [(ngModel)]="t.personalizacao.bannerUrl" /></mat-form-field>
           <mat-form-field appearance="outline" class="full"><mat-label>Favicon URL</mat-label><input matInput [(ngModel)]="t.personalizacao.faviconUrl" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Cor primária</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corPrimaria" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Cor secundária</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corSecundaria" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Cor acento</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corAcento" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Fonte</mat-label><input matInput [(ngModel)]="t.personalizacao.fonte" /></mat-form-field>
-          <button mat-flat-button color="primary" (click)="salvarPersonalizacao()">Salvar e aplicar</button>
+          <mat-form-field appearance="outline"><mat-label>Cor primária</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corPrimaria" /><mat-hint>Botões e preços</mat-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Cor secundária</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corSecundaria" /><mat-hint>Fundo do banner sem imagem</mat-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Cor acento</mat-label><input matInput type="color" [(ngModel)]="t.personalizacao.corAcento" /><mat-hint>Promoções em destaque</mat-hint></mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Fonte</mat-label>
+            <mat-select [(ngModel)]="t.personalizacao.fonte">
+              <mat-option *ngFor="let f of fontes" [value]="f" [style.font-family]="f">{{ f }}</mat-option>
+            </mat-select>
+            <mat-hint>Carregada do Google Fonts</mat-hint>
+          </mat-form-field>
+          <button mat-flat-button color="primary" class="full btn-salvar" (click)="salvarPersonalizacao()">Salvar e aplicar</button>
+
+          <h3 class="full secao">Anúncios e promoções</h3>
+          <p class="hint full">Aparecem no topo da sua página pública. Use para promoções da semana, avisos de horário, novidades.</p>
+
+          <div class="anuncio full" *ngFor="let a of anuncios(); let i = index" [class.inativo]="!a.ativo">
+            <div class="anuncio-campos">
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>Título</mat-label>
+                <input matInput [(ngModel)]="a.titulo" maxlength="60" placeholder="Ex: Semana do brilho — 20% off" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full">
+                <mat-label>Texto (opcional)</mat-label>
+                <input matInput [(ngModel)]="a.texto" maxlength="200" placeholder="Ex: Lavagem completa por R$ 56 até sexta." />
+              </mat-form-field>
+            </div>
+            <div class="anuncio-acoes">
+              <mat-slide-toggle [(ngModel)]="a.ativo">Visível</mat-slide-toggle>
+              <mat-slide-toggle [(ngModel)]="a.destaque">Destaque</mat-slide-toggle>
+              <button mat-icon-button color="warn" (click)="removerAnuncio(i)" aria-label="Remover anúncio">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <p class="hint full" *ngIf="!anuncios().length">Nenhum anúncio ainda — crie o primeiro.</p>
+
+          <div class="full anuncio-botoes">
+            <button mat-stroked-button (click)="adicionarAnuncio()" [disabled]="anuncios().length >= 8">
+              <mat-icon>add</mat-icon> Novo anúncio
+            </button>
+            <button mat-flat-button color="primary" (click)="salvarAnuncios()" [disabled]="salvandoAnuncios()">
+              <mat-icon>campaign</mat-icon> Publicar anúncios
+            </button>
+          </div>
         </div>
       </mat-tab>
 
@@ -91,6 +140,19 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
     .form .full { grid-column: 1 / -1; }
     .form-coluna { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; max-width: 40rem; }
     .hint { color: var(--cor-texto-secundario); font-size: 0.875rem; }
+    .secao { margin: 1rem 0 0; color: var(--cor-primaria); font-size: 1rem; }
+    .inline-icon { font-size: 0.9rem; width: 0.9rem; height: 0.9rem; vertical-align: middle; }
+    .btn-salvar { justify-self: start; }
+    .anuncio {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      border: 1px solid var(--cor-borda); border-radius: 0.5rem; padding: 0.75rem;
+      background: var(--cor-fundo-card);
+    }
+    .anuncio.inativo { opacity: 0.55; }
+    .anuncio-campos { flex: 1; display: flex; flex-direction: column; }
+    .anuncio-acoes { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.5rem; }
+    .anuncio-botoes { display: flex; gap: 0.75rem; }
+    @media (max-width: 36rem) { .anuncio { flex-direction: column; } .anuncio-acoes { flex-direction: row; align-items: center; } }
     .toggle-linha { display: flex; flex-direction: column; gap: 0.5rem; }
     code { background: var(--cor-borda); padding: 0.1rem 0.3rem; border-radius: 0.2rem; font-size: 0.85rem; }
     @media (max-width: 36rem) { .form { grid-template-columns: 1fr; } }
@@ -106,12 +168,52 @@ export class ConfiguracoesComponent implements OnInit {
   push = inject(WebPushService);
 
   tenant = signal<Tenant | null>(null);
+  anuncios = signal<AnuncioVitrine[]>([]);
+  salvandoAnuncios = signal(false);
+
+  // Fontes populares do Google Fonts — o ThemeService baixa a escolhida.
+  fontes = ['Roboto', 'Inter', 'Poppins', 'Montserrat', 'Lato', 'Open Sans',
+    'Nunito', 'Raleway', 'Playfair Display', 'Merriweather', 'Bebas Neue', 'Pacifico'];
 
   ngOnInit() {
     const tid = this.auth.user()?.tenantId;
     if (!tid) return;
     this.http.get<Tenant>(`${environment.apiUrl}/tenants/${tid}`).subscribe(t => this.tenant.set(t));
+    this.api.anunciosAdmin().subscribe({
+      next: lista => this.anuncios.set(lista || []),
+      error: () => { /* sem anúncios ainda */ }
+    });
     this.push.carregarVapidKey().catch(() => {});
+  }
+
+  adicionarAnuncio() {
+    if (this.anuncios().length >= 8) return;
+    this.anuncios.update(l => [...l, { titulo: '', texto: '', destaque: false, ativo: true }]);
+  }
+
+  removerAnuncio(i: number) {
+    this.anuncios.update(l => l.filter((_, idx) => idx !== i));
+  }
+
+  salvarAnuncios() {
+    const invalido = this.anuncios().find(a => !a.titulo?.trim());
+    if (invalido) {
+      this.snack.open('Todo anúncio precisa de um título.', 'OK', { duration: 3000 });
+      return;
+    }
+    this.salvandoAnuncios.set(true);
+    this.api.salvarAnuncios(this.anuncios()).subscribe({
+      next: lista => {
+        this.anuncios.set(lista || []);
+        this.salvandoAnuncios.set(false);
+        this.snack.open('Anúncios publicados na sua página!', 'OK', { duration: 3000 });
+      },
+      error: e => {
+        this.salvandoAnuncios.set(false);
+        this.snack.open(e.error?.message || 'Falha ao publicar anúncios.', 'OK',
+          { duration: 5000, panelClass: 'snack-erro' });
+      }
+    });
   }
 
   async alternarPush(ativar: boolean) {

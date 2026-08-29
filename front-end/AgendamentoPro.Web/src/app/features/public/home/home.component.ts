@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { ApiService } from '../../../core/services/api.service';
-import { Tenant } from '../../../core/models/tenant.model';
+import { AnuncioVitrine, Tenant } from '../../../core/models/tenant.model';
 import { ResumoAvaliacoes } from '../../../core/models/avaliacao.model';
 import { Servico } from '../../../core/models/servico.model';
 import { TenantNaoEncontradoComponent } from '../tenant-nao-encontrado.component';
@@ -45,6 +45,16 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
             </div>
           </div>
         </header>
+
+        <section class="anuncios-vitrine" *ngIf="anuncios().length">
+          <article class="anuncio-card" *ngFor="let a of anuncios()" [class.destaque]="a.destaque">
+            <mat-icon>{{ a.destaque ? 'local_fire_department' : 'campaign' }}</mat-icon>
+            <div>
+              <strong>{{ a.titulo }}</strong>
+              <p *ngIf="a.texto">{{ a.texto }}</p>
+            </div>
+          </article>
+        </section>
 
         <section class="info">
           <div class="card" *ngIf="tenant()?.endereco">
@@ -125,6 +135,20 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
   styles: [`
     .cta { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
     .cta .entrar { background: rgba(255,255,255,0.85); }
+    .anuncios-vitrine {
+      max-width: 60rem; margin: 0 auto; padding: 1.5rem 1rem 0;
+      display: grid; gap: 0.75rem;
+    }
+    .anuncio-card {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      background: var(--cor-fundo-card); border-left: 0.25rem solid var(--cor-primaria);
+      border-radius: 0.5rem; padding: 0.875rem 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .anuncio-card mat-icon { color: var(--cor-primaria); flex-shrink: 0; }
+    .anuncio-card strong { display: block; font-size: 1.05rem; }
+    .anuncio-card p { margin: 0.25rem 0 0; color: var(--cor-texto-suave); }
+    .anuncio-card.destaque { border-left-color: var(--cor-acento); }
+    .anuncio-card.destaque mat-icon { color: var(--cor-acento); }
     .servicos { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
     .servicos h2 { display: flex; align-items: center; gap: 0.5rem; }
     .grid-servicos { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
@@ -166,6 +190,7 @@ export class HomeComponent implements OnInit {
   estado = signal<EstadoCarga>('carregando');
   resumo = signal<ResumoAvaliacoes | null>(null);
   servicos = signal<Servico[]>([]);
+  anuncios = signal<AnuncioVitrine[]>([]);
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
@@ -188,6 +213,10 @@ export class HomeComponent implements OnInit {
         this.api.servicosPublicos(this.slug).subscribe({
           next: list => this.servicos.set(list || []),
           error: () => { /* sem serviços: a home fica só com hero + contato */ }
+        });
+        this.api.anunciosPublicos(this.slug).subscribe({
+          next: list => this.anuncios.set(list || []),
+          error: () => { /* sem anúncios: seção não aparece */ }
         });
       },
       error: () => this.estado.set('naoEncontrado')

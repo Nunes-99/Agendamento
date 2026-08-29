@@ -8,6 +8,7 @@ import { Avaliacao, ResumoAvaliacoes, ResponderAvaliacaoInput } from '../models/
 import { Combo, ComboInput } from '../models/combo.model';
 import { FotoAgendamento, TipoFoto } from '../models/foto.model';
 import { AlterarPlanoInput, Assinatura, CriarAssinaturaInput, Plano } from '../models/assinatura.model';
+import { AnuncioVitrine } from '../models/tenant.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -103,6 +104,17 @@ export class ApiService {
   atualizarTenant(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}`, input); }
   atualizarPersonalizacao(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}/personalizacao`, input); }
   atualizarRegras(id: number, input: any) { return this.http.put(`${this.base}/tenants/${id}/regras`, input); }
+
+  // ----- Vitrine (anúncios/promoções da página pública) -----
+  anunciosAdmin(): Observable<AnuncioVitrine[]> {
+    return this.http.get<AnuncioVitrine[]>(`${this.base}/admin/vitrine/anuncios`);
+  }
+  salvarAnuncios(anuncios: AnuncioVitrine[]): Observable<AnuncioVitrine[]> {
+    return this.http.put<AnuncioVitrine[]>(`${this.base}/admin/vitrine/anuncios`, anuncios);
+  }
+  anunciosPublicos(slug: string): Observable<AnuncioVitrine[]> {
+    return this.http.get<AnuncioVitrine[]>(`${this.base}/t/${slug}/anuncios`);
+  }
 
   // ----- Avaliações -----
   buscarAvaliacaoPorToken(token: string): Observable<Avaliacao> {
