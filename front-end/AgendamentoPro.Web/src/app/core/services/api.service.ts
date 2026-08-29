@@ -8,7 +8,7 @@ import { Avaliacao, ResumoAvaliacoes, ResponderAvaliacaoInput } from '../models/
 import { Combo, ComboInput } from '../models/combo.model';
 import { FotoAgendamento, TipoFoto } from '../models/foto.model';
 import { AlterarPlanoInput, Assinatura, CriarAssinaturaInput, Plano } from '../models/assinatura.model';
-import { AnuncioVitrine } from '../models/tenant.model';
+import { AnuncioVitrine, FotoGaleria } from '../models/tenant.model';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -120,6 +120,20 @@ export class ApiService {
     const form = new FormData();
     form.append('arquivo', arquivo);
     return this.http.post<{ url: string }>(`${this.base}/admin/vitrine/imagem?tipo=${tipo}`, form);
+  }
+  galeriaAdmin(): Observable<FotoGaleria[]> {
+    return this.http.get<FotoGaleria[]>(`${this.base}/admin/vitrine/galeria`);
+  }
+  adicionarFotoGaleria(arquivo: File): Observable<FotoGaleria[]> {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    return this.http.post<FotoGaleria[]>(`${this.base}/admin/vitrine/galeria`, form);
+  }
+  salvarGaleria(fotos: FotoGaleria[]): Observable<FotoGaleria[]> {
+    return this.http.put<FotoGaleria[]>(`${this.base}/admin/vitrine/galeria`, fotos);
+  }
+  galeriaPublica(slug: string): Observable<FotoGaleria[]> {
+    return this.http.get<FotoGaleria[]>(`${this.base}/t/${slug}/galeria`);
   }
 
   // ----- Avaliações -----

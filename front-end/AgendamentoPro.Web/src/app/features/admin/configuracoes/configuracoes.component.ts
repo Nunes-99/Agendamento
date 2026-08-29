@@ -11,7 +11,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { WebPushService } from '../../../core/services/web-push.service';
-import { AnuncioVitrine, Tenant } from '../../../core/models/tenant.model';
+import { AnuncioVitrine, FotoGaleria, Tenant } from '../../../core/models/tenant.model';
 import { environment } from '../../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -83,6 +83,35 @@ import { CropImagemDialogComponent, CropImagemData } from './crop-imagem-dialog.
             <mat-hint>Carregada do Google Fonts</mat-hint>
           </mat-form-field>
           <button mat-flat-button color="primary" class="full btn-salvar" (click)="salvarPersonalizacao()">Salvar e aplicar</button>
+
+          <h3 class="full secao">Galeria de fotos</h3>
+          <p class="hint full">Fotos do seu espaço na página pública — mostre a estrutura ao cliente. Até 12 fotos.</p>
+
+          <div class="galeria-admin full" *ngIf="galeria().length">
+            <div class="foto-adm" *ngFor="let f of galeria(); let i = index">
+              <img [src]="urlFoto(f.url)" [alt]="f.legenda || 'Foto ' + (i + 1)" loading="lazy" />
+              <mat-form-field appearance="outline" class="legenda">
+                <mat-label>Legenda (opcional)</mat-label>
+                <input matInput [(ngModel)]="f.legenda" maxlength="100" placeholder="Ex: Nossa recepção" />
+              </mat-form-field>
+              <button mat-icon-button color="warn" (click)="removerFoto(i)" aria-label="Remover foto">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="full anuncio-botoes">
+            <button mat-stroked-button (click)="inputGaleria.click()"
+              [disabled]="galeria().length >= 12 || enviandoFotoGaleria()">
+              <mat-icon>add_a_photo</mat-icon>
+              {{ enviandoFotoGaleria() ? 'Enviando...' : 'Adicionar foto' }}
+            </button>
+            <button mat-flat-button color="primary" (click)="salvarGaleria()" [disabled]="salvandoGaleria()">
+              <mat-icon>save</mat-icon> Salvar galeria
+            </button>
+            <input #inputGaleria type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden
+              (change)="adicionarFotoGaleria($event)" />
+          </div>
 
           <h3 class="full secao">Anúncios e promoções</h3>
           <p class="hint full">Aparecem no topo da sua página pública. Use para promoções da semana, avisos de horário, novidades.</p>
@@ -170,6 +199,17 @@ import { CropImagemDialogComponent, CropImagemData } from './crop-imagem-dialog.
     .anuncio-campos { flex: 1; display: flex; flex-direction: column; }
     .anuncio-acoes { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.5rem; }
     .anuncio-botoes { display: flex; gap: 0.75rem; }
+    .galeria-admin { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
+    .foto-adm {
+      display: flex; flex-direction: column; gap: 0.25rem; position: relative;
+      border: 1px solid var(--cor-borda); border-radius: 0.5rem; padding: 0.5rem;
+      background: var(--cor-fundo-card);
+    }
+    .foto-adm img { width: 100%; height: 8rem; object-fit: cover; border-radius: 0.375rem; }
+    .foto-adm .legenda { width: 100%; }
+    .foto-adm button { position: absolute; top: 0.75rem; right: 0.75rem;
+      background: rgba(0,0,0,0.45); border-radius: 50%; }
+    .foto-adm button mat-icon { color: #fff; }
     .img-linha { display: flex; gap: 0.75rem; align-items: center; }
     .img-linha .img-url { flex: 1; }
     .img-preview {
@@ -212,6 +252,10 @@ export class ConfiguracoesComponent implements OnInit {
     this.api.anunciosAdmin().subscribe({
       next: lista => this.anuncios.set(lista || []),
       error: () => { /* sem anúncios ainda */ }
+    });
+    this.api.galeriaAdmin().subscribe({
+      next: lista => this.galeria.set(lista || []),
+      error: () => { /* sem galeria ainda */ }
     });
     this.push.carregarVapidKey().catch(() => {});
   }
@@ -285,6 +329,74 @@ export class ConfiguracoesComponent implements OnInit {
       error: e => {
         this.enviandoImagem.set(null);
         this.snack.open(e.error?.message || 'Falha ao enviar a imagem.', 'OK',
+          { duration: 5000, panelClass: 'snack-erro' });
+      }
+    });
+  }
+
+  galeria = signal<FotoGaleria[]>([]);
+  enviandoFotoGaleria = signal(false);
+  salvandoGaleria = signal(false);
+
+  urlFoto(url: string): string { return urlUpload(url); }
+
+  adicionarFotoGaleria(evento: Event) {
+    const input = evento.target as HTMLInputElement;
+    const arquivo = input.files?.[0];
+    input.value = '';
+    if (!arquivo) return;
+    if (arquivo.size > 10 * 1024 * 1024) {
+      this.snack.open('Imagem grande demais (máximo 10 MB).', 'OK', { duration: 4000 });
+      return;
+    }
+
+    const enviar = (f: File) => {
+      this.enviandoFotoGaleria.set(true);
+      this.api.adicionarFotoGaleria(f).subscribe({
+        next: lista => {
+          // Preserva legendas editadas localmente e ainda não salvas.
+          const legendas = new Map(this.galeria().map(x => [x.url, x.legenda]));
+          this.galeria.set((lista || []).map(x => ({ ...x, legenda: legendas.get(x.url) ?? x.legenda })));
+          this.enviandoFotoGaleria.set(false);
+          this.snack.open('Foto adicionada à galeria!', 'OK', { duration: 3000 });
+        },
+        error: e => {
+          this.enviandoFotoGaleria.set(false);
+          this.snack.open(e.error?.message || 'Falha ao enviar a foto.', 'OK',
+            { duration: 5000, panelClass: 'snack-erro' });
+        }
+      });
+    };
+
+    if (arquivo.type === 'image/gif') { enviar(arquivo); return; }
+
+    const ref = this.dialog.open(CropImagemDialogComponent, {
+      width: '48rem',
+      maxWidth: '95vw',
+      data: { arquivo, tipo: 'galeria' } satisfies CropImagemData
+    });
+    ref.afterClosed().subscribe((cortado: Blob | null) => {
+      if (!cortado) return;
+      const ext = cortado.type === 'image/jpeg' ? '.jpg' : '.png';
+      enviar(new File([cortado], `galeria${ext}`, { type: cortado.type }));
+    });
+  }
+
+  removerFoto(i: number) {
+    this.galeria.update(l => l.filter((_, idx) => idx !== i));
+  }
+
+  salvarGaleria() {
+    this.salvandoGaleria.set(true);
+    this.api.salvarGaleria(this.galeria()).subscribe({
+      next: lista => {
+        this.galeria.set(lista || []);
+        this.salvandoGaleria.set(false);
+        this.snack.open('Galeria publicada na sua página!', 'OK', { duration: 3000 });
+      },
+      error: e => {
+        this.salvandoGaleria.set(false);
+        this.snack.open(e.error?.message || 'Falha ao salvar a galeria.', 'OK',
           { duration: 5000, panelClass: 'snack-erro' });
       }
     });

@@ -7,19 +7,50 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TenantService } from '../../../core/services/tenant.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { ApiService } from '../../../core/services/api.service';
-import { AnuncioVitrine, Tenant } from '../../../core/models/tenant.model';
+import { AnuncioVitrine, FotoGaleria, Tenant } from '../../../core/models/tenant.model';
 import { ResumoAvaliacoes } from '../../../core/models/avaliacao.model';
 import { Servico } from '../../../core/models/servico.model';
 import { TenantNaoEncontradoComponent } from '../tenant-nao-encontrado.component';
 import { urlUpload } from '../../../core/utils/url.util';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 
 type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
+
+/** Foto ampliada da galeria. Clique em qualquer lugar fecha. */
+@Component({
+  selector: 'app-lightbox-foto-dialog',
+  standalone: true,
+  imports: [CommonModule, MatIconModule, MatDialogModule],
+  template: `
+    <div class="caixa" (click)="fechar()">
+      <img [src]="url" [alt]="data.legenda || 'Foto do estabelecimento'" />
+      <p class="legenda" *ngIf="data.legenda">{{ data.legenda }}</p>
+      <button class="fechar" aria-label="Fechar foto"><mat-icon>close</mat-icon></button>
+    </div>
+  `,
+  styles: [`
+    .caixa { position: relative; cursor: zoom-out; text-align: center; }
+    img { max-width: 90vw; max-height: 80vh; border-radius: 0.5rem; display: block; }
+    .legenda { color: #fff; margin: 0.75rem 0 0; font-size: 1rem; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+    .fechar {
+      position: absolute; top: 0.5rem; right: 0.5rem; border: none; cursor: pointer;
+      background: rgba(0,0,0,0.5); color: #fff; border-radius: 50%;
+      width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center;
+    }
+  `]
+})
+export class LightboxFotoDialogComponent {
+  data = inject<FotoGaleria>(MAT_DIALOG_DATA);
+  private ref = inject(MatDialogRef<LightboxFotoDialogComponent>);
+  get url(): string { return urlUpload(this.data.url); }
+  fechar() { this.ref.close(); }
+}
 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule,
-    MatProgressSpinnerModule, TenantNaoEncontradoComponent],
+    MatProgressSpinnerModule, MatDialogModule, TenantNaoEncontradoComponent],
   template: `
     <ng-container [ngSwitch]="estado()">
       <div *ngSwitchCase="'carregando'" class="loading">
@@ -103,6 +134,17 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
           </a>
         </section>
 
+        <section class="galeria" *ngIf="galeria().length">
+          <h2><mat-icon>photo_library</mat-icon> Nosso espaço</h2>
+          <div class="grid-galeria">
+            <button class="foto" *ngFor="let f of galeria()" (click)="abrirFoto(f)"
+              [attr.aria-label]="'Ampliar foto' + (f.legenda ? ': ' + f.legenda : '')">
+              <img [src]="urlFoto(f.url)" [alt]="f.legenda || 'Foto do estabelecimento'" loading="lazy" />
+              <span class="legenda" *ngIf="f.legenda">{{ f.legenda }}</span>
+            </button>
+          </div>
+        </section>
+
         <section class="avaliacoes" *ngIf="resumo()?.total">
           <h2><mat-icon>star</mat-icon> O que dizem nossos clientes</h2>
           <div class="resumo">
@@ -165,6 +207,20 @@ type EstadoCarga = 'carregando' | 'ok' | 'naoEncontrado';
     .card-servico .meta mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
     .card-servico .meta strong { color: var(--cor-primaria); font-size: 1.125rem; }
     .ver-todos { margin-top: 1.5rem; }
+    .galeria { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
+    .galeria h2 { display: flex; align-items: center; gap: 0.5rem; }
+    .grid-galeria { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); }
+    .foto {
+      position: relative; padding: 0; border: none; cursor: pointer; overflow: hidden;
+      border-radius: 0.5rem; background: var(--cor-fundo-card); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      aspect-ratio: 4 / 3;
+    }
+    .foto img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s; }
+    .foto:hover img { transform: scale(1.04); }
+    .foto .legenda {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 0.375rem 0.5rem;
+      background: rgba(0,0,0,0.55); color: #fff; font-size: 0.8125rem; text-align: left;
+    }
     .avaliacoes { padding: 2rem 1rem; max-width: 60rem; margin: 0 auto; }
     .avaliacoes h2 { display: flex; align-items: center; gap: 0.5rem; }
     .resumo { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
@@ -185,6 +241,7 @@ export class HomeComponent implements OnInit {
   private tenantSvc = inject(TenantService);
   private theme = inject(ThemeService);
   private api = inject(ApiService);
+  private dialog = inject(MatDialog);
 
   slug = '';
   tenant = signal<Tenant | null>(null);
@@ -199,6 +256,21 @@ export class HomeComponent implements OnInit {
   resumo = signal<ResumoAvaliacoes | null>(null);
   servicos = signal<Servico[]>([]);
   anuncios = signal<AnuncioVitrine[]>([]);
+  galeria = signal<FotoGaleria[]>([]);
+
+  urlFoto(url: string): string { return urlUpload(url); }
+
+  // MatDialog em vez de overlay próprio: position:fixed dentro do outlet fica
+  // preso ao containing block de um ancestral com transform e não cobre a tela.
+  abrirFoto(f: FotoGaleria) {
+    this.dialog.open(LightboxFotoDialogComponent, {
+      data: f,
+      maxWidth: '95vw',
+      panelClass: 'lightbox-painel',
+      backdropClass: 'lightbox-fundo',
+      autoFocus: false
+    });
+  }
 
   ngOnInit() {
     this.slug = this.route.snapshot.paramMap.get('slug') || '';
@@ -225,6 +297,10 @@ export class HomeComponent implements OnInit {
         this.api.anunciosPublicos(this.slug).subscribe({
           next: list => this.anuncios.set(list || []),
           error: () => { /* sem anúncios: seção não aparece */ }
+        });
+        this.api.galeriaPublica(this.slug).subscribe({
+          next: list => this.galeria.set(list || []),
+          error: () => { /* sem galeria: seção não aparece */ }
         });
       },
       error: () => this.estado.set('naoEncontrado')

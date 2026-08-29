@@ -92,3 +92,11 @@ h2, h3 { font-weight: 600; }
 }
 
 ::ng-deep .mat-mdc-card { border-radius: var(--raio-grande) !important; box-shadow: var(--sombra-card) !important; }
+
+/* Lightbox da galeria pública: painel transparente sobre backdrop escuro */
+.lightbox-painel .mat-mdc-dialog-surface {
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+.lightbox-fundo { background: rgba(0, 0, 0, 0.85); }

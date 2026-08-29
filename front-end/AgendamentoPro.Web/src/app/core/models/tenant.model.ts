@@ -17,6 +17,12 @@ export interface AnuncioVitrine {
   ativo: boolean;
 }
 
+/** Foto da galeria do estabelecimento na página pública. */
+export interface FotoGaleria {
+  url: string;
+  legenda?: string | null;
+}
+
 export interface RegrasNegocio {
   percentualEntrada: number;
   bufferMinutos: number;

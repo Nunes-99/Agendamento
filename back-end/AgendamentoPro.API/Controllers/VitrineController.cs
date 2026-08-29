@@ -23,6 +23,10 @@ namespace AgendamentoPro.API.Controllers
         private const int MaxTitulo = 60;
         private const int MaxTexto = 200;
 
+        private const string ChaveGaleria = "vitrine.galeria";
+        private const int MaxFotosGaleria = 12;
+        private const int MaxLegenda = 100;
+
         private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
         public class AnuncioInput
@@ -32,6 +36,12 @@ namespace AgendamentoPro.API.Controllers
             /// <summary>Destaque usa a cor de acento do tenant na vitrine.</summary>
             public bool Destaque { get; set; }
             public bool Ativo { get; set; } = true;
+        }
+
+        public class FotoGaleriaInput
+        {
+            public string Url { get; set; }
+            public string Legenda { get; set; }
         }
 
         [HttpGet("api/v1/admin/vitrine/anuncios")]
@@ -172,6 +182,144 @@ namespace AgendamentoPro.API.Controllers
             var tid = RequireTenantId(ctx);
             var todos = await LerAnuncios(configs, tid);
             return Ok(todos.Where(a => a.Ativo));
+        }
+
+        // ===== Galeria de fotos do estabelecimento =====
+
+        [HttpGet("api/v1/admin/vitrine/galeria")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> ListarGaleriaAdmin(
+            [FromServices] IConfiguracaoTenantRepository configs,
+            [FromServices] ITenantContext ctx)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await LerGaleria(configs, tid));
+        }
+
+        /// <summary>Adiciona uma foto: processa (cabe em 1600², sem crop), salva e anexa à lista.</summary>
+        [HttpPost("api/v1/admin/vitrine/galeria")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> AdicionarFotoGaleria(
+            [FromServices] Core.Interfaces.Services.IFotoStorage storage,
+            [FromServices] Core.Interfaces.Services.IVitrineImagemProcessor processador,
+            [FromServices] IConfiguracaoTenantRepository configs,
+            [FromServices] IUnitOfWork uow,
+            [FromServices] ITenantContext ctx,
+            IFormFile arquivo)
+        {
+            var tid = RequireTenantId(ctx);
+            if (arquivo == null || arquivo.Length == 0)
+                return BadRequest(new { message = "Envie um arquivo de imagem (jpg, png, webp ou gif)." });
+
+            var fotos = await LerGaleria(configs, tid);
+            if (fotos.Count >= MaxFotosGaleria)
+                return BadRequest(new { message = $"A galeria comporta no máximo {MaxFotosGaleria} fotos." });
+
+            try
+            {
+                await using var stream = arquivo.OpenReadStream();
+                var processada = await processador.ProcessarAsync("galeria", stream);
+                await using var conteudo = processada.Conteudo;
+                var nomeFinal = Path.ChangeExtension(
+                    string.IsNullOrWhiteSpace(arquivo.FileName) ? "galeria" : arquivo.FileName,
+                    processada.Extensao);
+                var salvo = await storage.SalvarVitrineAsync(tid, "galeria", nomeFinal, processada.ContentType, conteudo);
+                fotos.Add(new FotoGaleriaInput { Url = salvo.Url, Legenda = null });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+
+            await GravarGaleria(configs, uow, tid, fotos);
+            return Ok(fotos);
+        }
+
+        /// <summary>
+        /// Atualiza a lista (ordem, legendas, remoções). Fotos removidas que eram
+        /// uploads da própria galeria são apagadas do storage após persistir.
+        /// </summary>
+        [HttpPut("api/v1/admin/vitrine/galeria")]
+        [Authorize(Policy = "AdminTenant")]
+        public async Task<IActionResult> SalvarGaleria(
+            [FromServices] Core.Interfaces.Services.IFotoStorage storage,
+            [FromServices] IConfiguracaoTenantRepository configs,
+            [FromServices] IUnitOfWork uow,
+            [FromServices] ITenantContext ctx,
+            [FromBody] List<FotoGaleriaInput> fotos)
+        {
+            var tid = RequireTenantId(ctx);
+            fotos ??= new List<FotoGaleriaInput>();
+            if (fotos.Count > MaxFotosGaleria)
+                return BadRequest(new { message = $"A galeria comporta no máximo {MaxFotosGaleria} fotos." });
+            foreach (var f in fotos)
+            {
+                if (string.IsNullOrWhiteSpace(f.Url))
+                    return BadRequest(new { message = "Foto sem URL." });
+                if ((f.Legenda?.Length ?? 0) > MaxLegenda)
+                    return BadRequest(new { message = $"Legenda com no máximo {MaxLegenda} caracteres." });
+                f.Legenda = string.IsNullOrWhiteSpace(f.Legenda) ? null : f.Legenda.Trim();
+            }
+
+            var anteriores = await LerGaleria(configs, tid);
+            await GravarGaleria(configs, uow, tid, fotos);
+
+            // Limpa arquivos órfãos — só uploads de galeria DESTE tenant; URL externa
+            // que o lojista tenha colado nunca é tocada.
+            var atuais = fotos.Select(f => f.Url).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var antiga in anteriores)
+            {
+                if (!atuais.Contains(antiga.Url)
+                    && antiga.Url.Contains($"/{tid}/vitrine/galeria-", StringComparison.OrdinalIgnoreCase))
+                {
+                    await storage.RemoverAsync(antiga.Url);
+                }
+            }
+
+            return Ok(fotos);
+        }
+
+        [HttpGet("api/v1/t/{slug}/galeria")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ListarGaleriaPublica(
+            [FromServices] IConfiguracaoTenantRepository configs,
+            [FromServices] ITenantContext ctx,
+            string slug)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await LerGaleria(configs, tid));
+        }
+
+        private static async Task<List<FotoGaleriaInput>> LerGaleria(IConfiguracaoTenantRepository configs, int tenantId)
+        {
+            var cfg = await configs.GetByChaveAsync(tenantId, ChaveGaleria);
+            if (cfg == null || string.IsNullOrWhiteSpace(cfg.CfgValor)) return new List<FotoGaleriaInput>();
+            try
+            {
+                return JsonSerializer.Deserialize<List<FotoGaleriaInput>>(cfg.CfgValor, JsonOpts)
+                    ?? new List<FotoGaleriaInput>();
+            }
+            catch (JsonException)
+            {
+                return new List<FotoGaleriaInput>();
+            }
+        }
+
+        private static async Task GravarGaleria(IConfiguracaoTenantRepository configs, IUnitOfWork uow,
+            int tenantId, List<FotoGaleriaInput> fotos)
+        {
+            var json = JsonSerializer.Serialize(fotos, JsonOpts);
+            var existente = await configs.GetByChaveAsync(tenantId, ChaveGaleria);
+            if (existente == null)
+            {
+                await configs.CreateAsync(new ConfiguracaoTenant(tenantId, ChaveGaleria, json, "vitrine", sensivel: false));
+            }
+            else
+            {
+                existente.AlterarValor(json);
+                await configs.UpdateAsync(existente);
+                await uow.SaveChangesAsync();
+            }
         }
 
         private static async Task<List<AnuncioInput>> LerAnuncios(IConfiguracaoTenantRepository configs, int tenantId)

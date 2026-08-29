@@ -90,6 +90,24 @@ namespace AgendamentoPro.Tests.Services
         }
 
         [Fact]
+        public async Task Foto_de_galeria_grande_cabe_em_1600_sem_crop()
+        {
+            using var entrada = ImagemJpeg(3200, 2400);
+            var r = await _processador.ProcessarAsync("galeria", entrada);
+            var (w, h) = await Dimensoes(r.Conteudo);
+            (w, h).Should().Be((1600, 1200)); // proporção 4:3 preservada
+        }
+
+        [Fact]
+        public async Task Foto_de_galeria_pequena_fica_como_veio()
+        {
+            using var entrada = ImagemJpeg(800, 600);
+            var r = await _processador.ProcessarAsync("galeria", entrada);
+            var (w, h) = await Dimensoes(r.Conteudo);
+            (w, h).Should().Be((800, 600));
+        }
+
+        [Fact]
         public async Task Bytes_que_nao_sao_imagem_sao_rejeitados()
         {
             // Extensão/content-type certos não bastam: o conteúdo precisa decodificar.

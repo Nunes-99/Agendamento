@@ -22,6 +22,7 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
         private const int BannerLarguraMax = 1920;
         private const double BannerProporcao = 3.0; // capa 3:1 (hero largo e baixo)
         private const int FaviconLado = 128;
+        private const int GaleriaLadoMax = 1600;
 
         private readonly ILogger<VitrineImagemProcessor> _logger;
 
@@ -113,6 +114,17 @@ namespace AgendamentoPro.Infrastructure.Services.Storage
                         }));
                         break;
                     }
+
+                    case "galeria":
+                        // Foto do espaço: só reduz para caber em 1600² — sem crop,
+                        // enquadramento é escolha do lojista (cropper no front).
+                        if (img.Width > GaleriaLadoMax || img.Height > GaleriaLadoMax)
+                            img.Mutate(x => x.Resize(new ResizeOptions
+                            {
+                                Size = new Size(GaleriaLadoMax, GaleriaLadoMax),
+                                Mode = ResizeMode.Max
+                            }));
+                        break;
                 }
 
                 // Favicon sempre PNG (transparência + suporte universal nas abas);

@@ -8,7 +8,7 @@ import { ImageCropperComponent, ImageCroppedEvent } from 'ngx-image-cropper';
 
 export interface CropImagemData {
   arquivo: File;
-  tipo: 'logo' | 'banner' | 'favicon';
+  tipo: 'logo' | 'banner' | 'favicon' | 'galeria';
 }
 
 /**
@@ -76,6 +76,7 @@ export class CropImagemDialogComponent {
   get titulo(): string {
     return this.data.tipo === 'banner' ? 'Enquadrar banner'
       : this.data.tipo === 'favicon' ? 'Enquadrar favicon'
+      : this.data.tipo === 'galeria' ? 'Enquadrar foto'
       : 'Enquadrar logo';
   }
 
@@ -84,7 +85,9 @@ export class CropImagemDialogComponent {
       ? 'Arraste para escolher a faixa que vira a capa da sua página (proporção 3:1).'
       : this.data.tipo === 'favicon'
         ? 'Escolha o quadrado que aparece na aba do navegador.'
-        : 'Ajuste a área do logo — proporção livre.';
+        : this.data.tipo === 'galeria'
+          ? 'Ajuste a área da foto — proporção livre.'
+          : 'Ajuste a área do logo — proporção livre.';
   }
 
   get aspectRatio(): number {
@@ -92,7 +95,7 @@ export class CropImagemDialogComponent {
   }
 
   get manterProporcao(): boolean {
-    return this.data.tipo !== 'logo';
+    return this.data.tipo === 'banner' || this.data.tipo === 'favicon';
   }
 
   /** JPEG continua JPEG (foto de capa pesa menos); o resto sai PNG (transparência). */
