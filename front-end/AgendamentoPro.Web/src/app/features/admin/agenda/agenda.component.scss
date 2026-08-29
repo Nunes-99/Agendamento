@@ -112,6 +112,7 @@
   &.confirmado { border-left-color: var(--cor-sucesso); span { color: var(--cor-sucesso); } }
   &.andamento { border-left-color: var(--cor-info); span { color: var(--cor-info); } }
   &.concluido { border-left-color: var(--cor-primaria); span { color: var(--cor-primaria); } }
+  &.cancelado { border-left-color: var(--cor-erro); span { color: var(--cor-erro); } }
   &.receita {
     border-left-color: #16a34a;
     span { color: #16a34a; font-size: 1.125rem; }

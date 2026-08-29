@@ -111,7 +111,7 @@ export interface AgendamentoDialogData {
             <mat-hint *ngIf="!form.servicoId">Selecione um serviço primeiro</mat-hint>
             <mat-hint *ngIf="form.servicoId && carregandoSlots()">Carregando horários...</mat-hint>
             <mat-hint *ngIf="form.servicoId && !carregandoSlots() && !slotsUnicos().length">
-              Nenhum horário disponível
+              Nenhum horário nessa data — o estabelecimento pode estar fechado nesse dia
             </mat-hint>
             <mat-hint *ngIf="form.servicoId && !carregandoSlots() && slotsUnicos().length"
               align="end">Duração: {{ duracaoServico() }} min</mat-hint>

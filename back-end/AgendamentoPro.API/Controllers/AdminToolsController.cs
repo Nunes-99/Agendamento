@@ -110,22 +110,28 @@ namespace AgendamentoPro.API.Controllers
                 .Where(a => a.R_TenId == tid && a.AgeData == d)
                 .ToListAsync();
 
-            var totalConcluidos = ags.Where(a => a.AgeStatus == StatusAgendamento.Concluido).Sum(a => a.AgeValorTotal);
+            // Cancelados/no-show ficam fora dos números "vivos" do caixa: um dia cheio de
+            // cancelamentos mostrava a receita cheia em "prevista" e o pagamento pendente
+            // do agendamento cancelado ainda contava como "pendente".
+            var validos = ags.Where(a => a.AgeStatus != StatusAgendamento.Cancelado
+                                      && a.AgeStatus != StatusAgendamento.NoShow).ToList();
+
+            var totalConcluidos = validos.Where(a => a.AgeStatus == StatusAgendamento.Concluido).Sum(a => a.AgeValorTotal);
             var totalRecebido = ags.SelectMany(a => a.Pagamentos)
                 .Where(p => p.PagStatus == StatusPagamento.Aprovado)
                 .Sum(p => p.PagValor);
-            var pendentes = ags.Count(a => a.AgeStatus == StatusAgendamento.PendentePagamento
+            var pendentes = validos.Count(a => a.AgeStatus == StatusAgendamento.PendentePagamento
                 || a.AgePagamentoStatus == StatusPagamento.Pendente);
 
             return Ok(new
             {
                 data = d,
-                totalAgendamentos = ags.Count,
-                concluidos = ags.Count(a => a.AgeStatus == StatusAgendamento.Concluido),
+                totalAgendamentos = validos.Count,
+                concluidos = validos.Count(a => a.AgeStatus == StatusAgendamento.Concluido),
                 cancelados = ags.Count(a => a.AgeStatus == StatusAgendamento.Cancelado),
                 noShow = ags.Count(a => a.AgeStatus == StatusAgendamento.NoShow),
                 pendentes,
-                receitaPrevista = ags.Sum(a => a.AgeValorTotal),
+                receitaPrevista = validos.Sum(a => a.AgeValorTotal),
                 receitaConcluida = totalConcluidos,
                 receitaRecebida = totalRecebido
             });

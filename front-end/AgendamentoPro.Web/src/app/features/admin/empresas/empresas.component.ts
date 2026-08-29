@@ -184,7 +184,7 @@ export class CriarEmpresaDialogComponent {
         <mat-icon>check_circle</mat-icon>
         <div>
           <strong>{{ ativas() }}</strong>
-          <span>Ativas</span>
+          <span>Habilitadas</span>
         </div>
       </div>
     </div>
@@ -200,9 +200,11 @@ export class CriarEmpresaDialogComponent {
         <div class="empresa-corpo">
           <div class="empresa-info">
             <h3>{{ e.nome }}</h3>
+            <!-- "Habilitada" fala do cadastro do tenant; o status da ASSINATURA
+                 (ativa/atrasada/cancelada) é outra coisa e vive no billing -->
             <span class="badge" [class.ativo]="e.ativo">
               <mat-icon>{{ e.ativo ? 'check_circle' : 'block' }}</mat-icon>
-              {{ e.ativo ? 'Ativa' : 'Inativa' }}
+              {{ e.ativo ? 'Habilitada' : 'Desabilitada' }}
             </span>
           </div>
           <p class="segmento" *ngIf="e.segmento">{{ e.segmento }}</p>

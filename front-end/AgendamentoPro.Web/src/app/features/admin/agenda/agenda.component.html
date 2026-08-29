@@ -37,9 +37,15 @@
 
 <!-- Resumo do período -->
 <section class="resumo">
+  <!-- Total conta só atendimentos válidos; cancelados/no-show ficam à parte
+       para o número bater com os cards de status ao lado -->
   <div class="card-resumo total">
     <span>{{ resumo().total }}</span>
     <small>Total</small>
+  </div>
+  <div class="card-resumo cancelado" *ngIf="resumo().cancelados">
+    <span>{{ resumo().cancelados }}</span>
+    <small>Cancelados</small>
   </div>
   <div class="card-resumo pendente" [class.ativo]="filtroStatus() === 'ativos'">
     <span>{{ resumo().pendentes }}</span>

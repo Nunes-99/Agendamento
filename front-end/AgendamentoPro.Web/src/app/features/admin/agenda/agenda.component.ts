@@ -53,8 +53,12 @@ export class AgendaComponent implements OnInit {
 
   resumo = computed(() => {
     const lista = this.agendamentos();
+    const validos = lista.filter(a =>
+      a.status !== StatusAgendamento.Cancelado && a.status !== StatusAgendamento.NoShow);
     return {
-      total: lista.length,
+      // Cancelados/no-show fora do total: o card "Total" deve bater com a soma
+      // dos cards de status ao lado (cancelados têm card próprio).
+      total: validos.length,
       pendentes: lista.filter(a => a.status === StatusAgendamento.PendentePagamento).length,
       confirmados: lista.filter(a => a.status === StatusAgendamento.Confirmado).length,
       emAndamento: lista.filter(a => a.status === StatusAgendamento.EmAndamento).length,
