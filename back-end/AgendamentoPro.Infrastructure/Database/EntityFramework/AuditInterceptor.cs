@@ -38,6 +38,13 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
 
         public AuditInterceptor(IHttpContextAccessor http) { _http = http; }
 
+        // INSERTs pendentes por contexto: antes do save a entidade Added ainda tem a
+        // chave TEMPORÁRIA do EF (negativa) — gravar nesse momento produzia logs como
+        // "Agendamento #-2147482644", impossíveis de correlacionar com a linha real.
+        // Por isso o log de Insert é criado em SavedChangesAsync, com o ID definitivo.
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<DbContext, List<EntityEntry>>
+            _insercoesPendentes = new();
+
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
             InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
@@ -50,43 +57,23 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
 
             if (entries.Count == 0) return base.SavingChangesAsync(eventData, result, cancellationToken);
 
-            var http = _http.HttpContext;
-            int? tenantId = null;
-            int? usuarioId = null;
-            string usuarioEmail = null;
-            string ip = null;
-            string correlationId = null;
-
-            if (http != null)
-            {
-                ip = http.Connection.RemoteIpAddress?.ToString();
-                correlationId = http.Response.Headers["X-Correlation-Id"].ToString();
-                if (string.IsNullOrEmpty(correlationId))
-                    correlationId = http.Request.Headers["X-Correlation-Id"].ToString();
-
-                var idStr = http.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                    ?? http.User?.FindFirst("sub")?.Value;
-                if (int.TryParse(idStr, out var uid)) usuarioId = uid;
-                usuarioEmail = http.User?.FindFirst(ClaimTypes.Email)?.Value;
-
-                var tCtx = http.RequestServices?.GetService(typeof(ITenantContext)) as ITenantContext;
-                tenantId = tCtx?.TenantId;
-            }
+            var (tenantId, usuarioId, usuarioEmail, ip, correlationId) = CapturarContextoHttp();
 
             var logs = new List<LogAuditoria>();
             foreach (var entry in entries)
             {
+                if (entry.State == EntityState.Added)
+                {
+                    var pendentes = _insercoesPendentes.GetOrCreateValue(ctx);
+                    pendentes.Add(entry);
+                    continue;
+                }
+
                 var tabela = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name;
                 var chave = ExtrairChave(entry);
-                var acao = entry.State switch
-                {
-                    EntityState.Added => "Insert",
-                    EntityState.Modified => "Update",
-                    EntityState.Deleted => "Delete",
-                    _ => entry.State.ToString()
-                };
+                var acao = entry.State == EntityState.Deleted ? "Delete" : "Update";
 
-                var antes = entry.State == EntityState.Added ? null : Serializar(entry, original: true);
+                var antes = Serializar(entry, original: true);
                 var depois = entry.State == EntityState.Deleted ? null : Serializar(entry, original: false);
 
                 logs.Add(new LogAuditoria(tenantId, usuarioId, usuarioEmail, ip, correlationId,
@@ -99,6 +86,60 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework
             }
 
             return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+
+        public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context is DbContext ctx
+                && _insercoesPendentes.TryGetValue(ctx, out var pendentes)
+                && pendentes.Count > 0)
+            {
+                // Remove antes de salvar: o SaveChanges aninhado reentra no interceptor
+                // e a lista vazia garante que não há loop.
+                _insercoesPendentes.Remove(ctx);
+
+                var (tenantId, usuarioId, usuarioEmail, ip, correlationId) = CapturarContextoHttp();
+                var logs = new List<LogAuditoria>();
+                foreach (var entry in pendentes)
+                {
+                    var tabela = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name;
+                    logs.Add(new LogAuditoria(tenantId, usuarioId, usuarioEmail, ip, correlationId,
+                        tabela, ExtrairChave(entry), "Insert",
+                        null, Serializar(entry, original: false)));
+                }
+                ctx.AddRange(logs);
+                await ctx.SaveChangesAsync(cancellationToken);
+            }
+
+            return await base.SavedChangesAsync(eventData, result, cancellationToken);
+        }
+
+        public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context is DbContext ctx) _insercoesPendentes.Remove(ctx);
+            return base.SaveChangesFailedAsync(eventData, cancellationToken);
+        }
+
+        private (int? tenantId, int? usuarioId, string email, string ip, string correlationId) CapturarContextoHttp()
+        {
+            var http = _http.HttpContext;
+            if (http == null) return (null, null, null, null, null);
+
+            var ip = http.Connection.RemoteIpAddress?.ToString();
+            var correlationId = http.Response.Headers["X-Correlation-Id"].ToString();
+            if (string.IsNullOrEmpty(correlationId))
+                correlationId = http.Request.Headers["X-Correlation-Id"].ToString();
+
+            int? usuarioId = null;
+            var idStr = http.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? http.User?.FindFirst("sub")?.Value;
+            if (int.TryParse(idStr, out var uid)) usuarioId = uid;
+            var usuarioEmail = http.User?.FindFirst(ClaimTypes.Email)?.Value;
+
+            var tCtx = http.RequestServices?.GetService(typeof(ITenantContext)) as ITenantContext;
+            return (tCtx?.TenantId, usuarioId, usuarioEmail, ip, correlationId);
         }
 
         private static string ExtrairChave(EntityEntry entry)
