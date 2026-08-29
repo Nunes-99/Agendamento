@@ -16,7 +16,7 @@ import { Plano } from '../../../core/models/assinatura.model';
     <section class="planos-shell">
       <header>
         <h1>Escolha seu plano</h1>
-        <p>Cobrança mensal recorrente via Mercado Pago. Cancele quando quiser.</p>
+        <p>Primeiro mês grátis. Cobrança mensal recorrente via Mercado Pago a partir do segundo mês. Cancele quando quiser.</p>
       </header>
 
       <div class="grid">

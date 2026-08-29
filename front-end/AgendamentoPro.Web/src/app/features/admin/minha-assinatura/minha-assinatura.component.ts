@@ -35,6 +35,8 @@ import { Assinatura, Plano, StatusAssinatura } from '../../../core/models/assina
       <mat-card *ngIf="!assinatura() && !carregando()" class="card-criar">
         <h2>Escolha um plano para começar</h2>
         <p>Você ainda não tem uma assinatura ativa.</p>
+        <p class="trial-info">O primeiro mês é grátis: o cartão é cadastrado agora,
+          mas a cobrança só começa no segundo mês. Cancele antes e não paga nada.</p>
 
         <mat-form-field appearance="outline">
           <mat-label>Plano</mat-label>
@@ -140,6 +142,8 @@ import { Assinatura, Plano, StatusAssinatura } from '../../../core/models/assina
     .cabecalho { display: flex; align-items: center; justify-content: space-between; margin: 0 0 1.5rem; }
     .cabecalho h1 { margin: 0; }
     .girando { animation: girar 1s linear infinite; }
+    .trial-info { background: #ecfdf5; border-left: 0.25rem solid #10b981; color: #065f46;
+      padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; }
     @keyframes girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     h1 { margin: 0 0 1.5rem; }
     mat-card { padding: 1.5rem; margin-bottom: 1rem; }
