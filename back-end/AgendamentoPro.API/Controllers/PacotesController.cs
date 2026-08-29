@@ -103,6 +103,20 @@ namespace AgendamentoPro.API.Controllers
             Cliente cli = null;
             if (!string.IsNullOrEmpty(cliente.Telefone))
                 cli = await clientes.GetByTelefoneAsync(tid, cliente.Telefone);
+
+            // Pacote é cobrado em PIX upfront. Sem Suporta(Pix), se Stripe estiver
+            // registrado antes de MP, FirstOrDefault() pegaria Stripe (que não suporta
+            // PIX) e quebraria o endpoint. A checagem vem ANTES de persistir qualquer
+            // coisa: sem gateway, criar cliente + SaldoPacote deixava um saldo órfão
+            // pendente — e o 500 genérico escondia o motivo do cliente final.
+            var gateway = gateways.FirstOrDefault(g => g.Suporta(FormaPagamento.Pix));
+            if (gateway == null)
+                return StatusCode(503, new
+                {
+                    message = "O pagamento online está indisponível neste estabelecimento no momento. "
+                        + "Entre em contato para comprar o pacote."
+                });
+
             if (cli == null)
             {
                 cli = new Cliente(tid, cliente.Nome, cliente.Email, cliente.Telefone, cliente.WhatsApp, cliente.Cpf);
@@ -113,13 +127,6 @@ namespace AgendamentoPro.API.Controllers
             var saldo = new SaldoPacote(tid, cli.CliId, pacote);
             ctx.SaldosPacote.Add(saldo);
             await uow.SaveChangesAsync();
-
-            // Pacote é cobrado em PIX upfront. Sem Suporta(Pix), se Stripe estiver
-            // registrado antes de MP, FirstOrDefault() pegaria Stripe (que não suporta
-            // PIX) e quebraria o endpoint.
-            var gateway = gateways.FirstOrDefault(g => g.Suporta(FormaPagamento.Pix));
-            if (gateway == null)
-                return StatusCode(500, new { message = "Nenhum gateway configurado suporta PIX." });
 
             var cobranca = await gateway.CriarCobrancaAsync(tid, agendamentoId: 0,
                 pacote.PctPreco, FormaPagamento.Pix,

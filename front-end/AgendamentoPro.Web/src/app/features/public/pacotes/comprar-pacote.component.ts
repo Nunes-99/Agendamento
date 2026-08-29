@@ -21,6 +21,7 @@ import { ApiService } from '../../../core/services/api.service';
   template: `
     <div class="container">
       <h1><mat-icon>inventory_2</mat-icon> Pacotes pré-pagos</h1>
+      <p class="subtitulo" *ngIf="!compra()">Escolha um pacote abaixo para comprar com PIX.</p>
 
       <ng-container *ngIf="!compra(); else pagando">
         <div class="lista" *ngIf="pacotes().length; else listaCarregando">
@@ -31,6 +32,10 @@ import { ApiService } from '../../../core/services/api.service';
               <span><mat-icon>schedule</mat-icon> Vale {{ p.pctValidadeDias }} dias</span>
             </div>
             <strong>{{ p.pctPreco | currency:'BRL' }}</strong>
+            <span class="escolher">
+              <mat-icon>{{ selecionado()?.pctId === p.pctId ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+              {{ selecionado()?.pctId === p.pctId ? 'Selecionado' : 'Escolher este' }}
+            </span>
           </article>
         </div>
 
@@ -78,7 +83,7 @@ import { ApiService } from '../../../core/services/api.service';
     .container { max-width: 56rem; margin: 1rem auto; padding: 1rem; }
     h1 { display: flex; align-items: center; gap: 0.5rem; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
-    .card { background: #fff; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: 0.15s; border: 2px solid transparent; }
+    .card { background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; transition: 0.15s; border: 2px solid transparent; }
     .card:hover { transform: translateY(-2px); }
     .card.sel { border-color: #2e7d32; }
     .card h3 { margin: 0 0 0.5rem 0; }
@@ -86,9 +91,13 @@ import { ApiService } from '../../../core/services/api.service';
     .info span { display: flex; align-items: center; gap: 0.25rem; font-size: 0.9rem; }
     .info mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
     .card strong { color: #2e7d32; font-size: 1.5rem; }
-    .form { margin-top: 1rem; background: #fff; padding: 1rem; border-radius: 0.5rem; }
+    .subtitulo { color: #666; margin: -0.5rem 0 1rem; }
+    .escolher { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem;
+      color: #2e7d32; font-size: 0.875rem; font-weight: 500; }
+    .escolher mat-icon { font-size: 1.125rem; width: 1.125rem; height: 1.125rem; }
+    .form { margin-top: 1rem; background: var(--cor-fundo-card); padding: 1rem; border-radius: 0.5rem; }
     .full { width: 100%; }
-    .qr-card { background: #fff; padding: 1.5rem; border-radius: 0.5rem; text-align: center; }
+    .qr-card { background: var(--cor-fundo-card); padding: 1.5rem; border-radius: 0.5rem; text-align: center; }
     .qr-card pre { background: #f5f5f5; padding: 0.5rem; border-radius: 0.25rem; word-break: break-all; white-space: pre-wrap; font-size: 0.75rem; }
     .copiavel { user-select: all; cursor: text; }
     .status { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
