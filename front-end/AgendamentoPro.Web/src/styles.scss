@@ -71,4 +71,24 @@ h2, h3 { font-weight: 600; }
   color: #fff !important;
 }
 
+/* Botões Material seguem a cor do tenant: a paleta do tema Material é estática,
+   então sem isso a personalização pintava preços/ícones mas os botões ficavam
+   no índigo padrão — vitrine com duas identidades visuais. O default de
+   --cor-primaria é o mesmo índigo, então nada muda sem personalização. */
+.mat-mdc-unelevated-button.mat-primary {
+  --mdc-filled-button-container-color: var(--cor-primaria);
+}
+.mat-mdc-raised-button.mat-primary {
+  --mdc-protected-button-container-color: var(--cor-primaria);
+}
+.mat-mdc-outlined-button.mat-primary {
+  --mdc-outlined-button-label-text-color: var(--cor-primaria);
+}
+.mat-mdc-button.mat-primary {
+  --mdc-text-button-label-text-color: var(--cor-primaria);
+}
+.mat-mdc-fab.mat-primary, .mat-mdc-mini-fab.mat-primary {
+  --mdc-fab-container-color: var(--cor-primaria);
+}
+
 ::ng-deep .mat-mdc-card { border-radius: var(--raio-grande) !important; box-shadow: var(--sombra-card) !important; }
