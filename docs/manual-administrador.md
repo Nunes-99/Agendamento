@@ -565,18 +565,19 @@ URL: `/admin/fidelidade`
 ### Consultar saldo de um cliente
 
 1. Acesse a tela de Fidelidade
-2. Digite o ID ou nome do cliente
-3. Sistema mostra:
+2. Busque por **nome, telefone ou e-mail** (a partir de 2 caracteres) — o
+   telefone pode ser digitado com ou sem máscara
+3. Clique no cliente na lista de resultados. O sistema mostra:
    ```
-   Cliente: Maria Silva
-   Saldo: 80 pontos
+   Maria Silva tem 80 pontos
    ```
+   Com 100 pontos ou mais, também aparece quanto isso dá em cupom.
 
 ### Trocar pontos por cupom (em nome do cliente)
 
 Use quando o cliente pedir "quero trocar meus pontos":
 
-1. Encontre o cliente
+1. Busque e selecione o cliente
 2. Digite quantos pontos trocar (múltiplos de 10)
 3. Clique em **Trocar**
 4. Sistema:
@@ -1164,15 +1165,51 @@ diário às 04:00 UTC). Antes disso, ficam consultáveis.
 
 URL: `/admin/configuracoes`
 
-4 abas: Empresa, Personalização, Regras de negócio, Notificações.
+4 abas: Empresa, **Minha página**, Regras de negócio, Notificações.
 
 ### 23.1 Empresa
 
 Dados cadastrais (Nome, CNPJ, e-mail, telefone, endereço, etc.).
 
-### 23.2 Personalização
+### 23.2 Minha página
 
-Visual (logo, banner, favicon, cores, fonte).
+Tudo que o cliente final vê. O link **"Ver minha página"** no topo abre a
+página pública em outra aba para conferir o resultado.
+
+**Identidade visual**
+
+| Campo | Onde aparece |
+| --- | --- |
+| Logo | acima do nome, no topo da página pública |
+| Banner | imagem de capa atrás do nome |
+| Favicon | ícone da aba do navegador |
+| Cor primária | botões e preços |
+| Cor secundária | fundo do banner quando não há imagem |
+| Cor de acento | anúncios marcados como destaque |
+| Fonte | textos da página pública (baixada do Google Fonts) |
+
+Cada imagem tem **"Enviar imagem"**: escolha o arquivo (jpg, png, webp ou
+gif, até 10 MB) e abre o **editor de corte** — arraste para escolher a área.
+O banner é cortado em formato de capa (3:1), o favicon em quadrado, e o logo
+tem proporção livre. Ao confirmar, a imagem **já é publicada** (não precisa
+clicar em "Salvar" depois) e a anterior é substituída. Também dá para colar a
+URL de uma imagem já hospedada, se preferir.
+
+As cores e a fonte precisam de **"Salvar e aplicar"**.
+
+**Anúncios e promoções** (até 8)
+
+Título (60 caracteres), texto opcional (200) e dois interruptores:
+*Visível* (aparece na página) e *Destaque* (ganha a cor de acento e ícone de
+chama). Clique em **"Publicar anúncios"** para valer. Desligar *Visível* tira
+da página sem apagar o texto — útil para promoção sazonal que volta.
+
+**Galeria de fotos** (até 12)
+
+"Adicionar foto" abre o mesmo editor de corte (proporção livre). Cada foto
+aceita uma legenda de até 100 caracteres. Na página pública viram a seção
+**"Nosso espaço"**; o cliente clica e a foto amplia. Remover uma foto e
+clicar em **"Salvar galeria"** apaga o arquivo do servidor.
 
 > ⚠️ URLs aceitam **só HTTP/HTTPS** ou caminhos relativos (`/uploads/...`).
 > `javascript:`, `data:`, `file:` são rejeitados (proteção XSS).
@@ -1354,5 +1391,5 @@ painel administrativo.
 
 ---
 
-*Manual atualizado em maio de 2026. Versão do sistema: 238 testes
+*Manual atualizado em agosto de 2026. Versão do sistema: 322 testes
 verdes, 39 auditorias de segurança aplicadas.*

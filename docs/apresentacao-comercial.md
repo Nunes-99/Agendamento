@@ -19,10 +19,11 @@
 8. [Exemplos de cadastro](#8-exemplos-de-cadastro)
 9. [Casos de uso por segmento](#9-casos-de-uso-por-segmento)
 10. [Segurança e conformidade (LGPD)](#10-segurança-e-conformidade-lgpd)
-11. [Personalização visual](#11-personalização-visual)
+11. [A sua página (personalização visual)](#11-a-sua-página-personalização-visual)
 12. [Integrações inclusas](#12-integrações-inclusas)
 13. [Comparativo com o mercado](#13-comparativo-com-o-mercado)
-14. [Pronto para começar](#14-pronto-para-começar)
+14. [Quanto custa](#14-quanto-custa)
+15. [Pronto para começar](#15-pronto-para-começar)
 
 ---
 
@@ -123,10 +124,16 @@ Vai além do "quanto eu fiz no mês". Veja:
 - **Comparativo mês atual vs anterior** (receita, ticket médio,
   cancelamento, no-show)
 
-### 3.7 🏷️ A sua marca, não a do app
+### 3.7 🏷️ Uma vitrine sua, não a cara do app
 
-Logo, cores primária/secundária/acento, fonte, banner, favicon — tudo
-configurável. O cliente vê **a SUA cara**, não o logo do AgendamentoPro.
+Não é só um formulário de agendamento: é **a página da sua loja**. Logo, banner,
+cores e fonte no seu estilo; **anúncios e promoções** que você publica sozinho
+("Semana do brilho: 20% off"); **galeria de fotos** do espaço para quem ainda não
+conhece; catálogo de serviços com preço e duração; e as avaliações de quem já foi
+atendido. O cliente vê **a SUA cara**, não o logo do AgendamentoPro.
+
+Enviar as imagens é do computador mesmo, com editor de corte na hora — sem
+depender de designer para trocar o banner da promoção da semana.
 
 URL personalizada: `seuapp.com.br/t/seu-negocio`
 
@@ -148,6 +155,8 @@ URL personalizada: `seuapp.com.br/t/seu-negocio`
 
 ```
 1. Cliente entra em seuapp.com.br/t/lava-rapido-acme
+   → vê a capa da loja, a promoção da semana em destaque,
+     as fotos do espaço e a nota das avaliações
 2. Vê o catálogo de serviços com fotos, preços e durações
 3. Escolhe "Lavagem Completa Externa + Interna" — R$ 80, 60 min
 4. Sistema mostra os horários livres dos próximos 30 dias
@@ -435,7 +444,7 @@ externa.
 
 | Rota                                  | O que aparece                                            |
 | ------------------------------------- | -------------------------------------------------------- |
-| `/t/{slug}`                           | Home do seu negócio (banner, logo, descrição, avaliações)|
+| `/t/{slug}`                           | Home do seu negócio: capa e logo, anúncios/promoções, serviços, galeria "Nosso espaço" e avaliações |
 | `/t/{slug}/servicos`                  | Catálogo de serviços com fotos, preços, durações         |
 | `/t/{slug}/combos`                    | Combos promocionais                                      |
 | `/t/{slug}/agendar/:servicoId`        | Passo-a-passo: horário → dados → pagamento               |
@@ -468,14 +477,15 @@ externa.
 | `/admin/cupons`                   | CRUD de cupons + ativar/desativar                         |
 | `/admin/recorrencias`             | Criar séries (toda 2ª por 8 semanas)                      |
 | `/admin/pacotes`                  | CRUD de pacotes pré-pagos                                 |
-| `/admin/fidelidade`               | Saldo de pontos por cliente + trocar por cupom            |
+| `/admin/fidelidade`               | Busca o cliente por nome/telefone, mostra o saldo e troca por cupom |
 | `/admin/bloqueios`                | Bloquear feriados/manutenção                              |
 | `/admin/lista-espera`             | Fila com notificar/marcar como notificado                 |
 | `/admin/auditoria`                | Log de auditoria com filtros + drill-down                 |
 | `/admin/kpis`                     | KPIs avançados (mês atual × anterior)                     |
 | `/admin/caixa`                    | Fechar caixa do dia                                       |
 | `/admin/relatorios`               | 8 relatórios (receita, top, ocupação, cancel, LTV, no-show, sazonalidade) |
-| `/admin/configuracoes`            | Empresa, personalização visual, regras, notificações      |
+| `/admin/configuracoes`            | Empresa, **Minha página** (visual, anúncios, galeria), regras, notificações |
+| `/admin/minha-assinatura`         | Sua mensalidade: plano, faturas, trocar plano, cancelar   |
 | `/admin/seguranca/2fa`            | Ativar/desativar 2FA com QR Code                          |
 | `/admin/empresas`                 | Apenas SuperAdmin: gerenciar tenants do SaaS              |
 
@@ -570,21 +580,43 @@ Antecedência máxima:         60 dias   (não agenda 1 ano à frente)
 Limite de cancelamento:      12 horas  (acima disso, contate o salão)
 ```
 
-### 8.8 Personalização visual
+### 8.8 Deixar a página com a sua cara
 
 ```
-Logo URL:           https://meucdn.com.br/logo-acme.png
-Banner URL:         https://meucdn.com.br/banner-acme.jpg
-Favicon URL:        https://meucdn.com.br/favicon-acme.ico
-Cor primária:       #1976d2     (azul AB Lava-Rápido)
-Cor secundária:     #f57c00     (laranja destaque)
-Cor de acento:      #4caf50     (verde "pague aqui")
+Logo:               [Enviar imagem] → corta a área do logo → publicado
+Banner de capa:     [Enviar imagem] → arrasta a faixa da capa → publicado
+Favicon:            [Enviar imagem] → escolhe o quadrado → publicado
+Cor primária:       #1976d2     (azul AB Lava-Rápido — botões e preços)
+Cor secundária:     #f57c00     (laranja — fundo do banner)
+Cor de acento:      #4caf50     (verde — promoções em destaque)
 Fonte:              Poppins
 ```
 
+(Se preferir, dá para colar a URL de uma imagem já hospedada em vez de enviar.)
+
+### 8.9 Publicar uma promoção
+
+```
+Título:   Semana do Brilho: 20% off na Lavagem Completa
+Texto:    De R$ 70 por R$ 56 até sexta-feira. Agende já!
+Visível:  sim        Destaque: sim   (ganha a cor de acento)
+```
+
+Aparece no topo da sua página assim que você clica em "Publicar anúncios".
+
+### 8.10 Montar a galeria do espaço
+
+```
+Foto 1:  [Adicionar foto] → recorta → legenda "Recepção"
+Foto 2:  [Adicionar foto] → recorta → legenda "Nossos boxes de lavagem"
+Foto 3:  [Adicionar foto] → recorta → legenda "Sala de espera com café"
+```
+
+Vira a seção "Nosso espaço" na sua página; o cliente clica e amplia.
+
 Mudança aplica em tempo real para todos os visitantes do seu site.
 
-### 8.9 Criar bloqueio de agenda
+### 8.11 Criar bloqueio de agenda
 
 ```
 Recurso:           (vazio = todos)
@@ -595,7 +627,7 @@ Motivo:            Natal — fechado
 
 Slots de 25/12 não aparecem mais na agenda pública.
 
-### 8.10 Criar série recorrente
+### 8.12 Criar série recorrente
 
 ```
 Cliente:           Maria Silva
@@ -738,22 +770,43 @@ conflitos.
 
 ---
 
-## 11. Personalização visual
+## 11. A sua página (personalização visual)
 
-### O que você controla
+Tudo fica numa aba só do painel: **Configurações → "Minha página"**, com um
+link "Ver minha página" para você conferir o resultado do jeito que o cliente vê.
 
-- Logotipo (cabeçalho, página de login, cabeçalho do site público)
-- Banner principal (capa da home pública)
-- Favicon (aba do navegador)
-- 3 cores: primária, secundária, acento
-- Fonte do site (Google Fonts ou web font customizada)
-- Descrição do negócio (texto livre)
-- Endereço com link pro Google Maps
+### Identidade visual
+
+- **Logo, banner de capa e favicon** — envie do computador, sem precisar
+  hospedar imagem em outro lugar. Ao escolher o arquivo abre um **editor de
+  corte**: você arrasta a área que quer publicar, com o enquadramento certo já
+  travado (banner em formato de capa, favicon quadrado, logo livre).
+- **3 cores**: primária (botões e preços), secundária (fundo do banner) e
+  acento (promoções em destaque) — a página inteira acompanha, incluindo os
+  botões.
+- **Fonte**: escolha na lista (Poppins, Montserrat, Playfair Display, Bebas
+  Neue e outras) — a página do cliente passa a usar a fonte escolhida.
+- **Descrição do negócio** e endereço com link pro Google Maps.
+
+### Anúncios e promoções
+
+Publique até 8 avisos que aparecem em destaque no topo da sua página:
+"Semana do brilho: 20% off", "Sábado com café da manhã grátis", "Fechado dia
+7/9". Cada um pode ser ligado/desligado sem apagar, e marcar como **destaque**
+para ganhar a cor de acento e chamar mais atenção.
+
+### Galeria de fotos
+
+Até 12 fotos do seu espaço, com legenda ("Recepção", "Nossos boxes"). Na página
+do cliente viram a seção **"Nosso espaço"**, e clicar amplia a foto. É o que
+mostra a estrutura para quem ainda não conhece a loja.
 
 ### O que muda para o cliente
 
 Tudo se atualiza em tempo real quando você salva. Mesmo o cliente que
-já tinha a página aberta vê o tema novo ao recarregar.
+já tinha a página aberta vê o tema novo ao recarregar. Fotos enviadas são
+ajustadas automaticamente para carregar rápido no celular, sem perder
+qualidade na tela.
 
 ### Modo escuro
 
@@ -791,8 +844,10 @@ Todas configuráveis via painel ou arquivo de configuração no servidor.
 
 | Característica                           | AgendamentoPro | Booksy / Trinks   | Calendário Google + Pix manual |
 | ---------------------------------------- | -------------- | ----------------- | ------------------------------ |
+| Custo                                    | R$ 29,90/mês (1º mês grátis) | 💰 mensalidade + % por reserva | Grátis, mas manual |
 | Comissão por transação                   | ❌ Zero         | 💰 % por reserva  | ❌ Zero                         |
 | Personalização total (sua marca)         | ✅              | ⚠️ limitada       | ❌                              |
+| Página com promoções e galeria de fotos  | ✅              | ⚠️ limitada       | ❌                              |
 | Multi-tenant em uma instalação           | ✅              | N/A               | ❌                              |
 | Pagamento antecipado integrado           | ✅              | ✅                 | ❌                              |
 | WhatsApp templates incluso               | ✅              | ⚠️                 | ❌                              |
@@ -813,7 +868,39 @@ Todas configuráveis via painel ou arquivo de configuração no servidor.
 
 ---
 
-## 14. Pronto para começar
+## 14. Quanto custa
+
+| Plano             | Mensalidade | Para quem                          |
+| ----------------- | ----------- | ---------------------------------- |
+| **Essencial**     | R$ 29,90/mês| 1 unidade, até 10 profissionais    |
+| **Multi-unidade** | R$ 79,90/mês| Redes e franquias — unidades e profissionais ilimitados |
+
+Nos dois planos: **agendamentos ilimitados**.
+
+### Primeiro mês grátis
+
+Você cadastra o cartão no começo, mas **o primeiro mês não é cobrado** — a
+cobrança só começa no segundo. Cancelou antes? Não paga nada.
+
+### Sem comissão por transação
+
+O que o seu cliente paga é **seu**. Não ficamos com percentual de reserva, de
+pacote nem de combo — só a mensalidade. (As taxas do meio de pagamento são do
+Mercado Pago, direto na sua conta, como em qualquer maquininha.)
+
+### Se atrasar
+
+Nada some do nada: você tem **7 dias** com acesso normal e um aviso no painel.
+Depois disso a conta fica em leitura — você continua vendo agenda e clientes,
+mas novos agendamentos ficam suspensos até regularizar. Seus dados ficam
+guardados por 90 dias.
+
+Assinatura, faturas, troca de plano e cancelamento ficam em
+**Minha assinatura**, no seu painel — sem precisar falar com ninguém.
+
+---
+
+## 15. Pronto para começar
 
 ### Passos para colocar no ar
 
@@ -840,9 +927,10 @@ Todas configuráveis via painel ou arquivo de configuração no servidor.
 ### Suporte e evolução
 
 - Sistema atualizado regularmente com novos recursos
-- 238 testes automatizados garantem que mudanças não quebram o que
+- 322 testes automatizados garantem que mudanças não quebram o que
   funciona
 - 39 auditorias de segurança já corrigidas
+- Caminho do pagamento validado ponta a ponta com o Mercado Pago
 - Conformidade LGPD nativa
 
 ---
@@ -850,14 +938,16 @@ Todas configuráveis via painel ou arquivo de configuração no servidor.
 ## Em resumo
 
 Você está olhando para uma plataforma de agendamento **completa, segura
-e profissional**, sem mensalidade abusiva, sem comissão por transação,
-com tudo que o seu negócio precisa para receber agendamentos online,
-reduzir no-show, fidelizar clientes e crescer.
+e profissional**, por R$ 29,90 por mês, **com o primeiro mês grátis** e
+sem comissão por transação — com tudo que o seu negócio precisa para
+receber agendamentos online, reduzir no-show, fidelizar clientes e
+crescer. E com uma página que é a cara da sua loja: sua marca, suas
+promoções, suas fotos.
 
 **Próximo passo:** marcar uma demonstração ao vivo ou abrir um
 ambiente de testes do seu próprio negócio.
 
 ---
 
-*Documento gerado em maio de 2026. Versão do sistema:
-20 commits ahead de master, 238 testes verdes, build limpo.*
+*Documento atualizado em agosto de 2026. Versão do sistema: 322 testes verdes,
+build limpo, caminho de pagamento validado ponta a ponta com o Mercado Pago.*
