@@ -66,9 +66,29 @@ namespace AgendamentoPro.Application.UseCases.Assinaturas
                 ?? _config["App:PublicUrl"] ?? "http://localhost:5050").TrimEnd('/');
             var backUrl = $"{appUrl}/admin/minha-assinatura";
 
-            var gwResult = await _gateway.CriarPreapprovalAsync(
-                tenantId, assinatura.AssId, plano.PlnPreco,
-                $"AgendamentoPro - {plano.PlnNome}", input.PayerEmail, backUrl, TrialMeses);
+            CriarAssinaturaGatewayResult gwResult;
+            try
+            {
+                gwResult = await _gateway.CriarPreapprovalAsync(
+                    tenantId, assinatura.AssId, plano.PlnPreco,
+                    $"AgendamentoPro - {plano.PlnNome}", input.PayerEmail, backUrl, TrialMeses);
+            }
+            catch (Exception ex) when (ex is not DomainException)
+            {
+                // CreateAsync já salvou; sem desfazer, o rascunho órfão (Trial sem
+                // preapproval) trava o tenant em "já possui assinatura ativa".
+                await _assinaturas.DeleteAsync(assinatura);
+                _cache.Invalidar(tenantId);
+
+                // Gateway sem credencial (MERCADOPAGO_ACCESS_TOKEN ausente) ou fora do ar
+                // não é falha do servidor: vira 400 com mensagem acionável, como no
+                // fluxo de agendamento.
+                throw new DomainException(ex is InvalidOperationException
+                    ? "O pagamento de assinatura está indisponível no momento (gateway não configurado). "
+                      + "Contate o suporte da plataforma."
+                    : "Não foi possível iniciar a assinatura no gateway de pagamento. Tente novamente em instantes.",
+                    ex);
+            }
 
             var proxVenc = gwResult.ProximoVencimento ?? DateTime.UtcNow.AddDays(30);
             assinatura.DefinirPreapproval(gwResult.PreapprovalId, proxVenc, gwResult.PayloadBruto);

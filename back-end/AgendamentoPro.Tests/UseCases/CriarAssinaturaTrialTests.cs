@@ -3,6 +3,7 @@ using AgendamentoPro.Application.InputModels.Assinaturas;
 using AgendamentoPro.Application.UseCases.Assinaturas;
 using AgendamentoPro.Core.Entities.Assinaturas;
 using AgendamentoPro.Core.Enums;
+using AgendamentoPro.Core.Exceptions;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Application.Interfaces.Assinaturas;
@@ -88,6 +89,25 @@ namespace AgendamentoPro.Tests.UseCases
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(),
                 It.IsAny<string>(), It.IsAny<string>(),
                 It.Is<int>(trial => trial >= 1)), Times.Once);
+        }
+
+        [Fact]
+        public async Task Falha_no_gateway_desfaz_o_rascunho_e_vira_erro_de_dominio()
+        {
+            // O rascunho é salvo antes da ida ao gateway (o preapproval precisa do id).
+            // Se o gateway falhar e o rascunho ficar, o tenant trava em
+            // "já possui assinatura ativa" sem nunca ter cadastrado cartão.
+            var (uc, gw, repo) = Montar();
+            gw.Setup(x => x.CriarPreapprovalAsync(
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ThrowsAsync(new InvalidOperationException("Mercado Pago não configurado."));
+
+            var acao = () => uc.ExecuteAsync(tenantId: 1,
+                new CriarAssinaturaInputModel { PlanoId = 1, PayerEmail = "dono@oficina.com" });
+
+            await acao.Should().ThrowAsync<DomainException>();
+            repo.Verify(x => x.DeleteAsync(It.IsAny<Assinatura>()), Times.Once);
         }
     }
 }
