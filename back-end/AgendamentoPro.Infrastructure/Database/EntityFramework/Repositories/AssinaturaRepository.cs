@@ -21,6 +21,12 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
                 .OrderByDescending(a => a.AssCriadoEm)
                 .FirstOrDefaultAsync();
 
+        public Task<Assinatura> GetUltimaByTenantAsync(int tenantId)
+            => _ctx.Assinaturas.Include(a => a.Plano)
+                .Where(a => a.R_TenId == tenantId)
+                .OrderByDescending(a => a.AssCriadoEm)
+                .FirstOrDefaultAsync();
+
         public Task<Assinatura> GetByGatewayPreapprovalIdAsync(string preapprovalId)
             => _ctx.Assinaturas.FirstOrDefaultAsync(a => a.AssGatewayPreapprovalId == preapprovalId);
 
@@ -43,6 +49,12 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
         {
             _ctx.Assinaturas.Update(assinatura);
             return Task.CompletedTask;
+        }
+
+        public async Task DeleteAsync(Assinatura assinatura)
+        {
+            _ctx.Assinaturas.Remove(assinatura);
+            await _ctx.SaveChangesAsync();
         }
     }
 }

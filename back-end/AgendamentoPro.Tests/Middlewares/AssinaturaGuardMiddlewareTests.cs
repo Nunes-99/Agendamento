@@ -52,11 +52,13 @@ namespace AgendamentoPro.Tests.Middlewares
                 if (status.Value == StatusAssinatura.ReadOnly) { ass.MarcarAtrasada(DateTime.UtcNow); ass.TransicionarReadOnly(DateTime.UtcNow); }
                 if (status.Value == StatusAssinatura.Expirada) { ass.MarcarAtrasada(DateTime.UtcNow); ass.TransicionarReadOnly(DateTime.UtcNow); ass.Expirar(DateTime.UtcNow); }
                 if (status.Value == StatusAssinatura.Cancelada) ass.Cancelar(DateTime.UtcNow);
-                m.Setup(r => r.GetByTenantAsync(It.IsAny<int>())).ReturnsAsync(ass);
+                // O guard usa GetUltimaByTenantAsync (sem filtro de status) — o
+                // GetByTenantAsync real esconde Cancelada/Expirada e mascarava o bloqueio.
+                m.Setup(r => r.GetUltimaByTenantAsync(It.IsAny<int>())).ReturnsAsync(ass);
             }
             else
             {
-                m.Setup(r => r.GetByTenantAsync(It.IsAny<int>())).ReturnsAsync((Assinatura)null);
+                m.Setup(r => r.GetUltimaByTenantAsync(It.IsAny<int>())).ReturnsAsync((Assinatura)null);
             }
             return m;
         }
@@ -74,7 +76,7 @@ namespace AgendamentoPro.Tests.Middlewares
             await mw.InvokeAsync(ctx, tenant.Object, repo.Object, NovoCache());
 
             wasCalled().Should().BeTrue();
-            repo.Verify(r => r.GetByTenantAsync(It.IsAny<int>()), Times.Never);
+            repo.Verify(r => r.GetUltimaByTenantAsync(It.IsAny<int>()), Times.Never);
         }
 
         [Theory]
@@ -165,7 +167,7 @@ namespace AgendamentoPro.Tests.Middlewares
             // Segunda request mesmo tenant: deve usar cache
             await mw.InvokeAsync(Request("/api/v1/admin/agendamentos"), TenantCtx(1).Object, repo.Object, cache);
 
-            repo.Verify(r => r.GetByTenantAsync(1), Times.Once);
+            repo.Verify(r => r.GetUltimaByTenantAsync(1), Times.Once);
         }
 
         [Fact]
@@ -179,7 +181,7 @@ namespace AgendamentoPro.Tests.Middlewares
             cache.Invalidar(1);
             await mw.InvokeAsync(Request("/api/v1/admin/agendamentos"), TenantCtx(1).Object, repo.Object, cache);
 
-            repo.Verify(r => r.GetByTenantAsync(1), Times.Exactly(2));
+            repo.Verify(r => r.GetUltimaByTenantAsync(1), Times.Exactly(2));
         }
     }
 }

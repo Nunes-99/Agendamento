@@ -27,7 +27,9 @@ namespace AgendamentoPro.Infrastructure.Services.Assinaturas
             if (_cache.TryGetValue<StatusBox>(key, out var box))
                 return box.Status;
 
-            var ass = await repo.GetByTenantAsync(tenantId);
+            // GetUltimaByTenantAsync (sem filtro de status): o guard precisa enxergar
+            // Cancelada/Expirada — GetByTenantAsync as esconde e liberaria o tenant.
+            var ass = await repo.GetUltimaByTenantAsync(tenantId);
             var status = ass?.AssStatus;
             _cache.Set(key, new StatusBox(status), Ttl);
             return status;
