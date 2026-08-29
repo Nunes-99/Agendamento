@@ -166,6 +166,7 @@ App é instalável (Android/iOS) com service worker (`@angular/service-worker`).
 
 ## Documentação adicional
 
+- 🎬 [`docs/roteiro-demonstracao.md`](docs/roteiro-demonstracao.md) — como montar um ambiente cheio de dados plausíveis em 1 clique (checkbox "dados fictícios" ao criar a empresa) e o roteiro de 15 minutos para demonstrar ao cliente.
 - 📘 [`docs/setup-whatsapp-business.md`](docs/setup-whatsapp-business.md) — passo a passo para criar conta Meta Business, registrar número, gerar token permanente e submeter templates `lembrete_24h`/`lembrete_2h`.
 - 📘 [`docs/setup-mercado-pago.md`](docs/setup-mercado-pago.md) — passo a passo para criar aplicação MP, configurar webhook, gerar access token e webhook secret.
 - 🛠️ [`scripts/backup-sqlite.sh`](scripts/backup-sqlite.sh) e [`scripts/restore-sqlite.sh`](scripts/restore-sqlite.sh) — backup online do SQLite + uploads, com retenção configurável e cron sugerido.

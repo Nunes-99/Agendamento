@@ -1,11 +1,14 @@
 using AgendamentoPro.Core.Entities.Agendamentos;
 using AgendamentoPro.Core.Entities.Clientes;
+using AgendamentoPro.Core.Entities.Horarios;
 using AgendamentoPro.Core.Entities.Recursos;
 using AgendamentoPro.Core.Entities.Servicos;
+using AgendamentoPro.Core.Entities.Tenants;
 using AgendamentoPro.Core.Enums;
 using AgendamentoPro.Core.Interfaces.Database.Common;
 using AgendamentoPro.Core.Interfaces.Database.Repositories;
 using AgendamentoPro.Core.Interfaces.Services;
+using AgendamentoPro.Infrastructure.Database.EntityFramework;
 
 namespace AgendamentoPro.Infrastructure.Services.Tenant
 {
@@ -24,11 +27,16 @@ namespace AgendamentoPro.Infrastructure.Services.Tenant
         private readonly IComboRepository _combos;
         private readonly IAvaliacaoRepository _avaliacoes;
         private readonly IUnitOfWork _uow;
+        // Cupom, pacote, pontos, bloqueio e fila de espera não têm Create no
+        // repositório — o contexto resolve sem inflar as interfaces por causa do seed.
+        private readonly AgendamentoProDbContext _ctx;
 
         public DemoDataSeeder(IServicoRepository servicos, IRecursoRepository recursos,
             IClienteRepository clientes, IAgendamentoRepository agendamentos, ITenantRepository tenants,
-            IComboRepository combos, IAvaliacaoRepository avaliacoes, IUnitOfWork uow)
+            IComboRepository combos, IAvaliacaoRepository avaliacoes, IUnitOfWork uow,
+            AgendamentoProDbContext ctx)
         {
+            _ctx = ctx;
             _servicos = servicos;
             _recursos = recursos;
             _clientes = clientes;
@@ -169,6 +177,86 @@ namespace AgendamentoPro.Infrastructure.Services.Tenant
 
             // 6. Avaliações de clientes em agendamentos concluídos
             await SemearAvaliacoesAsync(tenantId, random);
+
+            // 7. Vitrine, cupons, pacotes, fidelidade, bloqueio e fila de espera —
+            //    sem isso, metade do painel abre vazio numa demonstração.
+            await SemearVitrineAsync(tenant);
+            await SemearComercialAsync(tenantId, servicos, clientes, random);
+        }
+
+        /// <summary>Cores, fonte e anúncios da página pública do tenant.</summary>
+        private async Task SemearVitrineAsync(Core.Entities.Tenants.Tenant tenant)
+        {
+            tenant.AtualizarPersonalizacao(
+                tenant.TenLogoUrl, tenant.TenBannerUrl, tenant.TenFaviconUrl,
+                corPrimaria: "#1565c0",   // azul — botões e preços
+                corSecundaria: "#0d47a1", // azul escuro — fundo do banner
+                corAcento: "#f57c00",     // laranja — promoções em destaque
+                fonte: "Poppins");
+            await _tenants.UpdateAsync(tenant);
+
+            var anuncios = new[]
+            {
+                new { titulo = "Semana do Brilho: 20% off na Lavagem Completa",
+                      texto = "De R$ 70 por R$ 56 até sexta-feira. Agende pelo site!",
+                      destaque = true, ativo = true },
+                new { titulo = "Sábado com café da manhã por nossa conta",
+                      texto = "Enquanto seu carro brilha, você toma um café fresquinho.",
+                      destaque = false, ativo = true },
+                new { titulo = "Leve o Cuidado Total e economize R$ 31",
+                      texto = "Lavagem completa + cera premium por R$ 159.",
+                      destaque = false, ativo = true }
+            };
+            var json = System.Text.Json.JsonSerializer.Serialize(anuncios,
+                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+            _ctx.ConfiguracoesTenant.Add(new ConfiguracaoTenant(
+                tenant.TenId, "vitrine.anuncios", json, "vitrine", sensivel: false));
+
+            // Galeria fica vazia de propósito: fotos são do espaço real do cliente
+            // (Configurações → Minha página → Galeria de fotos).
+        }
+
+        /// <summary>Cupons, pacote pré-pago, pontos, bloqueio e fila de espera.</summary>
+        private async Task SemearComercialAsync(int tenantId, Servico[] servicos,
+            List<Cliente> clientes, Random random)
+        {
+            var hoje = DateTime.Today;
+
+            _ctx.Cupons.Add(new Cupom(tenantId, "BEMVINDO10", TipoDesconto.Percentual, 10m,
+                hoje.AddDays(-15), hoje.AddDays(60), usosMaximos: 100));
+            _ctx.Cupons.Add(new Cupom(tenantId, "VOLTA20", TipoDesconto.ValorFixo, 20m,
+                hoje.AddDays(-5), hoje.AddDays(30), usosMaximos: 50));
+
+            var lavagemSimples = servicos.First(s => s.SerNome == "Lavagem Simples");
+            var lavagemCompleta = servicos.First(s => s.SerNome == "Lavagem Completa");
+            _ctx.PacotesPrePagos.Add(new PacotePrePago(tenantId, lavagemSimples.SerId,
+                "Pacote 5 Lavagens Simples", 5, 150m, 90));   // R$ 30/lavagem vs 35 avulso
+            _ctx.PacotesPrePagos.Add(new PacotePrePago(tenantId, lavagemCompleta.SerId,
+                "Pacote 4 Lavagens Completas", 4, 250m, 120)); // R$ 62,50 vs 70 avulso
+
+            // Pontos de fidelidade para os primeiros clientes — um deles já passa
+            // dos 100, então a troca por cupom pode ser demonstrada na hora.
+            var saldos = new[] { 120, 80, 60, 40, 30, 20, 10 };
+            for (int i = 0; i < saldos.Length && i < clientes.Count; i++)
+            {
+                var p = new PontosFidelidade(tenantId, clientes[i].CliId);
+                p.Creditar(saldos[i]);
+                _ctx.PontosFidelidade.Add(p);
+            }
+
+            // Feriado à frente: mostra a agenda respeitando bloqueio.
+            var proximoFeriado = hoje.AddDays(21);
+            _ctx.BloqueiosAgenda.Add(new BloqueioAgenda(tenantId, null,
+                proximoFeriado, proximoFeriado.AddDays(1).AddSeconds(-1), "Feriado — fechado"));
+
+            // Fila de espera para um dia cheio.
+            var dataCheia = hoje.AddDays(2);
+            _ctx.ListaEspera.Add(new ListaEspera(tenantId, lavagemCompleta.SerId, dataCheia,
+                "Rafael Lima", "11955443322", null, "Prefiro de manhã"));
+            _ctx.ListaEspera.Add(new ListaEspera(tenantId, lavagemSimples.SerId, dataCheia,
+                "Simone Prado", "11944332211", null, null));
+
+            await _uow.SaveChangesAsync();
         }
 
         private async Task SemearCombosAsync(int tenantId, Servico[] servicos)
