@@ -37,11 +37,24 @@ O que foi exercitado, nesta ordem:
 - **Webhook forjado** (payment inexistente) → MP responde 404 e nada é
   confirmado.
 
-> Ainda **não exercitado com o MP chamando de fora**: em dev o webhook foi
-> disparado localmente (localhost não recebe callback do MP). Para ver o
-> callback real, suba um túnel (ngrok) e aponte `APP_PUBLIC_URL` para ele —
-> o `notification_url` volta a ser enviado automaticamente. O
-> `MERCADOPAGO_WEBHOOK_SECRET` também só é exigível nesse cenário.
+### Callback do MP chegando de fora — também validado
+
+Com um túnel público (`cloudflared tunnel --url http://localhost:5050`, já
+instalado nesta máquina; ngrok serve igual) e `APP_PUBLIC_URL` apontando para
+ele, o `notification_url` volta a ser enviado e **o Mercado Pago chamou o
+webhook sozinho**: pagamento aprovado no MP → callback em ~5s → agendamento
+Confirmado, sem nenhum disparo manual (visto na `/admin/agenda`: "Julia Ramos
+— 15:30 — Sinal R$ 8,00 — ✓ Confirmado").
+
+Único ponto que **não dá para exercitar em sandbox**: pagar o QR do PIX de
+verdade (o MP não expõe API para liquidar PIX de teste; aprovar via
+`PUT /v1/payments` responde 403). A confirmação foi validada com pagamento
+aprovado de cartão de teste — o caminho no nosso lado é o mesmo: webhook →
+reconsulta ao MP → `Aprovar()` → agendamento confirmado.
+
+> Em produção, gere o `MERCADOPAGO_WEBHOOK_SECRET` no painel (Webhooks →
+> Configurar) — sem ele o app aceita o callback com um WARN ("modo dev"), e
+> em produção a validação HMAC passa a ser obrigatória.
 
 ### Referência histórica do que faltava aqui
 
