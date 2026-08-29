@@ -90,6 +90,7 @@ namespace AgendamentoPro.API.Controllers
             [FromServices] ITenantContext tenant,
             [FromServices] IUnitOfWork uow,
             [FromServices] IEnumerable<IGatewayPagamento> gateways,
+            [FromServices] Core.Interfaces.Database.Repositories.IClienteRepository clientes,
             string slug, int pacoteId, [FromBody] ClientePublicoInputModel cliente)
         {
             var tid = RequireTenantId(tenant);
@@ -97,9 +98,11 @@ namespace AgendamentoPro.API.Controllers
                 && p.R_TenId == tid && p.PctAtivo);
             if (pacote == null) return NotFound();
 
+            // Busca via repositório: compara telefone NORMALIZADO (máscaras diferentes
+            // entre fluxos duplicavam o cliente).
             Cliente cli = null;
             if (!string.IsNullOrEmpty(cliente.Telefone))
-                cli = await ctx.Clientes.FirstOrDefaultAsync(c => c.R_TenId == tid && c.CliTelefone == cliente.Telefone);
+                cli = await clientes.GetByTelefoneAsync(tid, cliente.Telefone);
             if (cli == null)
             {
                 cli = new Cliente(tid, cliente.Nome, cliente.Email, cliente.Telefone, cliente.WhatsApp, cliente.Cpf);

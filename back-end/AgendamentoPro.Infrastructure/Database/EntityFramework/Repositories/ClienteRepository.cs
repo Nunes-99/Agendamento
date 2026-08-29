@@ -15,8 +15,24 @@ namespace AgendamentoPro.Infrastructure.Database.EntityFramework.Repositories
         public Task<Cliente> GetByTelefoneAsync(int tenantId, string telefone)
         {
             if (string.IsNullOrWhiteSpace(telefone)) return Task.FromResult<Cliente>(null);
-            return _ctx.Clientes.FirstOrDefaultAsync(c => c.R_TenId == tenantId
-                && (c.CliTelefone == telefone || c.CliWhatsApp == telefone) && !c.Excluido);
+
+            // Telefones chegam com máscaras diferentes por fluxo — "(11) 99887-7665" no
+            // agendamento público, "11998877665" no OTP, "+5511..." nos seeds. Comparar
+            // texto cru duplicava o cliente e a Minha Conta nascia vazia. Normaliza os
+            // dois lados para dígitos (Replace vira REPLACE no SQL) e tolera o DDI 55.
+            var digitos = new string(telefone.Where(char.IsDigit).ToArray());
+            if (digitos.Length > 11 && digitos.StartsWith("55")) digitos = digitos.Substring(2);
+            var comDdi = "55" + digitos;
+
+            return _ctx.Clientes.FirstOrDefaultAsync(c => c.R_TenId == tenantId && !c.Excluido
+                && (
+                    (c.CliTelefone != null &&
+                        (c.CliTelefone.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Replace("+", "") == digitos
+                      || c.CliTelefone.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Replace("+", "") == comDdi))
+                 || (c.CliWhatsApp != null &&
+                        (c.CliWhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Replace("+", "") == digitos
+                      || c.CliWhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "").Replace("+", "") == comDdi))
+                ));
         }
 
         public Task<Cliente> GetByEmailAsync(int tenantId, string email)
