@@ -15,7 +15,7 @@
 5. [Cadastrar serviços](#5-cadastrar-serviços)
 6. [Configurar horário de funcionamento](#6-configurar-horário-de-funcionamento)
 7. [Definir regras de negócio](#7-definir-regras-de-negócio)
-8. [Personalizar a aparência](#8-personalizar-a-aparência)
+8. [Deixar a página com a sua cara](#8-deixar-a-página-com-a-sua-cara)
 9. [Testar como cliente](#9-testar-como-cliente)
 10. [Receber o primeiro agendamento real](#10-receber-o-primeiro-agendamento-real)
 11. [O que fazer no dia-a-dia](#11-o-que-fazer-no-dia-a-dia)
@@ -29,8 +29,10 @@
 
 - ✅ **Credenciais de acesso** ao painel administrativo (email e senha
   ou link de "primeiro acesso" enviado pelo administrador do sistema)
-- ✅ **Logo do seu negócio** em PNG ou JPG (recomendado: 200×200px)
-- ✅ **Banner** (opcional — recomendado: 1200×400px)
+- ✅ **Logo do seu negócio** em PNG ou JPG (qualquer tamanho — você
+  recorta na hora de enviar)
+- ✅ **Foto de capa** (opcional — algo bem largo funciona melhor)
+- ✅ **Fotos do espaço** (opcional — recepção, área de atendimento; até 12)
 - ✅ **Lista dos serviços** que você oferece, com preço e duração
 - ✅ **Quantidade de boxes / salas / profissionais** que atendem em paralelo
 - ✅ **Horário de funcionamento** (incluindo pausa de almoço, se houver)
@@ -108,7 +110,7 @@ A tela tem 4 abas:
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  [Empresa] [Personalização] [Regras] [Notif.]    │
+│  [Empresa] [Minha página] [Regras] [Notif.]      │
 └──────────────────────────────────────────────────┘
 ```
 
@@ -286,32 +288,42 @@ Clique em **Salvar**.
 
 ---
 
-## 8. Personalizar a aparência
+## 8. Deixar a página com a sua cara
 
-Configurações → aba **Personalização**.
+Configurações → aba **Minha página**. É aqui que você monta o que o
+cliente vê. O link **"Ver minha página"**, no topo da aba, abre a página
+pública em outra guia — deixe aberta para acompanhar o resultado.
 
 ### 8.1 Subir o logo
 
-```
-Logo URL:    https://meucdn.com.br/logo-acme.png
-```
+Clique em **Enviar imagem** na linha do Logo e escolha o arquivo no seu
+computador (jpg, png, webp ou gif, até 10 MB).
 
-> 💡 Se você ainda não tem um CDN, pode usar serviços gratuitos como
-> Imgur, Cloudinary ou o próprio S3 da sua hospedagem.
+Abre um **editor de corte**: arraste para escolher a área da imagem e
+clique em **Cortar e publicar**. Pronto — o logo já está no ar, não
+precisa clicar em "Salvar" depois.
 
-### 8.2 (Opcional) Subir banner
+> 💡 Se a imagem já estiver hospedada em algum lugar, dá para colar a URL
+> no campo ao lado em vez de enviar o arquivo.
 
-```
-Banner URL:  https://meucdn.com.br/banner-acme.jpg
-Favicon URL: https://meucdn.com.br/favicon-acme.ico
-```
+### 8.2 Subir o banner (capa) e o favicon
+
+Mesmo processo, nas outras duas linhas:
+
+- **Banner**: é a capa atrás do nome do negócio. O corte já vem no
+  formato de capa (bem mais largo que alto) — arraste para escolher a
+  faixa da foto que vai aparecer.
+- **Favicon**: o ícone da aba do navegador. O corte é quadrado.
+
+> 💡 Foto grande demais não é problema: o sistema reduz automaticamente
+> para carregar rápido no celular.
 
 ### 8.3 Definir cores
 
 ```
-Cor primária:    #1976d2     (azul — botões principais)
-Cor secundária:  #f57c00     (laranja — destaques)
-Cor de acento:   #4caf50     (verde — confirmações)
+Cor primária:    #1976d2     (botões e preços)
+Cor secundária:  #f57c00     (fundo do banner, quando não há imagem)
+Cor de acento:   #4caf50     (promoções em destaque)
 ```
 
 > 💡 Use o seletor de cor do navegador (clique no quadrado colorido).
@@ -319,17 +331,39 @@ Cor de acento:   #4caf50     (verde — confirmações)
 
 ### 8.4 Escolher fonte
 
+Escolha na lista: **Poppins, Montserrat, Lato, Nunito, Playfair Display,
+Bebas Neue** e outras. Cada opção aparece escrita na própria fonte.
+
+Clique em **Salvar e aplicar** (as cores e a fonte precisam desse botão;
+as imagens já foram publicadas no envio).
+
+### 8.5 Publicar a primeira promoção
+
+Ainda na mesma aba, role até **Anúncios e promoções** → **Novo anúncio**:
+
 ```
-Fonte:  Poppins
+Título:   Semana de inauguração: 20% off
+Texto:    Válido até sexta. Agende pelo site!
+Visível:  ligado      Destaque: ligado
 ```
 
-Pode usar qualquer fonte do **Google Fonts** (Poppins, Roboto,
-Montserrat, Open Sans, etc.) ou deixar em branco para a fonte padrão.
+Clique em **Publicar anúncios**. O aviso aparece no topo da sua página,
+com a cor de acento por estar em destaque.
 
-Clique em **Salvar e aplicar**.
+> 💡 Quando a promoção acabar, desligue *Visível* em vez de apagar —
+> assim ela volta no ano que vem sem você reescrever.
 
-> 💡 **O resultado aparece em tempo real** na home pública. Abra
-> `seu-dominio.com.br/t/seu-slug` em outra aba para ver.
+### 8.6 Montar a galeria do espaço
+
+Em **Galeria de fotos** → **Adicionar foto** (até 12). Recorte, e escreva
+uma legenda curta: "Recepção", "Nossos boxes", "Sala de espera". Clique
+em **Salvar galeria**.
+
+Na página pública isso vira a seção **"Nosso espaço"** — o cliente clica
+na foto e ela amplia. É o que convence quem ainda não conhece a loja.
+
+> 💡 **O resultado aparece em tempo real** na home pública. Volte na aba
+> `seu-dominio.com.br/t/seu-slug` e recarregue para ver.
 
 ---
 
@@ -347,18 +381,30 @@ Você verá:
 ```
 ┌────────────────────────────────────────────────┐
 │  [Banner do negócio]                           │
-│                                                │
-│  [Logo]  Lava-Rápido Acme         ⭐ 4.8 (32)   │
-│                                                │
-│  [Vitrine de serviços]                         │
+│              [Logo]                            │
+│         Lava-Rápido Acme                       │
+│     [Agendar agora]  [Minha conta]             │
+├────────────────────────────────────────────────┤
+│  🔥 Semana de inauguração: 20% off             │
+│     Válido até sexta. Agende pelo site!        │
+├────────────────────────────────────────────────┤
+│  Nossos serviços                               │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐        │
 │  │ Lavagem  │ │ Lavagem  │ │ Polim.   │        │
 │  │ Simples  │ │ Completa │ │ Espelhado│        │
 │  │ R$ 30    │ │ R$ 80    │ │ R$ 150   │        │
 │  │ 30 min   │ │ 60 min   │ │ 120 min  │        │
 │  └──────────┘ └──────────┘ └──────────┘        │
+├────────────────────────────────────────────────┤
+│  Nosso espaço   [foto] [foto] [foto]           │
+├────────────────────────────────────────────────┤
+│  ⭐ 4.8 — o que dizem nossos clientes           │
 └────────────────────────────────────────────────┘
 ```
+
+Confira se o **nome está legível** sobre o banner, se a **promoção**
+aparece e se as **fotos** abrem ao clicar. É a primeira impressão de
+quem chega pelo link.
 
 ### 9.2 Faça uma reserva de teste
 
@@ -390,12 +436,25 @@ Clique nele → veja os detalhes → cancele (motivo: "Teste").
 Se você quer cobrança antecipada via PIX/cartão, precisa configurar
 o Mercado Pago. Siga `docs/setup-mercado-pago.md`. Resumo:
 
-1. Crie conta no Mercado Pago Developers
+1. Crie a aplicação no Mercado Pago Developers (o painel pede
+   confirmação no app do celular — tenha ele à mão)
 2. Pegue o **Access Token** de produção
-3. Defina o **Webhook Secret**
+3. Gere o **Webhook Secret** em Webhooks → Configurar
 4. Configure no painel ou via variável de ambiente
-5. Aponte o webhook no painel MP para
+5. Aponte os webhooks no painel MP para
    `https://seu-dominio.com.br/api/v1/webhooks/pagamento/MercadoPago`
+   (cobrança dos clientes) e `.../webhooks/assinatura/MercadoPago`
+   (sua mensalidade)
+
+> ⚠️ O Mercado Pago não consegue avisar um endereço `localhost`. Em
+> produção, com domínio e HTTPS, funciona direto; para testar na sua
+> máquina antes, use um túnel (`cloudflared` ou `ngrok`) — o passo a
+> passo está no `docs/setup-mercado-pago.md`.
+
+> 💡 **Sem o Mercado Pago configurado o sistema funciona** — a agenda,
+> os lembretes e o painel seguem normais. Só a cobrança online fica
+> indisponível: o cliente vê um aviso pedindo para entrar em contato,
+> em vez de um erro.
 
 ### 10.2 Configurar WhatsApp (recomendado)
 
@@ -467,6 +526,20 @@ agendar 24/7.
 - **Cupons:** crie campanhas de retenção ("VOLTA10" pra clientes
   inativos)
 - **Pacotes:** ajuste preços se necessário
+- **Minha página:** troque a promoção do mês em *Anúncios* — página
+  parada dá impressão de negócio parado
+
+### Sobre a sua mensalidade
+
+O AgendamentoPro é cobrado por assinatura mensal, em
+**`/admin/minha-assinatura`** — lá você vê o plano, as faturas, troca de
+plano e cancela, sem precisar falar com ninguém.
+
+O **primeiro mês é grátis**: o cartão é cadastrado no começo, mas a
+cobrança só entra no segundo mês. Se algum pagamento falhar, você tem
+**7 dias** com acesso normal (com um aviso no painel) antes da conta
+entrar em modo leitura — e mesmo aí a agenda e os clientes continuam
+visíveis.
 
 ---
 
@@ -487,6 +560,8 @@ Depois que você dominou o básico:
    clientes (ver "Clientes → Importar")
 7. **Audit log** — em caso de dúvida "quem alterou isso?" (ver
    "Auditoria")
+8. **Galeria e anúncios** — mantenha a página viva: troque as fotos
+   quando reformar, publique a promoção da semana (ver "Minha página")
 
 Para detalhes de cada funcionalidade, consulte o
 [Manual do Administrador](manual-administrador.md).
@@ -539,6 +614,6 @@ Para detalhes de cada funcionalidade, consulte o
 
 ---
 
-*Tutorial criado em maio de 2026. Para referência completa de cada
+*Tutorial atualizado em agosto de 2026. Para referência completa de cada
 funcionalidade, consulte o
 [Manual do Administrador](manual-administrador.md).*
