@@ -105,6 +105,22 @@ Detalhes e esforço estimado no [`BACKLOG.md`](../BACKLOG.md):
 - **/planos e /admin/minha-assinatura agora anunciam o primeiro mês grátis** — o
   trial estava implementado mas invisível para o cliente.
 
+### Corrigido em 2026-08-29 — 2ª rodada (varredura de todos os fluxos)
+
+- **Cliente não via os próprios agendamentos na Minha Conta**: telefone com máscara
+  diferente por fluxo ("(11) 99887-7665" no agendamento vs "11998877665" no OTP)
+  duplicava o cadastro. Busca por telefone agora normaliza para dígitos (tolerando
+  DDI 55) — também no fluxo de compra de pacote.
+- **Caixa do dia contava cancelados**: dia só com cancelamentos mostrava a receita
+  cheia em "prevista" e o pagamento pendente do cancelado como "pendente".
+- **Auditoria gravava ID temporário do EF nos INSERTs** (`#-2147482644`): log de
+  Insert passou a ser gravado após o save, com a chave real — sem isso não dava
+  para correlacionar o log com a linha (LGPD/troubleshooting).
+- **Vitrine pública renovada**: contraste do hero, catálogo na home, data dd/MM/yyyy,
+  sinal com % do tenant. Varredura completa dos fluxos: combos, cupons, pacotes,
+  bloqueios, recorrências, lista de espera, KPIs, relatórios, 2FA, importar CSV,
+  OTP/Minha Conta e esqueci-senha — todos exercitados com a aplicação no ar.
+
 ### Corrigido e testado na rodada anterior (ver `git log`):
 
 - **A API não subia** (RecaptchaValidator fora do contêiner) — corrigido, com
