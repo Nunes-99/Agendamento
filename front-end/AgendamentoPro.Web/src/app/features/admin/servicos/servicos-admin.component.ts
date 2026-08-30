@@ -25,29 +25,30 @@ import { Servico } from '../../../core/models/servico.model';
     <mat-dialog-content>
       <mat-form-field appearance="outline" class="full">
         <mat-label>Nome do serviço</mat-label>
-        <input matInput [(ngModel)]="servico.nome" required />
+        <input matInput [(ngModel)]="servico.nome" required maxlength="150" />
       </mat-form-field>
       <mat-form-field appearance="outline" class="full">
         <mat-label>Descrição</mat-label>
-        <textarea matInput rows="2" [(ngModel)]="servico.descricao"
+        <textarea matInput rows="2" [(ngModel)]="servico.descricao" maxlength="1000"
           placeholder="Descreva o que o cliente recebe ao escolher este serviço"></textarea>
+        <mat-hint align="end">{{ (servico.descricao || '').length }}/1000</mat-hint>
       </mat-form-field>
       <div class="row">
         <mat-form-field appearance="outline">
           <mat-label>Preço (R$)</mat-label>
-          <input matInput type="number" min="0" step="0.01" [(ngModel)]="servico.preco" required />
+          <input matInput type="number" min="0" max="999999" step="0.01" [(ngModel)]="servico.preco" required />
           <span matPrefix>R$&nbsp;</span>
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Duração</mat-label>
-          <input matInput type="number" min="5" step="5" [(ngModel)]="servico.duracaoMinutos" required />
+          <input matInput type="number" min="5" max="1440" step="5" [(ngModel)]="servico.duracaoMinutos" required />
           <span matSuffix>min</span>
         </mat-form-field>
       </div>
       <div class="row">
         <mat-form-field appearance="outline">
           <mat-label>Categoria</mat-label>
-          <input matInput [(ngModel)]="servico.categoria" placeholder="Ex: Lavagem, Estética..." />
+          <input matInput [(ngModel)]="servico.categoria" placeholder="Ex: Lavagem, Estética..." maxlength="100" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Ordem na lista</mat-label>
@@ -56,7 +57,7 @@ import { Servico } from '../../../core/models/servico.model';
       </div>
       <mat-form-field appearance="outline" class="full">
         <mat-label>URL da imagem (opcional)</mat-label>
-        <input matInput [(ngModel)]="servico.imagemUrl" placeholder="https://..." />
+        <input matInput type="url" [(ngModel)]="servico.imagemUrl" placeholder="https://..." maxlength="500" />
         <mat-icon matSuffix>image</mat-icon>
       </mat-form-field>
       <mat-checkbox [(ngModel)]="servico.ativo">Serviço ativo (visível para clientes)</mat-checkbox>

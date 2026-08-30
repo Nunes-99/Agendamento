@@ -46,9 +46,9 @@ namespace AgendamentoPro.Tests.UseCases
         [Fact]
         public async Task Ltv_TopN_AgrupaPorClienteEordenaPorReceita()
         {
-            var ana = NovoCliente(10, "Ana", "11111");
-            var bia = NovoCliente(20, "Bia", "22222");
-            var carla = NovoCliente(30, "Carla", "33333");
+            var ana = NovoCliente(10, "Ana", "11988770010");
+            var bia = NovoCliente(20, "Bia", "11988770020");
+            var carla = NovoCliente(30, "Carla", "11988770030");
 
             var lista = new[]
             {
@@ -80,7 +80,7 @@ namespace AgendamentoPro.Tests.UseCases
         [Fact]
         public async Task Ltv_TopRespeitado()
         {
-            var clientes = Enumerable.Range(1, 5).Select(i => NovoCliente(i, $"C{i}", $"telefone{i}")).ToArray();
+            var clientes = Enumerable.Range(1, 5).Select(i => NovoCliente(i, $"C{i}", $"1198877{i:D4}")).ToArray();
             var lista = clientes.Select((c, i) =>
                 NovoAgendamento(i + 1, c, DateTime.Today, TimeSpan.FromHours(10), (i + 1) * 100m,
                     StatusAgendamento.Concluido)).ToArray();
@@ -112,7 +112,7 @@ namespace AgendamentoPro.Tests.UseCases
         [Fact]
         public async Task NoShowPorDiaSemana_CalculaTaxaCorretamente()
         {
-            var cliente = NovoCliente(1, "X", "11111");
+            var cliente = NovoCliente(1, "X", "11988770001");
             // Segunda-feira: 2026-01-05 — 1 no-show e 3 concluídos = 25%
             var segunda = new DateTime(2026, 1, 5);
             var lista = new[]
@@ -140,7 +140,7 @@ namespace AgendamentoPro.Tests.UseCases
         [Fact]
         public async Task NoShowPorHora_PulaHorasSemAgendamento()
         {
-            var cliente = NovoCliente(1, "X", "11111");
+            var cliente = NovoCliente(1, "X", "11988770001");
             var dia = new DateTime(2026, 1, 5);
             var lista = new[]
             {
@@ -176,7 +176,7 @@ namespace AgendamentoPro.Tests.UseCases
         [Fact]
         public async Task Sazonalidade_AgrupaPorAnoEMes()
         {
-            var cliente = NovoCliente(1, "X", "11111");
+            var cliente = NovoCliente(1, "X", "11988770001");
             var hoje = DateTime.Today;
             var lista = new[]
             {

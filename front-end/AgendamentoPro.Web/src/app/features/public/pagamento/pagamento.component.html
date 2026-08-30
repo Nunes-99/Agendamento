@@ -5,8 +5,11 @@
     <div class="info">
       <p *ngIf="!ehCombo()"><strong>Agendamento #{{ r.agendamento.id }}</strong></p>
       <p *ngIf="ehCombo()"><strong>Combo com {{ grupoAgendamentos().length }} serviços</strong></p>
-      <p>Valor: <strong>R$ {{ r.pagamento?.valor | number:'1.2-2' }}</strong></p>
-      <p>Aguardando confirmação...</p>
+      <p class="valor">R$ {{ r.pagamento?.valor | number:'1.2-2' }}</p>
+      <p class="prazo" *ngIf="minutosRestantes() !== null">
+        <mat-icon>timer</mat-icon>
+        O horário fica reservado por mais {{ minutosRestantes() }} min.
+      </p>
     </div>
 
     <div class="combo-itens" *ngIf="ehCombo()">
@@ -20,21 +23,47 @@
       </ul>
     </div>
 
-    <div class="qr" *ngIf="r.pagamento?.qrCode">
-      <p>Escaneie o QR Code ou copie o código abaixo:</p>
-      <pre>{{ r.pagamento?.qrCode }}</pre>
-      <button mat-flat-button color="primary" (click)="copiarPix(r.pagamento!.qrCode!)">
-        <mat-icon>content_copy</mat-icon> Copiar código PIX
+    <!-- PIX: o QR precisa ser uma IMAGEM. Antes a tela dizia "escaneie o QR
+         Code" e mostrava só o texto do copia-e-cola — não havia o que escanear. -->
+    <div class="qr" *ngIf="r.pagamento?.qrCode as codigo">
+      <h3>Pague com PIX</h3>
+      <qrcode [qrdata]="codigo" [width]="220" [margin]="1"
+              errorCorrectionLevel="M" elementType="canvas"
+              alt="QR Code para pagamento PIX"></qrcode>
+      <p class="ajuda">Abra o app do seu banco, escolha <strong>PIX &gt; Ler QR Code</strong> e aponte para o código.</p>
+      <details>
+        <summary>Prefiro copiar o código</summary>
+        <pre>{{ codigo }}</pre>
+      </details>
+      <button mat-flat-button color="primary" (click)="copiarPix(codigo)">
+        <mat-icon>{{ copiado() ? 'check' : 'content_copy' }}</mat-icon>
+        {{ copiado() ? 'Código copiado!' : 'Copiar código PIX' }}
       </button>
     </div>
 
-    <a *ngIf="r.pagamento?.linkPagamento" mat-stroked-button [href]="r.pagamento?.linkPagamento" target="_blank">
-      <mat-icon>payment</mat-icon> Pagar online
+    <!-- Cartão: o pagamento acontece no ambiente do Mercado Pago. -->
+    <div class="cartao" *ngIf="!r.pagamento?.qrCode && r.pagamento?.linkPagamento as link">
+      <h3>Pague com cartão</h3>
+      <p class="ajuda">Você vai concluir o pagamento no ambiente seguro do Mercado Pago e volta para cá automaticamente.</p>
+      <a mat-flat-button color="primary" [href]="link" target="_blank" rel="noopener">
+        <mat-icon>payment</mat-icon> Ir para o pagamento
+      </a>
+    </div>
+
+    <!-- PIX também expõe um link de fallback (ticket_url do Mercado Pago). -->
+    <a class="alternativo" *ngIf="r.pagamento?.qrCode && r.pagamento?.linkPagamento"
+       [href]="r.pagamento?.linkPagamento" target="_blank" rel="noopener">
+      Abrir a página de pagamento do Mercado Pago
     </a>
 
     <div class="status">
-      <mat-spinner [diameter]="40" *ngIf="r.agendamento.statusPagamento === statusPagamento.Pendente"></mat-spinner>
-      <p>Status: <strong>{{ r.agendamento.statusPagamento === 1 ? 'Aprovado' : 'Pendente' }}</strong></p>
+      <mat-spinner [diameter]="28" *ngIf="r.agendamento.statusPagamento === statusPagamento.Pendente"></mat-spinner>
+      <mat-icon class="ok" *ngIf="r.agendamento.statusPagamento === statusPagamento.Aprovado">check_circle</mat-icon>
+      <span>
+        {{ r.agendamento.statusPagamento === statusPagamento.Aprovado
+            ? 'Pagamento aprovado! Redirecionando…'
+            : 'Aguardando o pagamento — esta tela se atualiza sozinha.' }}
+      </span>
     </div>
   </ng-container>
 

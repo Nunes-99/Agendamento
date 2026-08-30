@@ -12,6 +12,8 @@ import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dial
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../../environments/environment';
 import { Tenant } from '../../../core/models/tenant.model';
+import { MascaraDirective } from '../../../core/directives/mascara.directive';
+import { emailValido } from '../../../core/utils/validacao.util';
 
 interface CriarEmpresaInput {
   nome: string;
@@ -29,7 +31,7 @@ interface CriarEmpresaInput {
   selector: 'app-criar-empresa-dialog',
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule,
-    MatInputModule, MatDialogModule, MatIconModule, MatCheckboxModule],
+    MatInputModule, MatDialogModule, MatIconModule, MatCheckboxModule, MascaraDirective],
   template: `
     <h2 mat-dialog-title>
       <mat-icon>add_business</mat-icon>
@@ -42,25 +44,25 @@ interface CriarEmpresaInput {
       <div class="grid">
         <mat-form-field appearance="outline">
           <mat-label>Nome</mat-label>
-          <input matInput [(ngModel)]="form.nome" required />
+          <input matInput [(ngModel)]="form.nome" required maxlength="200" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Slug (URL)</mat-label>
           <input matInput [(ngModel)]="form.slug" required pattern="[a-z0-9\\-]+"
-            placeholder="ex: lava-acme" />
+            placeholder="ex: lava-acme" maxlength="60" (ngModelChange)="normalizarSlug($event)" />
           <mat-hint>Apenas minúsculas, números e hífens</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Segmento</mat-label>
-          <input matInput [(ngModel)]="form.segmento" placeholder="Lava-rápido, Barbearia..." />
+          <input matInput [(ngModel)]="form.segmento" placeholder="Lava-rápido, Barbearia..." maxlength="100" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>E-mail de contato</mat-label>
-          <input matInput type="email" [(ngModel)]="form.email" required />
+          <input matInput type="email" [(ngModel)]="form.email" required maxlength="255" placeholder="contato@empresa.com" />
         </mat-form-field>
         <mat-form-field appearance="outline" class="full">
           <mat-label>Telefone</mat-label>
-          <input matInput [(ngModel)]="form.telefone" />
+          <input matInput appMascara="telefone" [(ngModel)]="form.telefone" inputmode="numeric" placeholder="(11) 3333-4444" maxlength="16" />
         </mat-form-field>
       </div>
 
@@ -68,11 +70,11 @@ interface CriarEmpresaInput {
       <div class="grid">
         <mat-form-field appearance="outline" class="full">
           <mat-label>Nome do admin</mat-label>
-          <input matInput [(ngModel)]="form.adminNome" required />
+          <input matInput [(ngModel)]="form.adminNome" required maxlength="200" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>E-mail do admin</mat-label>
-          <input matInput type="email" [(ngModel)]="form.adminEmail" required autocomplete="off" />
+          <input matInput type="email" [(ngModel)]="form.adminEmail" required autocomplete="off" maxlength="255" placeholder="admin@empresa.com" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Senha do admin</mat-label>
@@ -141,8 +143,10 @@ export class CriarEmpresaDialogComponent {
     else if (!/^[a-z0-9\-]+$/.test(this.form.slug))
       p.push('Slug deve ter apenas letras minúsculas, números e hífens');
     if (!this.form.email) p.push('E-mail de contato');
+    else if (!emailValido(this.form.email)) p.push('E-mail de contato inválido');
     if (!this.form.adminNome) p.push('Nome do admin');
     if (!this.form.adminEmail) p.push('E-mail do admin');
+    else if (!emailValido(this.form.adminEmail)) p.push('E-mail do admin inválido');
     if (!this.form.adminSenha) p.push('Senha do admin');
     else if (this.form.adminSenha.length < 8) p.push('Senha do admin (mín. 8 caracteres)'); // backend exige 8
     return p;
@@ -150,6 +154,19 @@ export class CriarEmpresaDialogComponent {
 
   valido(): boolean {
     return this.problemas().length === 0;
+  }
+
+  /**
+   * O slug vira a URL pública da loja. Deixar o usuário digitar "Lava Acme" e
+   * só reclamar depois é atrito à toa: corrigimos enquanto ele digita.
+   */
+  normalizarSlug(valor: string) {
+    const limpo = (valor || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-{2,}/g, '-');
+    if (limpo !== valor) this.form.slug = limpo;
   }
 
   // [mat-dialog-close]="form" não entregava o resultado ao afterClosed neste

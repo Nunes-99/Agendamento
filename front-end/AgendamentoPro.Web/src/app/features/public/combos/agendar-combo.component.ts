@@ -13,13 +13,16 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { Combo } from '../../../core/models/combo.model';
+import { FormaPagamento } from '../../../core/models/agendamento.model';
+import { MascaraDirective, documentoCompleto } from '../../../core/directives/mascara.directive';
+import { LIMITES, emailValido, mensagemErroApi } from '../../../core/utils/validacao.util';
 
 @Component({
   selector: 'app-agendar-combo',
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatProgressSpinnerModule,
-    MatDatepickerModule, MatNativeDateModule, CurrencyPipe],
+    MatDatepickerModule, MatNativeDateModule, CurrencyPipe, MascaraDirective],
   providers: [{ provide: MAT_DATE_LOCALE, useValue: 'pt-BR' }],
   template: `
     <div class="container">
@@ -67,16 +70,24 @@ import { Combo } from '../../../core/models/combo.model';
           <h3>Seus dados</h3>
           <mat-form-field appearance="outline" class="full">
             <mat-label>Nome</mat-label>
-            <input matInput [(ngModel)]="form.cliente.nome" name="nome" maxlength="100" required />
+            <input matInput [(ngModel)]="form.cliente.nome" name="nome"
+                   autocomplete="name" [maxlength]="limites.nome" required />
+            <mat-hint *ngIf="tentou() && erroNome()" class="erro">{{ erroNome() }}</mat-hint>
           </mat-form-field>
           <div class="row">
             <mat-form-field appearance="outline">
               <mat-label>Telefone / WhatsApp</mat-label>
-              <input matInput [(ngModel)]="form.cliente.telefone" name="tel" required />
+              <input matInput appMascara="telefone" [(ngModel)]="form.cliente.telefone" name="tel"
+                     inputmode="numeric" autocomplete="tel"
+                     placeholder="(11) 98888-7777" [maxlength]="limites.telefone" required />
+              <mat-hint *ngIf="tentou() && erroTelefone()" class="erro">{{ erroTelefone() }}</mat-hint>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>E-mail (opcional)</mat-label>
-              <input matInput type="email" [(ngModel)]="form.cliente.email" name="email" />
+              <input matInput type="email" [(ngModel)]="form.cliente.email" name="email"
+                     autocomplete="email" inputmode="email"
+                     placeholder="voce@email.com" [maxlength]="limites.email" />
+              <mat-hint *ngIf="tentou() && erroEmail()" class="erro">{{ erroEmail() }}</mat-hint>
             </mat-form-field>
           </div>
 
@@ -84,14 +95,14 @@ import { Combo } from '../../../core/models/combo.model';
           <mat-form-field appearance="outline" class="full">
             <mat-label>Forma de pagamento</mat-label>
             <mat-select [(ngModel)]="form.formaPagamento" name="forma">
-              <mat-option [value]="1">PIX</mat-option>
-              <mat-option [value]="2">Cartão de crédito</mat-option>
+              <mat-option [value]="FormaPagamento.Pix">PIX</mat-option>
+              <mat-option [value]="FormaPagamento.CartaoCredito">Cartão de crédito</mat-option>
             </mat-select>
             <mat-hint>Sinal de {{ percentEntrada }}% será cobrado agora.</mat-hint>
           </mat-form-field>
 
           <div class="acoes">
-            <button mat-flat-button color="primary" type="submit" [disabled]="enviando() || !valido()">
+            <button mat-flat-button color="primary" type="submit" [disabled]="enviando()">
               <mat-icon>event</mat-icon>
               {{ enviando() ? 'Processando...' : 'Confirmar agendamento' }}
             </button>
@@ -117,6 +128,7 @@ import { Combo } from '../../../core/models/combo.model';
     .form h3 { margin: 0.5rem 0 0.25rem; font-size: 1rem; color: #555; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
     .full { width: 100%; }
+    .erro { color: var(--cor-erro) !important; }
     mat-form-field { width: 100%; }
     .acoes { display: flex; justify-content: flex-end; margin-top: 1rem; }
     @media (max-width: 30rem) { .row { grid-template-columns: 1fr; } }
@@ -128,11 +140,15 @@ export class AgendarComboComponent implements OnInit {
   private api = inject(ApiService);
   private snack = inject(MatSnackBar);
 
+  readonly limites = LIMITES;
+  readonly FormaPagamento = FormaPagamento;
+
   slug = '';
   comboId = 0;
   combo = signal<Combo | null>(null);
   carregando = signal(true);
   enviando = signal(false);
+  tentou = signal(false);
   hoje = new Date();
   percentEntrada = 20;
 
@@ -140,16 +156,36 @@ export class AgendarComboComponent implements OnInit {
     dataObj: this.amanha(),
     horaInicio: '09:00',
     cliente: { nome: '', telefone: '', email: '' },
-    formaPagamento: 1
+    formaPagamento: FormaPagamento.Pix
   };
 
   duracaoTotal() {
     return this.combo()?.servicos.reduce((s, x) => s + x.duracaoMinutos, 0) || 0;
   }
 
+  // Metodos, nao computed(): estes campos vivem num objeto comum ligado por
+  // ngModel, e um computed() so reavalia quando um SIGNAL do qual ele depende
+  // muda -- congelaria no resultado da primeira renderizacao (campo sempre
+  // "valido", mensagem de erro que nunca aparece).
+  erroNome(): string {
+    const v = (this.form.cliente.nome || '').trim();
+    if (!v) return 'Informe seu nome.';
+    return v.length < 3 ? 'Nome muito curto.' : '';
+  }
+  erroTelefone(): string {
+    const v = (this.form.cliente.telefone || '').trim();
+    if (!v) return 'Informe seu telefone.';
+    return documentoCompleto('telefone', v) ? '' : 'Telefone incompleto. Use DDD + número.';
+  }
+  erroEmail(): string {
+    const v = (this.form.cliente.email || '').trim();
+    if (!v) return '';
+    return emailValido(v) ? '' : 'E-mail inválido. Use o formato nome@dominio.com.';
+  }
+
   valido() {
     return !!this.form.dataObj && !!this.form.horaInicio
-      && !!this.form.cliente.nome && !!this.form.cliente.telefone;
+      && !this.erroNome() && !this.erroTelefone() && !this.erroEmail();
   }
 
   ngOnInit() {
@@ -165,7 +201,11 @@ export class AgendarComboComponent implements OnInit {
   }
 
   agendar() {
-    if (!this.valido()) return;
+    this.tentou.set(true);
+    if (!this.valido()) {
+      this.snack.open('Confira os campos destacados.', 'OK', { duration: 4000 });
+      return;
+    }
     this.enviando.set(true);
     const payload = {
       data: this.dataIso(),
@@ -192,7 +232,7 @@ export class AgendarComboComponent implements OnInit {
       },
       error: e => {
         this.enviando.set(false);
-        this.snack.open(e.error?.message || 'Falha ao agendar combo.', 'OK',
+        this.snack.open(mensagemErroApi(e, 'Falha ao agendar combo.'), 'OK',
           { duration: 5000, panelClass: 'snack-erro' });
       }
     });

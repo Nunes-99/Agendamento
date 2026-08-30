@@ -10,6 +10,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../../core/services/api.service';
 import { ClienteAuthService } from '../../../core/services/cliente-auth.service';
+import { MascaraDirective, documentoCompleto } from '../../../core/directives/mascara.directive';
+import { mensagemErroApi } from '../../../core/utils/validacao.util';
 
 type Etapa = 'telefone' | 'codigo';
 
@@ -17,7 +19,7 @@ type Etapa = 'telefone' | 'codigo';
   selector: 'app-entrar-cliente',
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatProgressSpinnerModule],
+    MatFormFieldModule, MatInputModule, MatProgressSpinnerModule, MascaraDirective],
   template: `
     <div class="container">
       <h1><mat-icon>account_circle</mat-icon> Acessar Minha Conta</h1>
@@ -26,8 +28,11 @@ type Etapa = 'telefone' | 'codigo';
       <section class="card" *ngIf="etapa() === 'telefone'">
         <mat-form-field appearance="outline" class="full">
           <mat-label>Seu telefone (com DDD)</mat-label>
-          <input matInput [(ngModel)]="telefone" placeholder="11999999999" inputmode="numeric" maxlength="14" />
-          <mat-hint>Apenas números, com DDD.</mat-hint>
+          <input matInput appMascara="telefone" [(ngModel)]="telefone"
+                 placeholder="(11) 98888-7777" inputmode="numeric"
+                 autocomplete="tel" maxlength="16" />
+          <mat-icon matSuffix>smartphone</mat-icon>
+          <mat-hint>O mesmo número que você usou para agendar.</mat-hint>
         </mat-form-field>
         <button mat-flat-button color="primary" [disabled]="!validoTelefone() || enviando()" (click)="solicitar()">
           <mat-icon *ngIf="!enviando()">send</mat-icon>
@@ -95,8 +100,7 @@ export class EntrarClienteComponent implements OnInit {
   }
 
   validoTelefone(): boolean {
-    const limpo = this.telefone.replace(/\D/g, '');
-    return limpo.length >= 10 && limpo.length <= 13;
+    return documentoCompleto('telefone', this.telefone);
   }
 
   solicitar() {
@@ -145,7 +149,8 @@ export class EntrarClienteComponent implements OnInit {
       },
       error: e => {
         this.enviando.set(false);
-        this.snack.open(e.error?.mensagem || 'Código inválido', 'OK', { duration: 4000 });
+        this.snack.open(e.error?.mensagem || mensagemErroApi(e, 'Código inválido.'), 'OK',
+          { duration: 5000 });
       }
     });
   }

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,28 +20,30 @@ import { MatSelectModule } from '@angular/material/select';
 import { urlUpload } from '../../../core/utils/url.util';
 import { MatDialog } from '@angular/material/dialog';
 import { CropImagemDialogComponent, CropImagemData } from './crop-imagem-dialog.component';
+import { MascaraDirective } from '../../../core/directives/mascara.directive';
+import { emailValido, mensagemErroApi } from '../../../core/utils/validacao.util';
 
 @Component({
   selector: 'app-configuracoes',
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule,
-    MatTabsModule, MatSlideToggleModule, MatIconModule, MatSelectModule],
+    MatTabsModule, MatSlideToggleModule, MatIconModule, MatSelectModule, MascaraDirective],
   template: `
     <h1>Configurações</h1>
     <mat-tab-group>
       <mat-tab label="Empresa">
         <div class="form" *ngIf="tenant() as t">
-          <mat-form-field appearance="outline"><mat-label>Nome</mat-label><input matInput [(ngModel)]="t.nome" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Segmento</mat-label><input matInput [(ngModel)]="t.segmento" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>CNPJ</mat-label><input matInput [(ngModel)]="t.cnpj" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>E-mail</mat-label><input matInput [(ngModel)]="t.email" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Telefone</mat-label><input matInput [(ngModel)]="t.telefone" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>WhatsApp</mat-label><input matInput [(ngModel)]="t.whatsApp" /></mat-form-field>
-          <mat-form-field appearance="outline" class="full"><mat-label>Endereço</mat-label><input matInput [(ngModel)]="t.endereco" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Cidade</mat-label><input matInput [(ngModel)]="t.cidade" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Nome</mat-label><input matInput [(ngModel)]="t.nome" maxlength="200" required /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Segmento</mat-label><input matInput [(ngModel)]="t.segmento" maxlength="100" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>CNPJ</mat-label><input matInput appMascara="cnpj" [(ngModel)]="t.cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>E-mail</mat-label><input matInput type="email" [(ngModel)]="t.email" maxlength="255" required /><mat-hint *ngIf="erroEmailTenant()" class="erro">{{ erroEmailTenant() }}</mat-hint></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Telefone</mat-label><input matInput appMascara="telefone" [(ngModel)]="t.telefone" inputmode="numeric" placeholder="(11) 3333-4444" maxlength="16" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>WhatsApp</mat-label><input matInput appMascara="telefone" [(ngModel)]="t.whatsApp" inputmode="numeric" placeholder="(11) 98888-7777" maxlength="16" /></mat-form-field>
+          <mat-form-field appearance="outline" class="full"><mat-label>Endereço</mat-label><input matInput [(ngModel)]="t.endereco" maxlength="255" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Cidade</mat-label><input matInput [(ngModel)]="t.cidade" maxlength="100" /></mat-form-field>
           <mat-form-field appearance="outline"><mat-label>Estado</mat-label><input matInput maxlength="2" [(ngModel)]="t.estado" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>CEP</mat-label><input matInput [(ngModel)]="t.cep" /></mat-form-field>
-          <mat-form-field appearance="outline" class="full"><mat-label>Descrição</mat-label><textarea matInput rows="3" [(ngModel)]="t.descricao"></textarea></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>CEP</mat-label><input matInput appMascara="cep" [(ngModel)]="t.cep" inputmode="numeric" placeholder="00000-000" maxlength="9" /></mat-form-field>
+          <mat-form-field appearance="outline" class="full"><mat-label>Descrição</mat-label><textarea matInput rows="3" [(ngModel)]="t.descricao" maxlength="2000"></textarea><mat-hint align="end">{{ (t.descricao || "").length }}/2000</mat-hint></mat-form-field>
           <button mat-flat-button color="primary" (click)="salvarEmpresa()">Salvar</button>
         </div>
       </mat-tab>
@@ -151,11 +153,11 @@ import { CropImagemDialogComponent, CropImagemData } from './crop-imagem-dialog.
 
       <mat-tab label="Regras de negócio">
         <div class="form" *ngIf="tenant() as t">
-          <mat-form-field appearance="outline"><mat-label>Percentual de entrada (%)</mat-label><input matInput type="number" [(ngModel)]="t.regras.percentualEntrada" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Buffer entre atendimentos (min)</mat-label><input matInput type="number" [(ngModel)]="t.regras.bufferMinutos" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Antecedência mínima (h)</mat-label><input matInput type="number" [(ngModel)]="t.regras.antecedenciaMinHoras" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Antecedência máxima (dias)</mat-label><input matInput type="number" [(ngModel)]="t.regras.antecedenciaMaxDias" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Limite cancelamento (h)</mat-label><input matInput type="number" [(ngModel)]="t.regras.limiteCancelamentoHoras" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Percentual de entrada (%)</mat-label><input matInput type="number" min="0" max="100" [(ngModel)]="t.regras.percentualEntrada" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Buffer entre atendimentos (min)</mat-label><input matInput type="number" min="0" max="240" [(ngModel)]="t.regras.bufferMinutos" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Antecedência mínima (h)</mat-label><input matInput type="number" min="0" [(ngModel)]="t.regras.antecedenciaMinHoras" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Antecedência máxima (dias)</mat-label><input matInput type="number" min="1" [(ngModel)]="t.regras.antecedenciaMaxDias" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Limite cancelamento (h)</mat-label><input matInput type="number" min="0" [(ngModel)]="t.regras.limiteCancelamentoHoras" /></mat-form-field>
           <button mat-flat-button color="primary" (click)="salvarRegras()">Salvar</button>
         </div>
       </mat-tab>
@@ -182,6 +184,7 @@ import { CropImagemDialogComponent, CropImagemData } from './crop-imagem-dialog.
     </mat-tab-group>
   `,
   styles: [`
+    .erro { color: var(--cor-erro) !important; }
     h1 { margin: 0 0 1rem; }
     .form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 1rem; }
     .form .full { grid-column: 1 / -1; }
@@ -239,6 +242,13 @@ export class ConfiguracoesComponent implements OnInit {
 
   tenant = signal<Tenant | null>(null);
   anuncios = signal<AnuncioVitrine[]>([]);
+
+  /** O e-mail da empresa é o remetente dos avisos: um valor torto quebra tudo. */
+  erroEmailTenant = computed(() => {
+    const v = (this.tenant()?.email || '').trim();
+    if (!v) return 'O e-mail da empresa é obrigatório.';
+    return emailValido(v) ? '' : 'E-mail inválido. Use o formato nome@dominio.com.';
+  });
   salvandoAnuncios = signal(false);
 
   // Fontes populares do Google Fonts — o ThemeService baixa a escolhida.
@@ -445,19 +455,64 @@ export class ConfiguracoesComponent implements OnInit {
   salvarEmpresa() {
     const t = this.tenant();
     if (!t) return;
-    this.api.atualizarTenant(t.id, t).subscribe(() => this.snack.open('Salvo!', 'OK', { duration: 2000 }));
+    if (this.erroEmailTenant()) {
+      this.snack.open(this.erroEmailTenant(), 'OK', { duration: 5000, panelClass: 'snack-erro' });
+      return;
+    }
+    if (!(t.nome || '').trim()) {
+      this.snack.open('O nome da empresa é obrigatório.', 'OK', { duration: 5000, panelClass: 'snack-erro' });
+      return;
+    }
+    this.api.atualizarTenant(t.id, t).subscribe({
+      next: () => this.snack.open('Salvo!', 'OK', { duration: 2000 }),
+      error: e => this.falhaAoSalvar(e, 'Falha ao salvar os dados da empresa.')
+    });
   }
   salvarPersonalizacao() {
     const t = this.tenant();
     if (!t) return;
-    this.api.atualizarPersonalizacao(t.id, t.personalizacao).subscribe(() => {
-      this.theme.aplicarPersonalizacao(t.personalizacao);
-      this.snack.open('Personalização aplicada!', 'OK', { duration: 2000 });
+    this.api.atualizarPersonalizacao(t.id, t.personalizacao).subscribe({
+      next: () => {
+        this.theme.aplicarPersonalizacao(t.personalizacao);
+        this.snack.open('Personalização aplicada!', 'OK', { duration: 2000 });
+      },
+      error: e => this.falhaAoSalvar(e, 'Falha ao salvar a personalização.')
     });
   }
   salvarRegras() {
     const t = this.tenant();
     if (!t) return;
-    this.api.atualizarRegras(t.id, t.regras).subscribe(() => this.snack.open('Regras salvas!', 'OK', { duration: 2000 }));
+    const erro = this.validarRegras(t.regras);
+    if (erro) {
+      this.snack.open(erro, 'OK', { duration: 5000, panelClass: 'snack-erro' });
+      return;
+    }
+    this.api.atualizarRegras(t.id, t.regras).subscribe({
+      next: () => this.snack.open('Regras salvas!', 'OK', { duration: 2000 }),
+      error: e => this.falhaAoSalvar(e, 'Falha ao salvar as regras.')
+    });
+  }
+
+  /**
+   * Números fora de faixa aqui não dão erro no banco — só produzem uma agenda
+   * que se comporta de um jeito que ninguém pediu (sinal de 500%, antecedência
+   * mínima maior que a máxima e nenhum horário aparecendo na página pública).
+   */
+  private validarRegras(r: any): string {
+    if (r.percentualEntrada < 0 || r.percentualEntrada > 100)
+      return 'O percentual de entrada precisa ficar entre 0 e 100.';
+    if (r.bufferMinutos < 0 || r.bufferMinutos > 240)
+      return 'O intervalo entre atendimentos precisa ficar entre 0 e 240 minutos.';
+    if (r.antecedenciaMinHoras < 0 || r.antecedenciaMaxDias < 1)
+      return 'Confira a antecedência: mínima em horas (0 ou mais) e máxima em dias (1 ou mais).';
+    if (r.antecedenciaMinHoras / 24 > r.antecedenciaMaxDias)
+      return 'A antecedência mínima ficou maior que a máxima — nenhum horário apareceria para o cliente.';
+    if (r.limiteCancelamentoHoras < 0)
+      return 'O limite de cancelamento não pode ser negativo.';
+    return '';
+  }
+
+  private falhaAoSalvar(e: any, padrao: string) {
+    this.snack.open(mensagemErroApi(e, padrao), 'OK', { duration: 6000, panelClass: 'snack-erro' });
   }
 }

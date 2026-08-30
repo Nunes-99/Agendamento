@@ -16,6 +16,9 @@ import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Agendamento, SlotDisponivel } from '../../../core/models/agendamento.model';
 import { Servico } from '../../../core/models/servico.model';
+import { MascaraDirective, documentoCompleto } from '../../../core/directives/mascara.directive';
+import { LIMITES, emailValido } from '../../../core/utils/validacao.util';
+import { TelefonePipe } from '../../../core/pipes/telefone.pipe';
 
 export interface AgendamentoDialogData {
   modo: 'novo' | 'reagendar';
@@ -27,7 +30,8 @@ export interface AgendamentoDialogData {
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatDialogModule,
-    MatProgressSpinnerModule, MatTabsModule, MatDatepickerModule, MatNativeDateModule],
+    MatProgressSpinnerModule, MatTabsModule, MatDatepickerModule, MatNativeDateModule,
+    MascaraDirective, TelefonePipe],
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'pt-BR' },
     { provide: MAT_DATE_FORMATS, useValue: {
@@ -137,17 +141,22 @@ export interface AgendamentoDialogData {
             <div class="grid abas-content">
               <mat-form-field appearance="outline" class="full">
                 <mat-label>Nome</mat-label>
-                <input matInput [(ngModel)]="form.cliente.nome" required maxlength="100" />
-                <mat-hint align="end">{{ form.cliente.nome.length }}/100</mat-hint>
+                <input matInput [(ngModel)]="form.cliente.nome" required
+                  autocomplete="name" [maxlength]="limites.nome" />
+                <mat-hint align="end">{{ form.cliente.nome.length }}/{{ limites.nome }}</mat-hint>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Telefone</mat-label>
-                <input matInput [(ngModel)]="form.cliente.telefone"
-                  placeholder="(11) 99999-9999" required maxlength="20" />
+                <input matInput appMascara="telefone" [(ngModel)]="form.cliente.telefone"
+                  placeholder="(11) 98888-7777" inputmode="numeric" required
+                  [maxlength]="limites.telefone" />
+                <mat-hint *ngIf="erroTelefoneCliente()" class="erro">{{ erroTelefoneCliente() }}</mat-hint>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>E-mail</mat-label>
-                <input matInput type="email" [(ngModel)]="form.cliente.email" maxlength="100" />
+                <input matInput type="email" [(ngModel)]="form.cliente.email"
+                  placeholder="cliente@email.com" [maxlength]="limites.email" />
+                <mat-hint *ngIf="erroEmailCliente()" class="erro">{{ erroEmailCliente() }}</mat-hint>
               </mat-form-field>
             </div>
           </mat-tab>
@@ -158,7 +167,7 @@ export interface AgendamentoDialogData {
                 <div>
                   <small>Cliente selecionado</small>
                   <strong>{{ clienteSelecionado()?.nome }}</strong>
-                  <span>{{ clienteSelecionado()?.telefone }}<ng-container *ngIf="clienteSelecionado()?.email"> • {{ clienteSelecionado()?.email }}</ng-container></span>
+                  <span>{{ clienteSelecionado()?.telefone | telefone }}<ng-container *ngIf="clienteSelecionado()?.email"> • {{ clienteSelecionado()?.email }}</ng-container></span>
                 </div>
                 <button mat-icon-button (click)="limparClienteSelecionado()" aria-label="Remover seleção">
                   <mat-icon>close</mat-icon>
@@ -176,7 +185,7 @@ export interface AgendamentoDialogData {
                   (click)="selecionarCliente(c)">
                   <div>
                     <strong>{{ c.nome }}</strong>
-                    <small>{{ c.telefone }}<span *ngIf="c.email"> • {{ c.email }}</span></small>
+                    <small>{{ c.telefone | telefone }}<span *ngIf="c.email"> • {{ c.email }}</span></small>
                   </div>
                   <mat-icon *ngIf="form.clienteId === c.id">check_circle</mat-icon>
                 </button>
@@ -212,6 +221,7 @@ export interface AgendamentoDialogData {
     </mat-dialog-actions>
   `,
   styles: [`
+    .erro { color: var(--cor-erro) !important; }
     :host { display: block; min-width: 28rem; }
     h2 { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 1.5rem 1.5rem 0.5rem; }
     h3 { margin: 1rem 0 0.5rem; font-size: 0.9375rem; color: var(--cor-primaria, #6366f1); }
@@ -356,6 +366,23 @@ export class AgendamentoDialogComponent implements OnInit {
     cliente: { nome: '', telefone: '', email: '' }
   };
 
+  readonly limites = LIMITES;
+
+  // Metodos, nao computed(): estes campos vivem num objeto comum ligado por
+  // ngModel, e um computed() so reavalia quando um SIGNAL do qual ele depende
+  // muda -- congelaria no resultado da primeira renderizacao (campo sempre
+  // "valido", mensagem de erro que nunca aparece).
+  erroTelefoneCliente(): string {
+    const v = (this.form.cliente.telefone || '').trim();
+    if (!v) return '';
+    return documentoCompleto('telefone', v) ? '' : 'Telefone incompleto. Use DDD + número.';
+  }
+  erroEmailCliente(): string {
+    const v = (this.form.cliente.email || '').trim();
+    if (!v) return '';
+    return emailValido(v) ? '' : 'E-mail inválido.';
+  }
+
   private amanha(): Date {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -447,7 +474,8 @@ export class AgendamentoDialogComponent implements OnInit {
     if (!this.form.servicoId || !this.form.dataObj || !this.form.horaInicio) return false;
     if (!this.form.recursoId) return false;
     if (this.abaCliente === 0) {
-      return !!(this.form.cliente.nome && this.form.cliente.telefone);
+      return !!(this.form.cliente.nome.trim() && this.form.cliente.telefone)
+        && !this.erroTelefoneCliente() && !this.erroEmailCliente();
     }
     return !!this.form.clienteId;
   });

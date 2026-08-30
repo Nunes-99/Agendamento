@@ -14,12 +14,43 @@ namespace AgendamentoPro.Application.UseCases.Agendamentos
     public class ConsultarAgendamentoUseCase : IConsultarAgendamentoUseCase
     {
         private readonly IAgendamentoRepository _agendamentos;
-        public ConsultarAgendamentoUseCase(IAgendamentoRepository a) { _agendamentos = a; }
+        private readonly IPagamentoRepository _pagamentos;
+        public ConsultarAgendamentoUseCase(IAgendamentoRepository a, IPagamentoRepository p)
+        {
+            _agendamentos = a;
+            _pagamentos = p;
+        }
 
         public async Task<AgendamentoViewModel> PorIdAsync(int tenantId, int id)
         {
             var a = await _agendamentos.GetByIdAsync(id, tenantId);
             return a == null ? null : AgendamentoMapper.Map(a);
+        }
+
+        public async Task<PagamentoViewModel> CobrancaEmAbertoAsync(int tenantId, int agendamentoId)
+        {
+            // Confere o tenant antes de devolver a cobrança: o endpoint é anônimo
+            // e não pode virar um jeito de ler pagamento de outra empresa.
+            var ag = await _agendamentos.GetByIdAsync(agendamentoId, tenantId);
+            if (ag == null) return null;
+
+            var pagamentos = await _pagamentos.GetByAgendamentoAsync(agendamentoId);
+            var pendente = pagamentos
+                .Where(p => p.PagStatus == StatusPagamento.Pendente)
+                .OrderByDescending(p => p.PagId)
+                .FirstOrDefault();
+            if (pendente == null) return null;
+
+            return new PagamentoViewModel
+            {
+                Id = pendente.PagId,
+                Forma = pendente.PagForma,
+                Status = pendente.PagStatus,
+                Valor = pendente.PagValor,
+                QrCode = pendente.PagQrCode,
+                LinkPagamento = pendente.PagLinkPagamento,
+                Expiracao = pendente.PagExpiracao
+            };
         }
 
         public async Task<IEnumerable<AgendamentoViewModel>> AgendaDoDiaAsync(int tenantId, DateTime data, int? recursoId)

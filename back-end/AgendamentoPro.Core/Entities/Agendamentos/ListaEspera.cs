@@ -1,3 +1,4 @@
+using AgendamentoPro.Core.Common;
 using AgendamentoPro.Core.Entities.Servicos;
 using AgendamentoPro.Core.Entities.Tenants;
 using AgendamentoPro.Core.Exceptions;
@@ -31,19 +32,21 @@ namespace AgendamentoPro.Core.Entities.Agendamentos
         public ListaEspera(int rTenId, int rSerId, DateTime dataDesejada,
             string nome, string telefone, string email, string observacao)
         {
+            Exception Erro(string msg) => new DomainException(msg);
+
             if (rTenId <= 0) throw new DomainException("Tenant é obrigatório.");
             if (rSerId <= 0) throw new DomainException("Serviço é obrigatório.");
-            if (string.IsNullOrWhiteSpace(nome)) throw new DomainException("Nome é obrigatório.");
-            if (string.IsNullOrWhiteSpace(telefone) && string.IsNullOrWhiteSpace(email))
-                throw new DomainException("Informe telefone ou e-mail para contato.");
 
             R_TenId = rTenId;
             R_SerId = rSerId;
             LesDataDesejada = dataDesejada.Date;
-            LesClienteNome = nome;
-            LesClienteTelefone = telefone;
-            LesClienteEmail = email;
-            LesObservacao = observacao;
+            LesClienteNome = CampoTexto.Obrigatorio(nome, 200, "Nome", Erro);
+            LesClienteTelefone = CampoTexto.Telefone(telefone, "Telefone", Erro);
+            LesClienteEmail = CampoTexto.Email(email, "E-mail", Erro);
+            LesObservacao = CampoTexto.Opcional(observacao, 500, "Observação", Erro);
+
+            if (LesClienteTelefone == null && LesClienteEmail == null)
+                throw new DomainException("Informe telefone ou e-mail para contato.");
             LesNotificado = false;
             LesCriadoEm = DateTime.UtcNow;
         }

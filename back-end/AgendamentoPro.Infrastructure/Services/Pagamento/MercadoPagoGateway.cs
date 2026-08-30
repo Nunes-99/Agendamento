@@ -4,8 +4,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace AgendamentoPro.Infrastructure.Services.Pagamento
@@ -24,6 +26,21 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
     public class MercadoPagoGateway : IGatewayPagamento
     {
         private const string BaseUrl = "https://api.mercadopago.com";
+
+        /// <summary>
+        /// Serialização para o Mercado Pago.
+        ///
+        /// O encoder padrão do System.Text.Json escapa o "+" do fuso horário como
+        /// a sequência unicode escapada equivalente — JSON
+        /// perfeitamente válido, mas o parser de datas do MP lê o texto ANTES de
+        /// desescapar e devolve "error_parsing_date". Como o PIX usava offset
+        /// "-03:00" (sem "+"), só o cartão quebrava: nenhum cliente conseguia
+        /// pagar com crédito ou débito, com um 400 que não dizia o motivo.
+        /// </summary>
+        private static readonly JsonSerializerOptions MpJson = new(JsonSerializerDefaults.Web)
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
         private readonly HttpClient _http;
         private readonly ILogger<MercadoPagoGateway> _logger;
@@ -117,14 +134,14 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
             decimal valor, string descricao, int expiracaoMinutos, string payerEmail)
         {
             var idempotencyKey = $"agp-{tenantId}-{agendamentoId}-{Guid.NewGuid():N}";
-            var dataExpiracao = DateTime.UtcNow.AddMinutes(expiracaoMinutos);
+            var dataExpiracao = DateTimeOffset.UtcNow.AddMinutes(expiracaoMinutos);
 
             var payload = new Dictionary<string, object>
             {
                 ["transaction_amount"] = (double)valor,
                 ["description"] = descricao,
                 ["payment_method_id"] = "pix",
-                ["date_of_expiration"] = dataExpiracao.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
+                ["date_of_expiration"] = FormatarDataMP(dataExpiracao),
                 ["external_reference"] = $"{tenantId}:{agendamentoId}",
                 ["payer"] = new { email = PayerEmailValido(payerEmail) }
             };
@@ -136,7 +153,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
 
             using var req = new HttpRequestMessage(HttpMethod.Post, "/v1/payments")
             {
-                Content = JsonContent.Create(payload)
+                Content = JsonContent.Create(payload, options: MpJson)
             };
             req.Headers.Add("X-Idempotency-Key", idempotencyKey);
 
@@ -153,7 +170,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 GatewayId = id,
                 QrCode = poi.GetProperty("qr_code").GetString(),
                 LinkPagamento = poi.TryGetProperty("ticket_url", out var tu) ? tu.GetString() : null,
-                Expiracao = dataExpiracao,
+                Expiracao = dataExpiracao.UtcDateTime,
                 PayloadBruto = root.GetRawText()
             };
         }
@@ -161,14 +178,15 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
         private async Task<CobrancaResult> CriarPreferenciaCheckoutAsync(int tenantId, int agendamentoId,
             decimal valor, FormaPagamento forma, string descricao, int expiracaoMinutos)
         {
-            var dataExpiracao = DateTime.UtcNow.AddMinutes(expiracaoMinutos);
+            var agora = DateTimeOffset.UtcNow;
+            var dataExpiracao = agora.AddMinutes(expiracaoMinutos);
             var paymentTypes = forma == FormaPagamento.CartaoDebito
                 ? new[] { new { id = "credit_card" }, new { id = "ticket" } } // MP não tem "debit_card" exposto em prefs simples
                 : new[] { new { id = "ticket" }, new { id = "atm" } };
 
-            var payload = new
+            var payload = new Dictionary<string, object>
             {
-                items = new[]
+                ["items"] = new[]
                 {
                     new {
                         title = descricao,
@@ -177,19 +195,27 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                         unit_price = (double)valor
                     }
                 },
-                external_reference = $"{tenantId}:{agendamentoId}",
-                notification_url = $"{_appPublicUrl}/api/v1/webhooks/pagamento/MercadoPago",
-                expires = true,
-                expiration_date_to = dataExpiracao.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"),
-                payment_methods = new
+                ["external_reference"] = $"{tenantId}:{agendamentoId}",
+                ["expires"] = true,
+                // O MP exige a janela COMPLETA quando expires=true: só o "to" faz a
+                // preferência ser recusada com error_parsing_date, e o cartão parava
+                // de funcionar inteiro. DateTimeOffset + InvariantCulture porque o
+                // formato ".fff" vira ",fff" em cultura pt-BR e o "zzz" de um
+                // DateTime UTC carimba o offset local (hora UTC rotulada como -03:00).
+                ["expiration_date_from"] = FormatarDataMP(agora),
+                ["expiration_date_to"] = FormatarDataMP(dataExpiracao),
+                ["payment_methods"] = new
                 {
                     excluded_payment_types = paymentTypes,
                     installments = forma == FormaPagamento.CartaoDebito ? 1 : 12
                 }
             };
+            if (UrlPublica(_appPublicUrl))
+                payload["notification_url"] = $"{_appPublicUrl}/api/v1/webhooks/pagamento/MercadoPago";
 
-            var resp = await _http.PostAsJsonAsync("/checkout/preferences", payload);
-            await EnsureSuccess(resp, "Falha ao criar preferência no Mercado Pago");
+            var resp = await _http.PostAsJsonAsync("/checkout/preferences", payload, MpJson);
+            await EnsureSuccess(resp, "Falha ao criar preferência no Mercado Pago",
+                JsonSerializer.Serialize(payload, MpJson));
 
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
             var root = doc.RootElement;
@@ -199,7 +225,7 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 GatewayId = root.GetProperty("id").GetString(),
                 LinkPagamento = root.GetProperty("init_point").GetString(),
                 QrCode = null,
-                Expiracao = dataExpiracao,
+                Expiracao = dataExpiracao.UtcDateTime,
                 PayloadBruto = root.GetRawText()
             };
         }
@@ -355,11 +381,25 @@ namespace AgendamentoPro.Infrastructure.Services.Pagamento
                 Encoding.UTF8.GetBytes(hex), Encoding.UTF8.GetBytes(v1.ToLowerInvariant()));
         }
 
-        private static async Task EnsureSuccess(HttpResponseMessage resp, string contexto)
+        /// <summary>
+        /// Data no formato que o Mercado Pago aceita, sempre em cultura invariante:
+        /// "2026-08-30T10:00:00.000-03:00".
+        /// </summary>
+        private static string FormatarDataMP(DateTimeOffset valor)
+            => valor.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Erro do gateway com o corpo enviado junto: sem ele, um "bad_request" do MP
+        /// só dizia qual campo reclamou, nunca o que foi mandado nele.
+        /// </summary>
+        private static async Task EnsureSuccess(HttpResponseMessage resp, string contexto,
+            string corpoEnviado = null)
         {
             if (resp.IsSuccessStatusCode) return;
             var body = await resp.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"{contexto}: {(int)resp.StatusCode} {resp.ReasonPhrase} — {body}");
+            var enviado = corpoEnviado == null ? "" : $" — enviado: {corpoEnviado}";
+            throw new HttpRequestException(
+                $"{contexto}: {(int)resp.StatusCode} {resp.ReasonPhrase} — {body}{enviado}");
         }
     }
 }

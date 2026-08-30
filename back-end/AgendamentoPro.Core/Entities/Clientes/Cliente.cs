@@ -1,3 +1,4 @@
+using AgendamentoPro.Core.Common;
 using AgendamentoPro.Core.Entities.Common;
 using AgendamentoPro.Core.Entities.Tenants;
 using AgendamentoPro.Core.Exceptions;
@@ -24,24 +25,30 @@ namespace AgendamentoPro.Core.Entities.Clientes
         public Cliente(int rTenId, string nome, string email, string telefone, string whatsapp, string cpf, string observacao = null)
         {
             R_TenId = rTenId;
-            CliNome = nome;
-            CliEmail = email;
-            CliTelefone = NormalizarTelefone(telefone);
-            CliWhatsApp = NormalizarTelefone(whatsapp);
-            CliCpf = cpf;
-            CliObservacao = observacao;
             CliCriadoEm = DateTime.UtcNow;
-            Validate();
+            Preencher(nome, email, telefone, whatsapp, cpf, observacao);
         }
 
         public void Atualizar(string nome, string email, string telefone, string whatsapp, string cpf, string observacao)
+            => Preencher(nome, email, telefone, whatsapp, cpf, observacao);
+
+        /// <summary>
+        /// Sanea e valida antes de gravar. Os limites espelham as colunas do banco
+        /// (ver AgendamentoProDbContext): o SQLite não impõe HasMaxLength, então
+        /// sem esta checagem o formulário público aceitaria texto de qualquer
+        /// tamanho — e um e-mail malformado só estourava lá na cobrança.
+        /// </summary>
+        private void Preencher(string nome, string email, string telefone, string whatsapp,
+            string cpf, string observacao)
         {
-            CliNome = nome;
-            CliEmail = email;
-            CliTelefone = NormalizarTelefone(telefone);
-            CliWhatsApp = NormalizarTelefone(whatsapp);
-            CliCpf = cpf;
-            CliObservacao = observacao;
+            Exception Erro(string msg) => new ClienteException(msg);
+
+            CliNome = CampoTexto.Obrigatorio(nome, 200, "Nome", Erro);
+            CliEmail = CampoTexto.Email(email, "E-mail", Erro);
+            CliTelefone = CampoTexto.Telefone(telefone, "Telefone", Erro);
+            CliWhatsApp = CampoTexto.Telefone(whatsapp, "WhatsApp", Erro);
+            CliCpf = CampoTexto.Cpf(cpf, "CPF", Erro);
+            CliObservacao = CampoTexto.Opcional(observacao, 1000, "Observação", Erro);
             Validate();
         }
 

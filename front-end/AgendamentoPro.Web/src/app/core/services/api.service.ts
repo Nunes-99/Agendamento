@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Servico } from '../models/servico.model';
-import { Agendamento, CriarAgendamentoInput, CriarAgendamentoResult, SlotDisponivel } from '../models/agendamento.model';
+import { Agendamento, CobrancaPendente, CriarAgendamentoInput, CriarAgendamentoResult, DiaDisponivel, SlotDisponivel } from '../models/agendamento.model';
 import { Avaliacao, ResumoAvaliacoes, ResponderAvaliacaoInput } from '../models/avaliacao.model';
 import { Combo, ComboInput } from '../models/combo.model';
 import { FotoAgendamento, TipoFoto } from '../models/foto.model';
@@ -26,12 +26,24 @@ export class ApiService {
     return this.http.get<SlotDisponivel[]>(`${this.base}/t/${slug}/slots`, { params });
   }
 
+  diasDisponiveis(slug: string, servicoId: number, inicio: string, dias = 14): Observable<DiaDisponivel[]> {
+    const params = new HttpParams()
+      .set('servicoId', servicoId).set('inicio', inicio).set('dias', dias);
+    return this.http.get<DiaDisponivel[]>(`${this.base}/t/${slug}/dias-disponiveis`, { params });
+  }
+
   criarAgendamento(slug: string, input: CriarAgendamentoInput): Observable<CriarAgendamentoResult> {
     return this.http.post<CriarAgendamentoResult>(`${this.base}/t/${slug}/agendamentos`, input);
   }
 
   consultarAgendamento(slug: string, id: number): Observable<Agendamento> {
     return this.http.get<Agendamento>(`${this.base}/t/${slug}/agendamentos/${id}`);
+  }
+
+  /** Cobrança em aberto — devolve null (204) quando não há nada a pagar. */
+  cobrancaDoAgendamento(slug: string, id: number): Observable<CobrancaPendente | null> {
+    return this.http.get<CobrancaPendente | null>(
+      `${this.base}/t/${slug}/agendamentos/${id}/cobranca`);
   }
 
   // ----- Admin -----

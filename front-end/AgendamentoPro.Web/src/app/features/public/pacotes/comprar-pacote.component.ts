@@ -1,4 +1,4 @@
-import { Component, OnInit, DestroyRef, inject, signal } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject, signal, computed } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,12 +12,15 @@ import { QRCodeModule } from 'angularx-qrcode';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval, switchMap, takeWhile } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { MascaraDirective, documentoCompleto } from '../../../core/directives/mascara.directive';
+import { LIMITES, emailValido, mensagemErroApi } from '../../../core/utils/validacao.util';
 
 @Component({
   selector: 'app-comprar-pacote',
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatProgressSpinnerModule, CurrencyPipe, QRCodeModule],
+    MatFormFieldModule, MatInputModule, MatProgressSpinnerModule, CurrencyPipe,
+    QRCodeModule, MascaraDirective],
   template: `
     <div class="container">
       <h1><mat-icon>inventory_2</mat-icon> Pacotes pré-pagos</h1>
@@ -43,17 +46,25 @@ import { ApiService } from '../../../core/services/api.service';
           <h2>Seus dados</h2>
           <mat-form-field appearance="outline" class="full">
             <mat-label>Nome</mat-label>
-            <input matInput [(ngModel)]="cliente.nome" required />
+            <input matInput [(ngModel)]="cliente.nome" required
+                   autocomplete="name" [maxlength]="limites.nome" />
+            <mat-hint *ngIf="tentou() && erroNome()" class="erro">{{ erroNome() }}</mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline" class="full">
             <mat-label>Telefone</mat-label>
-            <input matInput [(ngModel)]="cliente.telefone" placeholder="11999999999" required />
+            <input matInput appMascara="telefone" [(ngModel)]="cliente.telefone" required
+                   inputmode="numeric" autocomplete="tel"
+                   placeholder="(11) 98888-7777" [maxlength]="limites.telefone" />
+            <mat-hint *ngIf="tentou() && erroTelefone()" class="erro">{{ erroTelefone() }}</mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline" class="full">
             <mat-label>E-mail (opcional)</mat-label>
-            <input matInput type="email" [(ngModel)]="cliente.email" />
+            <input matInput type="email" [(ngModel)]="cliente.email"
+                   autocomplete="email" inputmode="email"
+                   placeholder="voce@email.com" [maxlength]="limites.email" />
+            <mat-hint *ngIf="tentou() && erroEmail()" class="erro">{{ erroEmail() }}</mat-hint>
           </mat-form-field>
-          <button mat-flat-button color="primary" [disabled]="!valido() || carregando()" (click)="comprar()">
+          <button mat-flat-button color="primary" [disabled]="carregando()" (click)="comprar()">
             <mat-icon>shopping_cart</mat-icon> Comprar e gerar PIX
           </button>
         </section>
@@ -80,6 +91,7 @@ import { ApiService } from '../../../core/services/api.service';
     </div>
   `,
   styles: [`
+    .erro { color: var(--cor-erro) !important; }
     .container { max-width: 56rem; margin: 1rem auto; padding: 1rem; }
     h1 { display: flex; align-items: center; gap: 0.5rem; }
     .lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
@@ -124,11 +136,44 @@ export class ComprarPacoteComponent implements OnInit {
   }
 
   selecionar(p: any) { this.selecionado.set(p); }
-  valido() { return this.selecionado() && this.cliente.nome && this.cliente.telefone; }
+  readonly limites = LIMITES;
+  tentou = signal(false);
+
+  // Metodos, nao computed(): estes campos vivem num objeto comum ligado por
+  // ngModel, e um computed() so reavalia quando um SIGNAL do qual ele depende
+  // muda -- congelaria no resultado da primeira renderizacao (campo sempre
+  // "valido", mensagem de erro que nunca aparece).
+  erroNome(): string {
+    const v = (this.cliente.nome || '').trim();
+    if (!v) return 'Informe seu nome.';
+    return v.length < 3 ? 'Nome muito curto.' : '';
+  }
+  erroTelefone(): string {
+    const v = (this.cliente.telefone || '').trim();
+    if (!v) return 'Informe seu telefone.';
+    return documentoCompleto('telefone', v) ? '' : 'Telefone incompleto. Use DDD + número.';
+  }
+  erroEmail(): string {
+    const v = (this.cliente.email || '').trim();
+    if (!v) return '';
+    return emailValido(v) ? '' : 'E-mail inválido. Use o formato nome@dominio.com.';
+  }
+
+  valido() {
+    return !!this.selecionado() && !this.erroNome() && !this.erroTelefone() && !this.erroEmail();
+  }
 
   comprar() {
+    this.tentou.set(true);
     const p = this.selecionado();
-    if (!p) return;
+    if (!p) {
+      this.snack.open('Escolha um pacote.', 'OK', { duration: 4000 });
+      return;
+    }
+    if (!this.valido()) {
+      this.snack.open('Confira os campos destacados.', 'OK', { duration: 4000 });
+      return;
+    }
     this.carregando.set(true);
     this.api.comprarPacote(this.slug, p.pctId, this.cliente).subscribe({
       next: r => {
@@ -138,7 +183,8 @@ export class ComprarPacoteComponent implements OnInit {
       },
       error: e => {
         this.carregando.set(false);
-        this.snack.open(e.error?.message || 'Falha ao gerar pagamento', 'OK', { duration: 4000 });
+        this.snack.open(mensagemErroApi(e, 'Falha ao gerar pagamento.'), 'OK',
+          { duration: 6000, panelClass: 'snack-erro' });
       }
     });
   }

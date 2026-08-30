@@ -27,6 +27,18 @@ namespace AgendamentoPro.API.Controllers
             return Ok(await useCase.ExecuteAsync(tid, servicoId, data, recursoId));
         }
 
+        [HttpGet("api/v1/t/{slug}/dias-disponiveis")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DiasDisponiveis(
+            [FromServices] IConsultarSlotsUseCase useCase,
+            [FromServices] ITenantContext ctx, string slug,
+            [FromQuery] int servicoId, [FromQuery] DateTime? inicio = null,
+            [FromQuery] int dias = 14, [FromQuery] int? recursoId = null)
+        {
+            var tid = RequireTenantId(ctx);
+            return Ok(await useCase.DiasAsync(tid, servicoId, inicio ?? DateTime.Today, dias, recursoId));
+        }
+
         [HttpPost("api/v1/t/{slug}/agendamentos")]
         [AllowAnonymous]
         // 5/min/IP — sem isso, atacante anônimo pode "squattear" slots criando
@@ -53,6 +65,17 @@ namespace AgendamentoPro.API.Controllers
             var tid = RequireTenantId(ctx);
             var ag = await useCase.PorIdAsync(tid, id);
             return ag == null ? NotFound() : Ok(ag);
+        }
+
+        [HttpGet("api/v1/t/{slug}/agendamentos/{id:int}/cobranca")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Cobranca(
+            [FromServices] IConsultarAgendamentoUseCase useCase,
+            [FromServices] ITenantContext ctx, string slug, int id)
+        {
+            var tid = RequireTenantId(ctx);
+            var cobranca = await useCase.CobrancaEmAbertoAsync(tid, id);
+            return cobranca == null ? NoContent() : Ok(cobranca);
         }
 
         [HttpGet("api/v1/t/{slug}/combos/grupos/{grupoComboId:guid}")]

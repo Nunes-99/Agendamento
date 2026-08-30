@@ -1,79 +1,214 @@
 <div class="container">
   <header class="topo">
-    <a [routerLink]="['/t', slug, 'servicos']" class="voltar"><mat-icon>arrow_back</mat-icon></a>
-    <h2>{{ servico()?.nome }}</h2>
+    <a [routerLink]="['/t', slug, 'servicos']" class="voltar" aria-label="Voltar aos serviços">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+    <div class="titulo">
+      <h2>{{ servico()?.nome }}</h2>
+      <p class="sub" *ngIf="servico() as s">
+        {{ s.duracaoMinutos }} min · R$ {{ s.preco | number:'1.2-2' }}
+      </p>
+    </div>
   </header>
 
-  <div class="passos">
-    <span [class.ativo]="passo >= 1">1. Horário</span>
-    <span [class.ativo]="passo >= 2">2. Dados</span>
-    <span [class.ativo]="passo >= 3">3. Pagamento</span>
-  </div>
+  <ol class="passos">
+    <li [class.ativo]="passo === 1" [class.feito]="passo > 1">
+      <span class="bolinha"><mat-icon *ngIf="passo > 1">check</mat-icon><b *ngIf="passo <= 1">1</b></span>
+      Horário
+    </li>
+    <li [class.ativo]="passo === 2" [class.feito]="passo > 2">
+      <span class="bolinha"><mat-icon *ngIf="passo > 2">check</mat-icon><b *ngIf="passo <= 2">2</b></span>
+      Seus dados
+    </li>
+    <li [class.ativo]="passo === 3">
+      <span class="bolinha"><b>3</b></span>
+      Pagamento
+    </li>
+  </ol>
 
-  <!-- Passo 1: data + slots -->
-  <section *ngIf="passo === 1">
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>Data</mat-label>
-      <input matInput type="date" [(ngModel)]="data" (change)="buscarSlots()" />
-    </mat-form-field>
+  <!-- ================= Passo 1: data + horários ================= -->
+  <section *ngIf="passo === 1" class="etapa">
+    <h3 class="rotulo">Escolha o dia</h3>
 
-    <div class="slots" *ngIf="slots().length; else semSlots">
-      <button mat-stroked-button *ngFor="let s of slots()" (click)="selecionarSlot(s)">
-        {{ s.horaInicio.substring(0,5) }} <small>({{ s.recursoNome }})</small>
+    <div class="dias" *ngIf="dias().length; else carregandoChips">
+      <button type="button" class="dia"
+              *ngFor="let d of dias()"
+              [class.selecionado]="d.iso === data()"
+              [class.esgotado]="d.vagas === 0"
+              [disabled]="d.vagas === 0"
+              (click)="escolherData(d.iso)"
+              [attr.aria-label]="d.diaSemana + ' ' + d.diaMes + ' — ' + (d.vagas ? d.vagas + ' horários livres' : 'sem vaga')">
+        <span class="semana">{{ d.hoje ? 'Hoje' : d.diaSemana }}</span>
+        <span class="numero">{{ d.diaMes }}</span>
+        <span class="vagas">{{ d.vagas ? d.vagas + ' vagas' : 'sem vaga' }}</span>
       </button>
     </div>
-    <ng-template #semSlots>
-      <p class="vazio">Nenhum horário disponível para esta data.</p>
+    <ng-template #carregandoChips>
+      <div class="dias-carregando" *ngIf="carregandoDias()">
+        <span class="esqueleto" *ngFor="let i of [1,2,3,4,5,6,7]"></span>
+      </div>
     </ng-template>
+
+    <details class="outra-data">
+      <summary>Precisa de outra data?</summary>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Escolher no calendário</mat-label>
+        <input matInput type="date" [value]="data()" [min]="minData"
+               (change)="aoTrocarDataLivre($any($event.target).value)" />
+      </mat-form-field>
+    </details>
+
+    <h3 class="rotulo horarios-titulo">
+      Horários de {{ dataPorExtenso() }}
+    </h3>
+
+    <div class="carregando-slots" *ngIf="carregandoSlots()">
+      <mat-spinner diameter="28"></mat-spinner>
+      <span>Buscando horários…</span>
+    </div>
+
+    <ng-container *ngIf="!carregandoSlots()">
+      <div class="periodo" *ngFor="let p of periodos()">
+        <h4><mat-icon>{{ p.icone }}</mat-icon> {{ p.titulo }}</h4>
+        <div class="slots">
+          <button type="button" class="slot" *ngFor="let s of p.slots" (click)="selecionarSlot(s)">
+            {{ s.horaInicio.substring(0,5) }}
+          </button>
+        </div>
+      </div>
+
+      <div class="vazio" *ngIf="!periodos().length">
+        <mat-icon>event_busy</mat-icon>
+        <p><strong>Nenhum horário livre neste dia.</strong></p>
+        <p class="dica" *ngIf="proximoDiaComVaga() as prox">
+          O próximo dia com vaga é
+          <button type="button" class="link" (click)="escolherData(prox.iso)">
+            {{ prox.diaSemana }}, {{ prox.diaMes }} de {{ prox.mes }}
+          </button>
+          ({{ prox.vagas }} horários).
+        </p>
+        <p class="dica" *ngIf="!proximoDiaComVaga()">
+          Não há vagas nos próximos dias. Entre na lista de espera e avisamos
+          assim que abrir um horário.
+        </p>
+        <a mat-stroked-button [routerLink]="['/t', slug, 'lista-espera-publica']"
+           [queryParams]="{ servicoId: servicoId, data: data() }">
+          <mat-icon>notifications_active</mat-icon>
+          Avise-me quando abrir
+        </a>
+      </div>
+    </ng-container>
   </section>
 
-  <!-- Passo 2: dados do cliente -->
-  <section *ngIf="passo === 2">
+  <!-- ================= Passo 2: dados do cliente ================= -->
+  <section *ngIf="passo === 2" class="etapa">
+    <div class="escolhido">
+      <mat-icon>event_available</mat-icon>
+      <div>
+        <strong>{{ dataPorExtenso() }} às {{ slotEscolhido()?.horaInicio?.substring(0,5) }}</strong>
+        <button type="button" class="link" (click)="voltarParaHorarios()">trocar horário</button>
+      </div>
+    </div>
+
+    <h3 class="rotulo">Seus dados</h3>
+
     <mat-form-field appearance="outline" class="full">
       <mat-label>Nome completo</mat-label>
-      <input matInput [(ngModel)]="cliente.nome" required />
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>Telefone</mat-label>
-      <input matInput [(ngModel)]="cliente.telefone" required />
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>WhatsApp (opcional)</mat-label>
-      <input matInput [(ngModel)]="cliente.whatsApp" />
-    </mat-form-field>
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>E-mail (opcional)</mat-label>
-      <input matInput type="email" [(ngModel)]="cliente.email" />
+      <input matInput [(ngModel)]="cliente.nome" name="nome" required
+             autocomplete="name" [maxlength]="limites.nome" />
+      <mat-hint *ngIf="tentouAvancar() && erroNome()" class="erro">{{ erroNome() }}</mat-hint>
     </mat-form-field>
 
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Celular</mat-label>
+      <input matInput appMascara="telefone" [(ngModel)]="cliente.telefone" name="telefone"
+             required inputmode="numeric" autocomplete="tel"
+             placeholder="(11) 98888-7777" [maxlength]="limites.telefone" />
+      <mat-icon matSuffix>smartphone</mat-icon>
+      <mat-hint *ngIf="!(tentouAvancar() && erroTelefone())">É por aqui que você recebe a confirmação.</mat-hint>
+      <mat-hint *ngIf="tentouAvancar() && erroTelefone()" class="erro">{{ erroTelefone() }}</mat-hint>
+    </mat-form-field>
+
+    <mat-checkbox [checked]="whatsIgualTelefone()"
+                  (change)="aoMudarWhatsIgual($event.checked)" class="mesmo-whats">
+      Meu WhatsApp é este mesmo número
+    </mat-checkbox>
+
+    <mat-form-field appearance="outline" class="full" *ngIf="!whatsIgualTelefone()">
+      <mat-label>WhatsApp</mat-label>
+      <input matInput appMascara="telefone" [(ngModel)]="cliente.whatsApp" name="whatsapp"
+             inputmode="numeric" placeholder="(11) 98888-7777" [maxlength]="limites.telefone" />
+      <mat-icon matSuffix>chat</mat-icon>
+      <mat-hint *ngIf="tentouAvancar() && erroWhatsApp()" class="erro">{{ erroWhatsApp() }}</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>E-mail (opcional)</mat-label>
+      <input matInput type="email" [(ngModel)]="cliente.email" name="email"
+             autocomplete="email" inputmode="email"
+             placeholder="voce@email.com" [maxlength]="limites.email" />
+      <mat-icon matSuffix>mail</mat-icon>
+      <mat-hint *ngIf="!(tentouAvancar() && erroEmail())">Para receber o recibo do pagamento.</mat-hint>
+      <mat-hint *ngIf="tentouAvancar() && erroEmail()" class="erro">{{ erroEmail() }}</mat-hint>
+    </mat-form-field>
+
+    <details class="extras">
+      <summary>Precisa de nota fiscal? Informe o CPF</summary>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>CPF (opcional)</mat-label>
+        <input matInput appMascara="cpf" [(ngModel)]="cliente.cpf" name="cpf"
+               inputmode="numeric" placeholder="000.000.000-00" [maxlength]="limites.cpf" />
+        <mat-hint *ngIf="tentouAvancar() && erroCpf()" class="erro">{{ erroCpf() }}</mat-hint>
+      </mat-form-field>
+    </details>
+
     <div class="acoes">
-      <button mat-button (click)="passo = 1">Voltar</button>
-      <button mat-flat-button color="primary" (click)="prosseguirPagamento()">Continuar</button>
+      <button mat-button type="button" (click)="voltarParaHorarios()">Voltar</button>
+      <button mat-flat-button color="primary" type="button" (click)="prosseguirPagamento()">
+        Continuar
+        <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+      </button>
     </div>
   </section>
 
-  <!-- Passo 3: pagamento -->
-  <section *ngIf="passo === 3">
+  <!-- ================= Passo 3: pagamento ================= -->
+  <section *ngIf="passo === 3" class="etapa">
     <div class="resumo">
       <h3>Resumo</h3>
-      <p><strong>Serviço:</strong> {{ servico()?.nome }}</p>
-      <p><strong>Data:</strong> {{ dataFormatada() }} às {{ slotEscolhido()?.horaInicio?.substring(0,5) }}</p>
-      <p><strong>Valor total:</strong> R$ {{ servico()?.preco | number:'1.2-2' }}</p>
-      <p class="entrada"><strong>Sinal ({{ percentualEntrada() | number:'1.0-0' }}%):</strong>
-        R$ {{ valorSinal() | number:'1.2-2' }}
+      <dl>
+        <dt>Serviço</dt><dd>{{ servico()?.nome }}</dd>
+        <dt>Quando</dt><dd>{{ dataFormatada() }} às {{ slotEscolhido()?.horaInicio?.substring(0,5) }}</dd>
+        <dt>Em nome de</dt><dd>{{ cliente.nome }}</dd>
+        <dt>Valor do serviço</dt><dd>R$ {{ servico()?.preco | number:'1.2-2' }}</dd>
+      </dl>
+      <div class="sinal">
+        <span>Você paga agora ({{ percentualEntrada() | number:'1.0-0' }}% de sinal)</span>
+        <strong>R$ {{ valorSinal() | number:'1.2-2' }}</strong>
+      </div>
+      <p class="restante">
+        O restante (R$ {{ (servico()?.preco || 0) - valorSinal() | number:'1.2-2' }})
+        você paga no atendimento.
       </p>
     </div>
 
-    <h3>Forma de pagamento</h3>
-    <mat-radio-group [(ngModel)]="forma" class="formas">
-      <mat-radio-button *ngFor="let f of formas" [value]="f.value">{{ f.label }}</mat-radio-button>
+    <h3 class="rotulo">Como quer pagar o sinal?</h3>
+    <mat-radio-group [(ngModel)]="forma" name="forma" class="formas">
+      <label class="forma" *ngFor="let f of formas" [class.marcada]="forma === f.value">
+        <mat-radio-button [value]="f.value"></mat-radio-button>
+        <mat-icon>{{ f.icone }}</mat-icon>
+        <span class="texto">
+          <strong>{{ f.label }}</strong>
+          <small>{{ f.ajuda }}</small>
+        </span>
+      </label>
     </mat-radio-group>
 
     <div class="acoes">
-      <button mat-button (click)="passo = 2">Voltar</button>
-      <button mat-flat-button color="primary" (click)="confirmar()" [disabled]="carregando">
+      <button mat-button type="button" (click)="passo = 2" [disabled]="carregando">Voltar</button>
+      <button mat-flat-button color="primary" type="button" (click)="confirmar()" [disabled]="carregando">
+        <mat-spinner *ngIf="carregando" diameter="18"></mat-spinner>
         <mat-icon *ngIf="!carregando">check</mat-icon>
-        Confirmar agendamento
+        {{ carregando ? 'Confirmando…' : 'Confirmar e pagar' }}
       </button>
     </div>
   </section>

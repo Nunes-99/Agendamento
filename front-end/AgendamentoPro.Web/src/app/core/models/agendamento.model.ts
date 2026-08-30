@@ -31,6 +31,12 @@ export interface SlotDisponivel {
   recursoNome: string;
 }
 
+export interface DiaDisponivel {
+  data: string;
+  vagas: number;
+  primeiroHorario?: string;
+}
+
 export interface Agendamento {
   id: number;
   tenantId: number;
@@ -70,6 +76,16 @@ export interface CriarAgendamentoInput {
     cpf?: string;
   };
   formaPagamento: FormaPagamento;
+}
+
+export interface CobrancaPendente {
+  id: number;
+  forma: FormaPagamento;
+  status: StatusPagamento;
+  valor: number;
+  qrCode?: string;
+  linkPagamento?: string;
+  expiracao?: string;
 }
 
 export interface CriarAgendamentoResult {
